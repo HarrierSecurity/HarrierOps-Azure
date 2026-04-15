@@ -1,0 +1,113 @@
+package providers
+
+import (
+	"context"
+
+	"harrierops-azure/internal/models"
+)
+
+func (StaticProvider) Automation(_ context.Context, tenant string, subscription string) (AutomationFacts, error) {
+	session := staticFixtureSession(tenant, subscription)
+	subscriptionID := session.Subscription.ID
+
+	return AutomationFacts{
+		TenantID:       session.TenantID,
+		SubscriptionID: subscriptionID,
+		AutomationAccounts: []models.AutomationAccountAsset{
+			{
+				ID:                     "/subscriptions/" + subscriptionID + "/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet",
+				Name:                   "aa-lab-quiet",
+				ResourceGroup:          "rg-lab",
+				Location:               models.StringPtr("centralus"),
+				State:                  models.StringPtr("Ok"),
+				SKUName:                models.StringPtr("Basic"),
+				IdentityType:           nil,
+				PrincipalID:            nil,
+				ClientID:               nil,
+				IdentityIDs:            []string{},
+				RunbookCount:           intPtr(2),
+				PublishedRunbookCount:  intPtr(1),
+				PublishedRunbookNames:  []string{"Lab-Maintenance"},
+				ScheduleCount:          intPtr(1),
+				JobScheduleCount:       intPtr(1),
+				WebhookCount:           intPtr(0),
+				HybridWorkerGroupCount: intPtr(0),
+				CredentialCount:        intPtr(0),
+				CertificateCount:       intPtr(0),
+				ConnectionCount:        intPtr(1),
+				VariableCount:          intPtr(2),
+				EncryptedVariableCount: intPtr(1),
+				StartModes:             []string{"schedule", "job-schedule"},
+				PrimaryStartMode:       models.StringPtr("schedule"),
+				PrimaryRunbookName:     models.StringPtr("Lab-Maintenance"),
+				ScheduleRunbookNames:   []string{"Lab-Maintenance"},
+				WebhookRunbookNames:    []string{},
+				HybridWorkerGroupIDs:   []string{},
+				TriggerJoinIDs:         []string{"automation-job-schedule:lab-maintenance"},
+				IdentityJoinIDs:        []string{},
+				SecretSupportTypes:     []string{"connections", "encrypted-variables"},
+				SecretDependencyIDs:    []string{"automation-connection:lab-ops", "automation-variable:lab-secret-ref"},
+				ConsequenceTypes:       []string{"run-recurring-execution", "reintroduce-config", "consume-secret-backed-deployment-material"},
+				MissingExecutionPath:   false,
+				MissingTargetMapping:   true,
+				Summary:                "Automation account 'aa-lab-quiet' has no managed identity visible from the current read path. Visible execution shape: 1/2 published runbook(s); 1 schedule(s), 1 job schedule(s), 0 webhook(s); no Hybrid Runbook Worker groups visible. Secure asset posture: credentials 0, certificates 0, connections 1, variables 2 (1 encrypted).",
+				RelatedIDs:             []string{"/subscriptions/" + subscriptionID + "/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"},
+			},
+			{
+				ID:            "/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+				Name:          "aa-hybrid-prod",
+				ResourceGroup: "rg-ops",
+				Location:      models.StringPtr("eastus"),
+				State:         models.StringPtr("Ok"),
+				SKUName:       models.StringPtr("Basic"),
+				IdentityType:  models.StringPtr("SystemAssigned"),
+				PrincipalID:   models.StringPtr("12121212-1212-1212-1212-121212121212"),
+				ClientID:      models.StringPtr("34343434-3434-3434-3434-343434343434"),
+				IdentityIDs: []string{
+					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system",
+				},
+				RunbookCount:           intPtr(7),
+				PublishedRunbookCount:  intPtr(6),
+				PublishedRunbookNames:  []string{"Baseline-Config", "Nightly-Reconcile", "Redeploy-App", "Reapply-Agent", "Sync-Secrets", "Rotate-Certs"},
+				ScheduleCount:          intPtr(4),
+				JobScheduleCount:       intPtr(5),
+				WebhookCount:           intPtr(2),
+				HybridWorkerGroupCount: intPtr(1),
+				CredentialCount:        intPtr(2),
+				CertificateCount:       intPtr(1),
+				ConnectionCount:        intPtr(2),
+				VariableCount:          intPtr(5),
+				EncryptedVariableCount: intPtr(4),
+				StartModes:             []string{"schedule", "job-schedule", "webhook", "hybrid-worker"},
+				PrimaryStartMode:       models.StringPtr("webhook"),
+				PrimaryRunbookName:     models.StringPtr("Redeploy-App"),
+				ScheduleRunbookNames:   []string{"Baseline-Config", "Nightly-Reconcile"},
+				WebhookRunbookNames:    []string{"Redeploy-App", "Reapply-Agent"},
+				HybridWorkerGroupIDs: []string{
+					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/hybridRunbookWorkerGroups/prod-workers",
+				},
+				TriggerJoinIDs: []string{
+					"automation-job-schedule:baseline-nightly",
+					"automation-webhook:redeploy-api",
+					"automation-hybrid-worker:/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/hybridRunbookWorkerGroups/prod-workers",
+				},
+				IdentityJoinIDs: []string{
+					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system",
+					"12121212-1212-1212-1212-121212121212",
+					"34343434-3434-3434-3434-343434343434",
+				},
+				SecretSupportTypes:   []string{"credentials", "certificates", "connections", "encrypted-variables"},
+				SecretDependencyIDs:  []string{"automation-credential:prod-admin", "automation-certificate:prod-signing-cert", "automation-connection:prod-arm", "automation-variable:prod-config-secret"},
+				ConsequenceTypes:     []string{"run-recurring-execution", "reintroduce-config", "consume-secret-backed-deployment-material"},
+				MissingExecutionPath: false,
+				MissingTargetMapping: true,
+				Summary:              "Automation account 'aa-hybrid-prod' uses managed identity (SystemAssigned). Visible execution shape: 6/7 published runbook(s); 4 schedule(s), 5 job schedule(s), 2 webhook(s); 1 Hybrid Runbook Worker group(s). Secure asset posture: credentials 2, certificates 1, connections 2, variables 5 (4 encrypted).",
+				RelatedIDs: []string{
+					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system",
+				},
+			},
+		},
+		Issues: []models.Issue{},
+	}, nil
+}

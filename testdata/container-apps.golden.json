@@ -1,0 +1,65 @@
+{
+  "container_apps": [
+    {
+      "default_hostname": "aca-orders.wittyfield.eastus.azurecontainerapps.io",
+      "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+      "external_ingress_enabled": true,
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-orders",
+      "ingress_target_port": 8080,
+      "ingress_transport": "auto",
+      "latest_ready_revision_name": "aca-orders--x1",
+      "latest_revision_name": "aca-orders--x1",
+      "location": "eastus",
+      "name": "aca-orders",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-orders",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+        "abab1111-1111-1111-1111-111111111111"
+      ],
+      "resource_group": "rg-containers",
+      "revision_mode": "Single",
+      "summary": "Container App 'aca-orders' publishes hostname 'aca-orders.wittyfield.eastus.azurecontainerapps.io' and uses managed identity (SystemAssigned). Visible posture: external ingress enabled, target port 8080, transport auto, revision mode Single, latest ready revision aca-orders--x1.",
+      "workload_client_id": "cdcd1111-1111-1111-1111-111111111111",
+      "workload_identity_ids": [],
+      "workload_identity_type": "SystemAssigned",
+      "workload_principal_id": "abab1111-1111-1111-1111-111111111111"
+    },
+    {
+      "default_hostname": null,
+      "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+      "external_ingress_enabled": false,
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-internal-jobs",
+      "ingress_target_port": 8080,
+      "ingress_transport": "http",
+      "latest_ready_revision_name": "aca-internal-jobs--x2",
+      "latest_revision_name": "aca-internal-jobs--x3",
+      "location": "eastus",
+      "name": "aca-internal-jobs",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-internal-jobs",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+        "abab2222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+      ],
+      "resource_group": "rg-containers",
+      "revision_mode": "Multiple",
+      "summary": "Container App 'aca-internal-jobs' has no visible hostname from the current read path and uses managed identity (SystemAssigned, UserAssigned). Visible posture: internal ingress only, target port 8080, transport http, revision mode Multiple, latest ready revision aca-internal-jobs--x2.",
+      "workload_client_id": "cdcd2222-2222-2222-2222-222222222222",
+      "workload_identity_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+      ],
+      "workload_identity_type": "SystemAssigned, UserAssigned",
+      "workload_principal_id": "abab2222-2222-2222-2222-222222222222"
+    }
+  ],
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "container-apps",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  }
+}

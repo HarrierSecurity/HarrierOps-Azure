@@ -1,0 +1,18 @@
+azurefox managed-identities
+
+╭─────────────────────┬──────────────┬──────────────┬─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│identity             │type          │attached to   │operator signal                                                  │next review                                                                                                      │
+├─────────────────────┼──────────────┼──────────────┼─────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ua-app               │userAssigned  │vm-web-01     │Public VM workload pivot; direct control visible.                │Check permissions for direct control on this identity, then vms for the host context behind the workload pivot.  │
+│vmss-edge-01-system  │systemAssigned│vmss-edge-01  │Exposed VMSS workload pivot; direct control not confirmed.       │Check vmss for the fleet context behind this workload pivot, then permissions to confirm direct control.         │
+│func-orders-system   │systemAssigned│func-orders   │Public Function App workload pivot; direct control not confirmed.│Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.           │
+│ua-orders            │userAssigned  │func-orders   │Public Function App workload pivot; visibility blocked.          │Check env-vars for the backing workload context; current scope does not yet show direct control on this identity.│
+│app-empty-mi-system  │systemAssigned│app-empty-mi  │Public App Service workload pivot; direct control not confirmed. │Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.           │
+│app-public-api-system│systemAssigned│app-public-api│Public App Service workload pivot; direct control not confirmed. │Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.           │
+╰─────────────────────┴──────────────┴──────────────┴─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Findings:
+- HIGH: Managed identity has elevated role assignment
+  Identity 'ua-app' is assigned one or more high-impact roles (Owner).
+
+Takeaway: 6 managed identities visible; 6 exposed workload pivots and 1 direct-control cues from current scope.

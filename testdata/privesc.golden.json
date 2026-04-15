@@ -1,0 +1,61 @@
+{
+  "issues": [],
+  "metadata": {
+    "auth_mode": null,
+    "command": "privesc",
+    "devops_organization": null,
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  },
+  "paths": [
+    {
+      "asset": null,
+      "current_identity": true,
+      "impact_roles": [
+        "Owner"
+      ],
+      "starting_foothold": "azurefox-lab-sp (current foothold)",
+      "missing_proof": "AzureFox does not prove which exact abuse action is the best next step from this row alone.",
+      "next_review": "Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
+      "operator_signal": "Current foothold already has direct control.",
+      "path_type": "current-foothold-direct-control",
+      "priority": "high",
+      "principal": "azurefox-lab-sp",
+      "principal_id": "33333333-3333-3333-3333-333333333333",
+      "principal_type": "ServicePrincipal",
+      "proven_path": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ],
+      "summary": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. AzureFox does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead."
+    },
+    {
+      "asset": "vm-web-01",
+      "current_identity": false,
+      "impact_roles": [
+        "Owner"
+      ],
+      "starting_foothold": "azurefox-lab-sp (current foothold)",
+      "missing_proof": "AzureFox does not prove control of the workload or successful token use from it.",
+      "next_review": "Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
+      "operator_signal": "Visible ingress-backed lead; not yet rooted in current foothold.",
+      "path_type": "ingress-backed-workload-identity",
+      "priority": "medium",
+      "principal": "ua-app",
+      "principal_id": "33333333-3333-3333-3333-333333333333",
+      "principal_type": "ManagedIdentity",
+      "proven_path": "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
+        "33333333-3333-3333-3333-333333333333",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ],
+      "summary": "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). AzureFox does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead."
+    }
+  ]
+}

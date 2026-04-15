@@ -1,0 +1,2 @@
+subscription_id,subscription_display_name,subscription_state,resource_group_count,resource_count,top_type,top_type_count,top_resource_types,issue_count,metadata_command,metadata_generated_at,metadata_schema_version
+22222222-2222-2222-2222-222222222222,azurefox-lab-sub,Enabled,4,30,Microsoft.Network/networkInterfaces,6,Microsoft.Compute/virtualMachines=3;Microsoft.ContainerService/managedClusters=2;Microsoft.Network/networkInterfaces=6;Microsoft.Storage/storageAccounts=2,0,inventory,2026-04-13T12:00:00Z,1.4.0

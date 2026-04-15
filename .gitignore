@@ -1,0 +1,17 @@
+.DS_Store
+.coverprofile
+coverage.out
+dist/
+build/
+
+/loot/
+/json/
+/table/
+/csv/
+/command-output/
+/run-summary.json
+
+/fixture-output/
+/fixtures-output/
+/ho-azure-reference/
+/AGENTS.md

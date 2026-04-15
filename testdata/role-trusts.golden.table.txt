@@ -1,0 +1,15 @@
+azurefox role-trusts
+
+╭────────────────────────┬──────────────────┬───────────────┬──────────┬─────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│trust                   │source            │target         │confidence│operator signal                                      │next review                                                                                                                 │
+├────────────────────────┼──────────────────┼───────────────┼──────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│federated-credential    │build-app         │build-sp       │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                        │
+│service-principal-owner │aa-hybrid-prod    │ops-deploy-sp  │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'ops-deploy-sp'.                                                   │
+│service-principal-owner │automation-runner │build-sp       │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                        │
+│service-principal-owner │azurefox-lab-sp   │build-sp       │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                        │
+│app-owner               │azurefox-lab-sp   │build-app      │confirmed │Indirect control visible; ownership review next.     │Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
+│app-owner               │ci-admin@lab.local│build-app      │confirmed │Indirect control visible; ownership review next.     │Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
+│app-to-service-principal│reporting-sp      │Microsoft Graph│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'reporting-sp'.                                                    │
+╰────────────────────────┴──────────────────┴───────────────┴──────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 7 trust edges surfaced in fast mode; 2 app-owner, 1 app-to-service-principal, 1 federated-credential, 3 service-principal-owner. 5 privilege-confirmation follow-ons, 2 ownership-review follow-ons, and 0 outside-tenant follow-ons. Delegated and admin consent grants are out of scope for this command.

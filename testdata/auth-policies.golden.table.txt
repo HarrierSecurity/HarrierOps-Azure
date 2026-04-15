@@ -1,0 +1,12 @@
+azurefox auth-policies
+
+╭─────────────────────────────────────────────────────┬─────────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│policy                                               │state                            │scope              │operator signal                                                                                                                  │
+├─────────────────────────────────────────────────────┼─────────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│Security Defaults                                    │disabled                         │tenant             │Security defaults are disabled for the tenant.                                                                                   │
+│Authorization Policy                                 │configured                       │tenant             │guest invites: everyone; users can register apps; self-service permission grant policies assigned; legacy MSOL PowerShell blocked│
+│CA002: Block legacy auth                             │disabled                         │users:all, apps:all│state: disabled; grants: block; scope: users:all, apps:all                                                                       │
+│CA001: Require multi-factor authentication for admins│enabledForReportingButNotEnforced│roles:2, apps:all  │state: enabledForReportingButNotEnforced; grants: mfa; scope: roles:2, apps:all                                                  │
+╰─────────────────────────────────────────────────────┴─────────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 4 policy rows, 5 findings, and 0 current-scope issues.

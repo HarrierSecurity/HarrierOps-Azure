@@ -1,0 +1,2 @@
+id,identity_ids,location,name,nic_ids,power_state,private_ips,public_ips,resource_group,vm_type
+/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01,/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app,eastus,vm-web-01,/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Network/networkInterfaces/nic-web-01,running,10.0.1.4,52.160.10.20,rg-workload,vm

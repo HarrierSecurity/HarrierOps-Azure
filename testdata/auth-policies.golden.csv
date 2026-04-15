@@ -1,0 +1,5 @@
+controls,name,policy_type,related_ids,scope,state,summary
+,Security Defaults,security-defaults,00000000-0000-0000-0000-000000000005,tenant,disabled,Security defaults are disabled for the tenant.
+guest-invites:everyone;sspr:enabled;legacy-msol-powershell:blocked;users-can-register-apps;users-can-create-security-groups;user-consent:self-service,Authorization Policy,authorization-policy,authorizationPolicy,tenant,configured,guest invites: everyone; users can register apps; self-service permission grant policies assigned; legacy MSOL PowerShell blocked
+block,CA002: Block legacy auth,conditional-access,ca-2,"users:all, apps:all",disabled,"state: disabled; grants: block; scope: users:all, apps:all"
+mfa,CA001: Require multi-factor authentication for admins,conditional-access,ca-1,"roles:2, apps:all",enabledForReportingButNotEnforced,"state: enabledForReportingButNotEnforced; grants: mfa; scope: roles:2, apps:all"

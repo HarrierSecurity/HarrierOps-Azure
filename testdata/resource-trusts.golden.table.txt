@@ -1,0 +1,16 @@
+azurefox resource-trusts
+
+╭─────────────┬──────────────┬──────────────────────┬──────────────┬──────────┬─────────────────────────────────────────────────────────────────────────────────────────╮
+│resource     │type          │trust                 │target        │exposure  │why it matters                                                                           │
+├─────────────┼──────────────┼──────────────────────┼──────────────┼──────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+│kvlabopen01  │KeyVault      │public-network        │public-network│high      │Key Vault 'kvlabopen01' remains reachable through a public network path.                 │
+│stlabpub01   │StorageAccount│anonymous-blob-access │public-network│high      │Storage account 'stlabpub01' permits public blob access from the public network.         │
+│kvlabdeny01  │KeyVault      │public-network        │public-network│medium    │Key Vault 'kvlabdeny01' remains reachable through a public network path.                 │
+│kvlabhybrid01│KeyVault      │private-endpoint      │private-link  │restricted│Key Vault 'kvlabhybrid01' exposes a private endpoint path through Azure Private Link.    │
+│kvlabhybrid01│KeyVault      │public-network        │public-network│medium    │Key Vault 'kvlabhybrid01' remains reachable through a public network path.               │
+│kvlabpriv01  │KeyVault      │private-endpoint      │private-link  │restricted│Key Vault 'kvlabpriv01' exposes a private endpoint path through Azure Private Link.      │
+│stlabpriv01  │StorageAccount│private-endpoint      │private-link  │restricted│Storage account 'stlabpriv01' exposes a private endpoint path through Azure Private Link.│
+│stlabpub01   │StorageAccount│public-network-default│public-network│medium    │Storage account 'stlabpub01' accepts public network traffic by default.                  │
+╰─────────────┴──────────────┴──────────────────────┴──────────────┴──────────┴─────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 8 resource trust surfaces visible; 2 high, 3 medium, 3 restricted.
