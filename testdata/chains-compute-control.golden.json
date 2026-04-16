@@ -1,0 +1,329 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "chains",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "chains",
+  "family": "compute-control",
+  "input_mode": "live",
+  "command_state": "extraction-only",
+  "summary": "Follow token-capable compute footholds toward the identity-backed Azure control they can reach next.",
+  "claim_boundary": "Can claim a direct token opportunity only when HO-Azure can show the compute-side token path, the attached identity, and the stronger Azure control behind that identity. Cannot claim SSRF, runtime compromise, metadata abuse, token minting success, or broader credential, deployment, or trust stories without a clearer compute-side transform.",
+  "current_gap": "The live family is intentionally narrow in v1: direct token-opportunity rows only. Broader trust expansion and secret-bearing config starts still sit outside this family, mixed-identity workloads still need explicit corroboration before default admission, and HO-Azure stays on the recon side of the boundary rather than trying to verify web-app exploitation or other runtime execution paths.",
+  "artifact_preference_order": [],
+  "backing_commands": [
+    "tokens-credentials",
+    "env-vars",
+    "workloads",
+    "managed-identities",
+    "permissions"
+  ],
+  "source_artifacts": [],
+  "paths": [
+    {
+      "chain_id": "compute-control::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-orders::abab1111-1111-1111-1111-111111111111",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-orders",
+      "asset_name": "aca-orders",
+      "asset_kind": "ContainerApp",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "workload-identity",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "permission-join",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "ContainerApp 'aca-orders' can request tokens through attached managed identity (SystemAssigned). Check managed-identities for the identity path, then permissions for Azure control.",
+      "insertion_point": "reachable service token request path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Contributor across subscription-wide scope",
+      "why_care": "ContainerApp 'aca-orders' can request tokens as aca-orders system identity; that identity already maps to Contributor across subscription-wide scope. To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token. HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.",
+      "likely_impact": "Contributor across subscription-wide scope",
+      "confidence_boundary": "HO-Azure can name the token-capable compute foothold and the workload principal that maps to stronger Azure control from current scope. The explicit managed identity anchor is inferred from workload metadata rather than a separate managed-identities row.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "workload-principal",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "abab1111-1111-1111-1111-111111111111"
+      ],
+      "target_names": [
+        "aca-orders system identity"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check workloads for the compute foothold, then permissions for exact scope on the attached identity.",
+      "summary": "HO-Azure can name the token-capable compute foothold and the workload principal that maps to stronger Azure control from current scope. The explicit managed identity anchor is inferred from workload metadata rather than a separate managed-identities row. Check workloads for the compute foothold, then permissions for exact scope on the attached identity.",
+      "missing_confirmation": "",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/containerApps/aca-orders",
+        "abab1111-1111-1111-1111-111111111111"
+      ]
+    },
+    {
+      "chain_id": "compute-control::/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-apps/providers/Microsoft.ContainerInstance/containerGroups/aci-public-api::acac1111-1111-1111-1111-111111111111",
+      "asset_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-apps/providers/Microsoft.ContainerInstance/containerGroups/aci-public-api",
+      "asset_name": "aci-public-api",
+      "asset_kind": "ContainerInstance",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "workload-identity",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "permission-join",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "ContainerInstance 'aci-public-api' can request tokens through attached managed identity (SystemAssigned). Check managed-identities for the identity path, then permissions for Azure control.",
+      "insertion_point": "reachable service token request path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Contributor across subscription-wide scope",
+      "why_care": "ContainerInstance 'aci-public-api' can request tokens as aci-public-api system identity; that identity already maps to Contributor across subscription-wide scope. To turn this into downstream Azure access, an operator would need a way to make this public-facing container group ask Azure for its own token. HO-Azure shows that this public-facing container group is public and token-capable, but public reachability alone does not prove that path.",
+      "likely_impact": "Contributor across subscription-wide scope",
+      "confidence_boundary": "HO-Azure can name the token-capable compute foothold and the workload principal that maps to stronger Azure control from current scope. The explicit managed identity anchor is inferred from workload metadata rather than a separate managed-identities row.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "workload-principal",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "acac1111-1111-1111-1111-111111111111"
+      ],
+      "target_names": [
+        "aci-public-api system identity"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check workloads for the compute foothold, then permissions for exact scope on the attached identity.",
+      "summary": "HO-Azure can name the token-capable compute foothold and the workload principal that maps to stronger Azure control from current scope. The explicit managed identity anchor is inferred from workload metadata rather than a separate managed-identities row. Check workloads for the compute foothold, then permissions for exact scope on the attached identity.",
+      "missing_confirmation": "",
+      "related_ids": [
+        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-apps/providers/Microsoft.ContainerInstance/containerGroups/aci-public-api",
+        "acac1111-1111-1111-1111-111111111111"
+      ]
+    },
+    {
+      "chain_id": "compute-control::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi::eeee3333-3333-3333-3333-333333333333",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
+      "asset_name": "app-empty-mi",
+      "asset_kind": "AppService",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "workload-identity",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "permission-join",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "AppService 'app-empty-mi' can request tokens through attached managed identity (SystemAssigned). Check managed-identities for the identity path, then permissions for Azure control.",
+      "insertion_point": "reachable service token request path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Contributor across subscription-wide scope",
+      "why_care": "AppService 'app-empty-mi' can request tokens as app-empty-mi-system; that identity already maps to Contributor across subscription-wide scope. To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token. HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.",
+      "likely_impact": "Contributor across subscription-wide scope",
+      "confidence_boundary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "managed-identities",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "identity-anchor",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi/identities/system"
+      ],
+      "target_names": [
+        "app-empty-mi-system"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check app-services for the running service foothold, then permissions for exact scope on the attached identity.",
+      "summary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope. Check app-services for the running service foothold, then permissions for exact scope on the attached identity.",
+      "missing_confirmation": "",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
+        "eeee3333-3333-3333-3333-333333333333",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi/identities/system"
+      ]
+    },
+    {
+      "chain_id": "compute-control::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders::cccc2222-2222-2222-2222-222222222222",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+      "asset_name": "func-orders",
+      "asset_kind": "FunctionApp",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "workload-identity",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "mixed-identity-corroborated-permission-join",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "FunctionApp 'func-orders' can request tokens through attached managed identity (SystemAssigned, UserAssigned). Check managed-identities for the identity path, then permissions for Azure control.",
+      "insertion_point": "reachable service token request path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Contributor across subscription-wide scope",
+      "why_care": "FunctionApp 'func-orders' carries mixed identities. Current collected workload behavior points to func-orders-system as the best current lead, and that identity already maps to Contributor across subscription-wide scope. To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token. HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.",
+      "likely_impact": "Contributor across subscription-wide scope",
+      "confidence_boundary": "Due to mixed identities and the current foothold, HO-Azure cannot directly verify which attached identity the raw token path will choose on every request. Another collected workload surface currently points to this identity as the best current lead, and the stronger Azure control behind it is visible. Specifically, current app configuration explicitly names SystemAssigned for a collected workload behavior.",
+      "target_service": "azure-control",
+      "target_resolution": "identity-choice-corroborated",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "env-vars",
+        "managed-identities",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "identity-choice-corroboration",
+        "identity-anchor",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/identities/system"
+      ],
+      "target_names": [
+        "func-orders-system"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Current collected workload configuration already narrows this path to the identity shown here; exact per-request token choice remains bounded by the current foothold.",
+      "summary": "Due to mixed identities and the current foothold, HO-Azure cannot directly verify which attached identity the raw token path will choose on every request. Another collected workload surface currently points to this identity as the best current lead, and the stronger Azure control behind it is visible. Specifically, current app configuration explicitly names SystemAssigned for a collected workload behavior. Current collected workload configuration already narrows this path to the identity shown here; exact per-request token choice remains bounded by the current foothold.",
+      "missing_confirmation": "Current foothold does not directly verify which attached identity the raw token path will choose on every request.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
+        "cccc2222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/identities/system"
+      ]
+    },
+    {
+      "chain_id": "compute-control::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01::33333333-3333-3333-3333-333333333333",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+      "asset_name": "vm-web-01",
+      "asset_kind": "VM",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "imds",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "permission-join",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "VM 'vm-web-01' is publicly reachable and exposes a token minting path through IMDS for its attached managed identity. Check endpoints for the ingress path, then managed-identities and permissions for Azure control.",
+      "insertion_point": "public IMDS token path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Owner across subscription-wide scope",
+      "why_care": "VM 'vm-web-01' can request tokens as ua-app; that identity already maps to Owner across subscription-wide scope. To turn this into downstream Azure access, an operator would need a way to make this public-facing workload reach the Azure VM metadata service. HO-Azure shows that the workload is public and IMDS-backed, but public reachability alone does not prove that path.",
+      "likely_impact": "Owner across subscription-wide scope",
+      "confidence_boundary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "managed-identities",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "identity-anchor",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app"
+      ],
+      "target_names": [
+        "ua-app"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check vms for the host foothold, then permissions for exact scope on the attached identity.",
+      "summary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope. Check vms for the host foothold, then permissions for exact scope on the attached identity.",
+      "missing_confirmation": "",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Network/networkInterfaces/nic-web-01"
+      ]
+    },
+    {
+      "chain_id": "compute-control::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01::77770000-0000-0000-0000-000000000001",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01",
+      "asset_name": "vmss-edge-01",
+      "asset_kind": "VMSS",
+      "location": "eastus",
+      "source_command": "tokens-credentials",
+      "source_context": "imds",
+      "clue_type": "managed-identity-token",
+      "confirmation_basis": "permission-join",
+      "priority": "medium",
+      "urgency": "review-soon",
+      "visible_path": "VMSS 'vmss-edge-01' exposes a token minting path through IMDS for its attached managed identity. Check managed-identities for the identity path, then permissions for Azure control.",
+      "insertion_point": "IMDS token path",
+      "path_concept": "direct-token-opportunity",
+      "stronger_outcome": "Contributor across subscription-wide scope",
+      "why_care": "VMSS 'vmss-edge-01' can request tokens as vmss-edge-01-system; that identity already maps to Contributor across subscription-wide scope. To turn this into downstream Azure access, an operator would need host-level execution or admin access on this VMSS so the Azure VM metadata token path is reachable. HO-Azure does not yet show that start from the current foothold.",
+      "likely_impact": "Contributor across subscription-wide scope",
+      "confidence_boundary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "tokens-credentials",
+        "workloads",
+        "managed-identities",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "managed-identity-token",
+        "workload",
+        "identity-anchor",
+        "permissions"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01/identities/system"
+      ],
+      "target_names": [
+        "vmss-edge-01-system"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check vmss for the fleet foothold, then permissions for exact scope on the attached identity.",
+      "summary": "HO-Azure can name the token-capable compute foothold, the attached identity, and the stronger Azure control behind it from current scope. Check vmss for the fleet foothold, then permissions for exact scope on the attached identity.",
+      "missing_confirmation": "",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01/identities/system"
+      ]
+    }
+  ],
+  "issues": []
+}

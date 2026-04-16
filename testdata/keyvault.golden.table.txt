@@ -1,4 +1,8 @@
-azurefox keyvault
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[keyvault] Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.
+ho-azure keyvault
 
 ╭─────────────┬──────────────┬──────────────┬────────────────────────────┬────────────────┬────────────────┬─────────╮
 │vault        │resource group│public network│default action              │private endpoint│purge protection│rbac mode│
@@ -8,5 +12,15 @@ azurefox keyvault
 │kvlabhybrid01│rg-secrets    │Enabled       │Deny                        │yes             │yes             │yes      │
 │kvlabpriv01  │rg-secrets    │Disabled      │Deny                        │yes             │yes             │yes      │
 ╰─────────────┴──────────────┴──────────────┴────────────────────────────┴────────────────┴────────────────┴─────────╯
+
+Findings:
+- HIGH: Key Vault is broadly reachable on the public network
+  Key Vault 'kvlabopen01' has public network access enabled, Azure omitted the network ACL object, and no private endpoint is visible. Azure can return that shape for a fully open vault. Review whether that secret-management surface is intentionally internet reachable.
+- MEDIUM: Key Vault purge protection is disabled
+  Key Vault 'kvlabopen01' does not have purge protection enabled. Validate whether destructive recovery protections are intentionally absent.
+- MEDIUM: Key Vault remains reachable through a public network path
+  Key Vault 'kvlabdeny01' keeps public network access enabled with default network action 'Deny' and no private endpoint visible. Review whether that public path is still intended.
+- LOW: Key Vault keeps a public network path alongside Private Link
+  Key Vault 'kvlabhybrid01' has public network access enabled while a private endpoint is also present. Validate whether the public path is still required.
 
 Takeaway: 4 Key Vault assets visible; 4 exposure or recovery findings.

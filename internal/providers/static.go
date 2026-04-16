@@ -9,6 +9,7 @@ import (
 type Provider interface {
 	AKS(context.Context, string, string) (AksFacts, error)
 	Acr(context.Context, string, string) (AcrFacts, error)
+	AppCredentials(context.Context, string, string) (AppCredentialsFacts, error)
 	Automation(context.Context, string, string) (AutomationFacts, error)
 	Devops(context.Context, string, string, string) (DevopsFacts, error)
 	ApplicationGateway(context.Context, string, string) (ApplicationGatewayFacts, error)
@@ -285,6 +286,13 @@ type AuthPoliciesFacts struct {
 	TenantID       string
 	SubscriptionID string
 	AuthPolicies   []models.AuthPolicySummary
+	Issues         []models.Issue
+}
+
+type AppCredentialsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	AppCredentials []models.AppCredentialSummary
 	Issues         []models.Issue
 }
 

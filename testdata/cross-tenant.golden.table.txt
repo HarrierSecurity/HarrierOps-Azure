@@ -1,4 +1,8 @@
-azurefox cross-tenant
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[cross-tenant] Reviewing outside-tenant trust, delegated management, and tenant policy cues that most change control or pivot paths.
+ho-azure cross-tenant
 
 ╭─────────────────────────┬───────────┬────────────────────────────────────────────────────┬──────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │signal                   │type       │tenant                                              │scope                                             │posture                                                                               │attack path           │why it matters                                                                                                                                       │

@@ -41,21 +41,20 @@ type artifactCase struct {
 func implementedArtifactCases() []artifactCase {
 	overrides := map[string]artifactCase{
 		"whoami": {
-			tableContains: []string{"azurefox whoami", "principal_type"},
-			lootGolden:    "whoami.loot.golden.json",
-			tableGolden:   "",
+			lootGolden:  "whoami.loot.golden.json",
+			tableGolden: "whoami.golden.table.txt",
 		},
 		"rbac": {
-			tableContains: []string{"azurefox rbac", "role_definition_id"},
-			tableGolden:   "",
+			tableGolden: "rbac.golden.table.txt",
 		},
 		"inventory": {
-			tableContains: []string{"azurefox inventory", "top_type"},
-			tableGolden:   "",
+			tableGolden: "inventory.golden.table.txt",
 		},
 		"permissions": {
-			tableContains: []string{"azurefox permissions", "operator signal"},
-			tableGolden:   "",
+			tableGolden: "permissions.golden.table.txt",
+		},
+		"chains": {
+			tableGolden: "chains.golden.table.txt",
 		},
 	}
 
@@ -88,6 +87,42 @@ func implementedArtifactCases() []artifactCase {
 		lootGolden:   "role-trusts-full.golden.json",
 		csvGolden:    "role-trusts-full.golden.csv",
 		tableGolden:  "role-trusts-full.golden.table.txt",
+	})
+	cases = append(cases, artifactCase{
+		name:         "chains-credential-path",
+		args:         []string{"chains", "credential-path", "--output", "json"},
+		artifactBase: "chains",
+		jsonGolden:   "chains-credential-path.golden.json",
+		lootGolden:   "chains-credential-path.golden.json",
+		csvGolden:    "chains-credential-path.golden.csv",
+		tableGolden:  "chains-credential-path.golden.table.txt",
+	})
+	cases = append(cases, artifactCase{
+		name:         "chains-deployment-path",
+		args:         []string{"chains", "deployment-path", "--output", "json"},
+		artifactBase: "chains",
+		jsonGolden:   "chains-deployment-path.golden.json",
+		lootGolden:   "chains-deployment-path.golden.json",
+		csvGolden:    "chains-deployment-path.golden.csv",
+		tableGolden:  "chains-deployment-path.golden.table.txt",
+	})
+	cases = append(cases, artifactCase{
+		name:         "chains-escalation-path",
+		args:         []string{"chains", "escalation-path", "--output", "json"},
+		artifactBase: "chains",
+		jsonGolden:   "chains-escalation-path.golden.json",
+		lootGolden:   "chains-escalation-path.golden.json",
+		csvGolden:    "chains-escalation-path.golden.csv",
+		tableGolden:  "chains-escalation-path.golden.table.txt",
+	})
+	cases = append(cases, artifactCase{
+		name:         "chains-compute-control",
+		args:         []string{"chains", "compute-control", "--output", "json"},
+		artifactBase: "chains",
+		jsonGolden:   "chains-compute-control.golden.json",
+		lootGolden:   "chains-compute-control.golden.json",
+		csvGolden:    "chains-compute-control.golden.csv",
+		tableGolden:  "chains-compute-control.golden.table.txt",
 	})
 
 	return cases
@@ -145,6 +180,109 @@ func TestRoleTrustsRejectsInvalidMode(t *testing.T) {
 	}
 }
 
+func TestGlobalFlagsMustFollowCommand(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"--output", "json", "inventory"}, &stdout, &stderr)
+	if exitCode != 2 {
+		t.Fatalf("expected exit code 2, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "command must come first; use `ho-azure <command> [flags]`") {
+		t.Fatalf("expected command-first guidance, got stderr %q", stderr.String())
+	}
+}
+
+func TestGlobalFlagsWorkAfterCommand(t *testing.T) {
+	stdout, _ := runSuccess(t, "inventory", "--output", "json")
+	assertSchemaVersion(t, stdout)
+}
+
+func TestGlobalDebugFlagIsAccepted(t *testing.T) {
+	stdout, _ := runSuccess(t, "inventory", "--debug", "--output", "json")
+	assertSchemaVersion(t, stdout)
+}
+
+func TestRootHelpFlagNormalizesToHelp(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"--help"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "HO-Azure Help") {
+		t.Fatalf("expected root help output, got %q", stdout.String())
+	}
+}
+
+func TestCommandHelpFlagNormalizesToCustomHelp(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"whoami", "--help"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "HO-Azure Help :: whoami") {
+		t.Fatalf("expected command help output, got %q", stdout.String())
+	}
+}
+
+func TestSectionHelpTopicIsAvailable(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"help", "identity"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "HO-Azure Help :: identity") {
+		t.Fatalf("expected section help output, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "whoami:") {
+		t.Fatalf("expected identity commands in section help, got %q", stdout.String())
+	}
+}
+
+func TestRootHelpListsOnlyImplementedCommands(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"help"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if strings.Contains(stdout.String(), "Placeholder contract carried forward from AzureFox for faithful migration.") {
+		t.Fatalf("expected root help to omit placeholder commands, got %q", stdout.String())
+	}
+}
+
+func TestCommandHelpShowsTruthfulStatus(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"help", "inventory"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Status: implemented command.") {
+		t.Fatalf("expected truthful implemented status in help, got %q", stdout.String())
+	}
+}
+
 func TestRoleTrustsLegacyModesPreserveSemanticOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -171,6 +309,15 @@ func TestJSONCarriesSchemaVersion(t *testing.T) {
 			stdout, _ := runSuccess(t, tc.args...)
 			assertSchemaVersion(t, stdout)
 		})
+	}
+}
+
+func TestChainsHelpMatchesOverviewJSON(t *testing.T) {
+	overview, _ := runSuccess(t, "chains", "--output", "json")
+	helpView, _ := runSuccess(t, "chains", "help", "--output", "json")
+	assertMatchesGolden(t, overview, "chains.golden.json")
+	if overview != helpView {
+		t.Fatalf("expected chains help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
 	}
 }
 

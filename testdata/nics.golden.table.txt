@@ -1,8 +1,14 @@
-azurefox nics
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
 
-╭──────────┬──────────────┬──────────────────┬──────────────┬────────────────────────┬───────╮
-│nic       │attached asset│private ips       │public ip refs│subnet / vnet           │nsg    │
-├──────────┼──────────────┼──────────────────┼──────────────┼────────────────────────┼───────┤
-│nic-web-01│vm-web-01     │10.0.1.4          │pip-web-01    │vnet-app / vnet-workload│nsg-web│
-│nic-db-01 │              │10.0.2.5, 10.0.2.6│              │vnet-db / vnet-workload │       │
-╰──────────┴──────────────┴──────────────────┴──────────────┴────────────────────────┴───────╯
+[nics] Enumerating NIC attachments, IP context, and network boundary references.
+ho-azure nics
+
+╭──────────┬──────────────┬──────────────────┬──────────────┬───────────────────────────────────┬───────╮
+│nic       │attached asset│private ips       │public ip refs│subnet / vnet                      │nsg    │
+├──────────┼──────────────┼──────────────────┼──────────────┼───────────────────────────────────┼───────┤
+│nic-web-01│vm-web-01     │10.0.1.4          │pip-web-01    │subnet=vnet-app; vnet=vnet-workload│nsg-web│
+│nic-db-01 │-             │10.0.2.5, 10.0.2.6│-             │subnet=vnet-db; vnet=vnet-workload │-      │
+╰──────────┴──────────────┴──────────────────┴──────────────┴───────────────────────────────────┴───────╯
+
+Takeaway: 2 NICs visible; 1 attached to visible assets and 1 reference public IP resources.

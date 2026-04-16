@@ -119,6 +119,11 @@ type ScopedCommandMetadata struct {
 	AuthMode           *string `json:"auth_mode"`
 }
 
+type RenderContext struct {
+	Tenant       string
+	Subscription string
+}
+
 type PermissionsMetadata = ScopedCommandMetadata
 
 type Issue struct {

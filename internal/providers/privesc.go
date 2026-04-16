@@ -25,7 +25,7 @@ func (p StaticProvider) Privesc(ctx context.Context, tenant string, subscription
 				CurrentIdentity:  true,
 				ImpactRoles:      []string{"Owner"},
 				StartingFoothold: "azurefox-lab-sp (current foothold)",
-				MissingProof:     "AzureFox does not prove which exact abuse action is the best next step from this row alone.",
+				MissingProof:     "HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
 				NextReview:       "Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
 				OperatorSignal:   "Current foothold already has direct control.",
 				PathType:         privescCurrentFootholdDirectControl,
@@ -38,14 +38,14 @@ func (p StaticProvider) Privesc(ctx context.Context, tenant string, subscription
 					"33333333-3333-3333-3333-333333333333",
 					"/subscriptions/22222222-2222-2222-2222-222222222222",
 				},
-				Summary: "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. AzureFox does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
+				Summary: "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
 			},
 			{
 				Asset:            models.StringPtr("vm-web-01"),
 				CurrentIdentity:  false,
 				ImpactRoles:      []string{"Owner"},
 				StartingFoothold: "azurefox-lab-sp (current foothold)",
-				MissingProof:     "AzureFox does not prove control of the workload or successful token use from it.",
+				MissingProof:     "HO-Azure does not prove control of the workload or successful token use from it.",
 				NextReview:       "Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
 				OperatorSignal:   "Visible ingress-backed lead; not yet rooted in current foothold.",
 				PathType:         privescIngressBackedWorkloadID,
@@ -60,7 +60,7 @@ func (p StaticProvider) Privesc(ctx context.Context, tenant string, subscription
 					"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
 					"/subscriptions/22222222-2222-2222-2222-222222222222",
 				},
-				Summary: "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). AzureFox does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
+				Summary: "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). HO-Azure does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
 			},
 		},
 		Issues: []models.Issue{},
@@ -270,12 +270,12 @@ func privescProvenPath(principalName string, rawPathType string, assetName strin
 
 func privescMissingProof(rawPathType string, currentIdentity bool) string {
 	if rawPathType == "public-identity-pivot" {
-		return "AzureFox does not prove control of the workload or successful token use from it."
+		return "HO-Azure does not prove control of the workload or successful token use from it."
 	}
 	if currentIdentity {
-		return "AzureFox does not prove which exact abuse action is the best next step from this row alone."
+		return "HO-Azure does not prove which exact abuse action is the best next step from this row alone."
 	}
-	return "AzureFox does not prove the current identity can act as or control this principal."
+	return "HO-Azure does not prove the current identity can act as or control this principal."
 }
 
 func privescNextReviewHint(rawPathType string, currentIdentity bool) string {

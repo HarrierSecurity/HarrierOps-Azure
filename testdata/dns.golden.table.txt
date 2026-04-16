@@ -1,4 +1,8 @@
-azurefox dns
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[dns] Reviewing public and private DNS zone inventory and namespace boundaries.
+ho-azure dns
 
 ╭────────────────────────────────┬───────┬───────────────┬────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │zone                            │kind   │inventory      │namespace                           │why it matters                                                                                                                                                                                  │

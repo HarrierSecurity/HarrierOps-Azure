@@ -23,3 +23,15 @@ func TestRegistryCoversImplementedContracts(t *testing.T) {
 		}
 	}
 }
+
+func TestChainsFamilyBuildersCoverImplementedFamilies(t *testing.T) {
+	for _, familyName := range contracts.FamilyNames() {
+		family, ok := contracts.Family(familyName)
+		if !ok || family.Status != contracts.StatusImplemented {
+			continue
+		}
+		if chainsFamilyBuilders[familyName] == nil {
+			t.Fatalf("expected implemented family %q to have a chains builder", familyName)
+		}
+	}
+}

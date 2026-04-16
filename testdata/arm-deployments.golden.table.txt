@@ -1,4 +1,8 @@
-azurefox arm-deployments
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[arm-deployments] Reviewing ARM deployment history for config exposure and linked content.
+ho-azure arm-deployments
 
 ╭──────────────┬────────────────────────────────────────┬─────────┬───────┬──────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────╮
 │deployment    │scope                                   │state    │outputs│linked refs                                                                   │why it matters                                                                         │

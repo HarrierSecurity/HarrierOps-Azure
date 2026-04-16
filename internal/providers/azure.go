@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appservice/armappservice"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 
@@ -25,10 +24,12 @@ import (
 
 const managementScope = "https://management.azure.com/.default"
 
-type AzureProvider struct{}
+type AzureProvider struct {
+	cache *liveAzureCache
+}
 
 func NewAzureProvider() AzureProvider {
-	return AzureProvider{}
+	return AzureProvider{cache: newLiveAzureCache()}
 }
 
 type azureSession struct {
@@ -205,41 +206,32 @@ func (provider AzureProvider) AppServices(ctx context.Context, tenant string, su
 		return AppServicesFacts{}, err
 	}
 
-	webAppsClient, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
+	webAppsState, err := provider.webAppsState(session)
 	if err != nil {
 		return AppServicesFacts{}, fmt.Errorf("build web apps client: %w", err)
 	}
 
 	rows := []models.AppServiceAsset{}
 	issues := []models.Issue{}
-	pager := webAppsClient.NewListPager(nil)
-	for pager.More() {
-		page, err := pager.NextPage(ctx)
-		if err != nil {
-			issues = append(issues, issueFromError("app_services.web_apps", err))
-			break
+	apps, listErr := webAppsState.list(ctx)
+	if listErr != nil {
+		issues = append(issues, issueFromError("app_services.web_apps", listErr))
+	}
+	for _, app := range apps {
+		if app.assetKind != "AppService" {
+			continue
 		}
-		for _, app := range page.Value {
-			appMap := map[string]any{}
-			decodeJSONInto(app, &appMap)
-			if webAssetKind(mapStringValue(appMap, "kind")) != "AppService" {
-				continue
-			}
 
-			configMap := map[string]any{}
-			resourceGroup := resourceGroupFromID(mapStringValue(appMap, "id"))
-			appName := mapStringValue(appMap, "name")
-			if resourceGroup != "" && appName != "" {
-				config, err := webAppsClient.GetConfiguration(ctx, resourceGroup, appName, nil)
-				if err != nil {
-					issues = append(issues, issueFromError("app_services["+resourceGroup+"/"+appName+"].configuration", err))
-				} else {
-					decodeJSONInto(config.SiteConfigResource, &configMap)
-				}
+		configMap := map[string]any{}
+		if app.resourceGroup != "" && app.name != "" {
+			configMap, err = webAppsState.configMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("app_services["+app.resourceGroup+"/"+app.name+"].configuration", err))
+				configMap = map[string]any{}
 			}
-
-			rows = append(rows, appServiceSummary(appMap, configMap))
 		}
+
+		rows = append(rows, appServiceSummary(app.appMap, configMap))
 	}
 
 	return AppServicesFacts{
@@ -256,52 +248,42 @@ func (provider AzureProvider) Functions(ctx context.Context, tenant string, subs
 		return FunctionsFacts{}, err
 	}
 
-	webAppsClient, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
+	webAppsState, err := provider.webAppsState(session)
 	if err != nil {
 		return FunctionsFacts{}, fmt.Errorf("build web apps client: %w", err)
 	}
 
 	rows := []models.FunctionAppAsset{}
 	issues := []models.Issue{}
-	pager := webAppsClient.NewListPager(nil)
-	for pager.More() {
-		page, err := pager.NextPage(ctx)
-		if err != nil {
-			issues = append(issues, issueFromError("functions.web_apps", err))
-			break
+	apps, listErr := webAppsState.list(ctx)
+	if listErr != nil {
+		issues = append(issues, issueFromError("functions.web_apps", listErr))
+	}
+	for _, app := range apps {
+		if app.assetKind != "FunctionApp" {
+			continue
 		}
-		for _, app := range page.Value {
-			appMap := map[string]any{}
-			decodeJSONInto(app, &appMap)
-			if webAssetKind(mapStringValue(appMap, "kind")) != "FunctionApp" {
-				continue
-			}
 
-			resourceGroup := resourceGroupFromID(mapStringValue(appMap, "id"))
-			appName := mapStringValue(appMap, "name")
-			configMap := map[string]any{}
-			settingsMap := map[string]any{}
-			if resourceGroup != "" && appName != "" {
-				config, err := webAppsClient.GetConfiguration(ctx, resourceGroup, appName, nil)
-				if err != nil {
-					issues = append(issues, issueFromError("functions["+resourceGroup+"/"+appName+"].configuration", err))
-				} else {
-					decodeJSONInto(config.SiteConfigResource, &configMap)
-				}
-				settings, err := webAppsClient.ListApplicationSettings(ctx, resourceGroup, appName, nil)
-				if err != nil {
-					issues = append(issues, issueFromError("functions["+resourceGroup+"/"+appName+"].app_settings", err))
-				} else {
-					decodeJSONInto(settings.StringDictionary, &settingsMap)
-				}
+		configMap := map[string]any{}
+		settingsMap := map[string]any{}
+		if app.resourceGroup != "" && app.name != "" {
+			configMap, err = webAppsState.configMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("functions["+app.resourceGroup+"/"+app.name+"].configuration", err))
+				configMap = map[string]any{}
 			}
-
-			rows = append(rows, functionAppSummary(
-				appMap,
-				configMap,
-				mapValue(settingsMap, "properties"),
-			))
+			settingsMap, err = webAppsState.settingsMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("functions["+app.resourceGroup+"/"+app.name+"].app_settings", err))
+				settingsMap = map[string]any{}
+			}
 		}
+
+		rows = append(rows, functionAppSummary(
+			app.appMap,
+			configMap,
+			mapValue(settingsMap, "properties"),
+		))
 	}
 
 	return FunctionsFacts{
@@ -368,45 +350,30 @@ func (provider AzureProvider) EnvVars(ctx context.Context, tenant string, subscr
 		return EnvVarsFacts{}, err
 	}
 
-	webAppsClient, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
+	webAppsState, err := provider.webAppsState(session)
 	if err != nil {
 		return EnvVarsFacts{}, fmt.Errorf("build web apps client: %w", err)
 	}
 
 	rows := []models.EnvVarSummary{}
 	issues := []models.Issue{}
-	pager := webAppsClient.NewListPager(nil)
-	for pager.More() {
-		page, err := pager.NextPage(ctx)
-		if err != nil {
-			issues = append(issues, issueFromError("env_vars.web_apps", err))
-			break
+	apps, listErr := webAppsState.list(ctx)
+	if listErr != nil {
+		issues = append(issues, issueFromError("env_vars.web_apps", listErr))
+	}
+	for _, app := range apps {
+		if app.assetKind == "" || app.resourceGroup == "" || app.name == "" {
+			continue
 		}
-		for _, app := range page.Value {
-			appMap := map[string]any{}
-			decodeJSONInto(app, &appMap)
-			assetKind := webAssetKind(mapStringValue(appMap, "kind"))
-			if assetKind == "" {
-				continue
-			}
 
-			resourceGroup := resourceGroupFromID(mapStringValue(appMap, "id"))
-			appName := mapStringValue(appMap, "name")
-			if resourceGroup == "" || appName == "" {
-				continue
-			}
+		settingsMap, err := webAppsState.settingsMap(ctx, app)
+		if err != nil {
+			issues = append(issues, issueFromError("env_vars["+app.resourceGroup+"/"+app.name+"]", err))
+			continue
+		}
 
-			settings, err := webAppsClient.ListApplicationSettings(ctx, resourceGroup, appName, nil)
-			if err != nil {
-				issues = append(issues, issueFromError("env_vars["+resourceGroup+"/"+appName+"]", err))
-				continue
-			}
-
-			settingsMap := map[string]any{}
-			decodeJSONInto(settings.StringDictionary, &settingsMap)
-			for settingName, settingValue := range mapValue(settingsMap, "properties") {
-				rows = append(rows, envVarSummary(appMap, assetKind, settingName, settingValue))
-			}
+		for settingName, settingValue := range mapValue(settingsMap, "properties") {
+			rows = append(rows, envVarSummary(app.appMap, app.assetKind, settingName, settingValue))
 		}
 	}
 
@@ -419,35 +386,7 @@ func (provider AzureProvider) EnvVars(ctx context.Context, tenant string, subscr
 }
 
 func (provider AzureProvider) session(ctx context.Context, tenant string, subscription string) (azureSession, error) {
-	credential, tokenSource, authMode, claims, tenantID, err := newAzureCredential(ctx, tenant)
-	if err != nil {
-		return azureSession{}, err
-	}
-
-	subscriptionsClient, err := armsubscriptions.NewClient(credential, nil)
-	if err != nil {
-		return azureSession{}, fmt.Errorf("build subscriptions client: %w", err)
-	}
-
-	subscriptionRef, err := resolveSubscription(ctx, subscriptionsClient, subscription)
-	if err != nil {
-		return azureSession{}, err
-	}
-
-	clientFactory, err := armresources.NewClientFactory(subscriptionRef.ID, credential, nil)
-	if err != nil {
-		return azureSession{}, fmt.Errorf("build resource client factory: %w", err)
-	}
-
-	return azureSession{
-		claims:        claims,
-		credential:    credential,
-		tokenSource:   tokenSource,
-		authMode:      authMode,
-		tenantID:      tenantID,
-		subscription:  subscriptionRef,
-		clientFactory: clientFactory,
-	}, nil
+	return provider.cachedSession(ctx, tenant, subscription)
 }
 
 func newAzureCredential(ctx context.Context, tenant string) (azcore.TokenCredential, string, string, map[string]string, string, error) {
@@ -488,6 +427,9 @@ func newAzureCredential(ctx context.Context, tenant string) (azcore.TokenCredent
 	}
 
 	claims := decodeJWTPayload(token.Token)
+	if cliFailure != "" {
+		return envCredential, "environment_fallback", "environment_fallback", claims, firstNonEmpty(claims["tid"], tenant), nil
+	}
 	return envCredential, "environment", "environment", claims, firstNonEmpty(claims["tid"], tenant), nil
 }
 

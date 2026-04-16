@@ -1,4 +1,8 @@
-azurefox endpoints
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[endpoints] Mapping reachable IP and hostname surfaces from compute and web workloads.
+ho-azure endpoints
 
 ╭──────────────────────────────────────────────────┬──────────────┬─────────────────┬──────────────────────┬─────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │endpoint                                          │asset         │kind             │family                │ingress                              │why it matters                                                                                                                                                                            │
@@ -11,3 +15,5 @@ azurefox endpoints
 │app-public-api.azurewebsites.net                  │app-public-api│AppService       │managed-web-hostname  │azurewebsites-default-hostname       │AppService 'app-public-api' publishes Azure-managed hostname 'app-public-api.azurewebsites.net'. Validate whether that ingress path is intended and how it is constrained.                │
 │func-orders.azurewebsites.net                     │func-orders   │FunctionApp      │managed-web-hostname  │azure-functions-default-hostname     │FunctionApp 'func-orders' publishes Azure-managed hostname 'func-orders.azurewebsites.net'. Validate whether that ingress path is intended and how it is constrained.                     │
 ╰──────────────────────────────────────────────────┴──────────────┴─────────────────┴──────────────────────┴─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 7 reachable surfaces visible; 2 public-ip, 4 managed-web-hostname, 1 managed-container-fqdn.

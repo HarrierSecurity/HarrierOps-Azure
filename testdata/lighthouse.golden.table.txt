@@ -1,4 +1,8 @@
-azurefox lighthouse
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[lighthouse] Reviewing Azure Lighthouse delegations for cross-tenant management scope and high-impact access cues.
+ho-azure lighthouse
 
 ╭──────────────────────────────────────────────────┬───────────────┬───────────────────┬─────────────────────────────────────────────────────────────────────────────────┬────────────────────┬───────────────────────────────────────────────────────────────────────────╮
 │scope                                             │managing tenant│managed tenant     │access                                                                           │state               │why it matters                                                             │

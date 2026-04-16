@@ -1,4 +1,8 @@
-azurefox managed-identities
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[managed-identities] Mapping workload-linked managed identities and their visible privilege cues.
+ho-azure managed-identities
 
 ╭─────────────────────┬──────────────┬──────────────┬─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │identity             │type          │attached to   │operator signal                                                  │next review                                                                                                      │

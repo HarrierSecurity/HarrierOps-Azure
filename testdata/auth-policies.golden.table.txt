@@ -1,4 +1,8 @@
-azurefox auth-policies
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[auth-policies] Reviewing tenant auth controls that widen guest, consent, app-creation, or sign-in abuse paths.
+ho-azure auth-policies
 
 ╭─────────────────────────────────────────────────────┬─────────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │policy                                               │state                            │scope              │operator signal                                                                                                                  │
@@ -8,5 +12,17 @@ azurefox auth-policies
 │CA002: Block legacy auth                             │disabled                         │users:all, apps:all│state: disabled; grants: block; scope: users:all, apps:all                                                                       │
 │CA001: Require multi-factor authentication for admins│enabledForReportingButNotEnforced│roles:2, apps:all  │state: enabledForReportingButNotEnforced; grants: mfa; scope: roles:2, apps:all                                                  │
 ╰─────────────────────────────────────────────────────┴─────────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Findings:
+- MEDIUM: Security defaults are disabled
+  Tenant-wide security defaults are disabled. Review whether Conditional Access policies provide equivalent baseline MFA and legacy-auth controls.
+- MEDIUM: Users can register applications
+  Default user permissions allow application registration. Review whether that app-creation surface is expected for this tenant.
+- MEDIUM: Guest invitations are broadly allowed
+  The authorization policy allows guest invitations from everyone in the tenant. Validate whether that guest-invite surface is intentional.
+- MEDIUM: User consent is available to default users
+  Default user permissions include self-service permission-grant policy assignment. Review which delegated or application access paths that enables.
+- MEDIUM: No active auth enforcement visible
+  Security defaults are disabled and no enabled Conditional Access policies are visible from the current read path. Validate whether stronger auth controls exist outside the currently readable policy surface.
 
 Takeaway: 4 policy rows, 5 findings, and 0 current-scope issues.

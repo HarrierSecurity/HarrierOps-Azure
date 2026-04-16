@@ -1,4 +1,8 @@
-azurefox databases
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[databases] Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.
+ho-azure databases
 
 ╭─────────────────┬──────────────────┬────────────────────────────────────────────┬──────────────┬───────────────────────┬─────────────────────┬─────────────────────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │server           │engine            │endpoint                                    │identity      │inventory              │exposure             │posture                                                                              │why it matters                                                                                                                                                                                                                                                                                                                                      │

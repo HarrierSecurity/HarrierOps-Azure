@@ -1,4 +1,8 @@
-azurefox snapshots-disks
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[snapshots-disks] Reviewing managed disks and snapshots for offline-copy, sharing/export, and encryption posture with highest-value targets first.
+ho-azure snapshots-disks
 
 ╭─────────────────────────┬────────┬──────────────────────────────────────────────────────┬────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │asset                    │kind    │priority                                              │attachment / source                         │sharing / export                                              │encryption                                                        │why it matters                                                                                                                                                                                      │

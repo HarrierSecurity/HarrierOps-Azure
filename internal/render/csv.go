@@ -5,9 +5,17 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"harrierops-azure/internal/models"
 )
+
+var chainsFamilyCSVRenderers = map[string]func(models.ChainsOutput) (string, error){
+	"compute-control": chainsComputeControlCSV,
+	"credential-path": chainsCredentialPathCSV,
+	"deployment-path": chainsDeploymentPathCSV,
+	"escalation-path": chainsEscalationPathCSV,
+}
 
 func CSV(command string, payload any) (string, error) {
 	entry, err := renderRegistryEntry(command)
@@ -18,6 +26,17 @@ func CSV(command string, payload any) (string, error) {
 		return "", fmt.Errorf("csv rendering is not implemented for command %q", command)
 	}
 	return entry.csv(payload)
+}
+
+func chainsCSVRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.ChainsOverviewOutput:
+		return chainsOverviewCSV(out)
+	case models.ChainsOutput:
+		return chainsFamilyCSV(out)
+	default:
+		return "", fmt.Errorf("unexpected payload type for chains: %T", payload)
+	}
 }
 
 func encodeCSV(headers []string, rows [][]string) (string, error) {
@@ -277,6 +296,333 @@ func devopsCSV(payload models.DevopsOutput) (string, error) {
 		"summary",
 		"related_ids",
 	}, rows)
+}
+
+func chainsOverviewCSV(payload models.ChainsOverviewOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Families))
+	for _, family := range payload.Families {
+		rows = append(rows, []string{
+			family.Family,
+			family.State,
+			family.Summary,
+			strings.Join(family.BestCurrentExamples, ", "),
+			chainsBackingCommands(family.SourceCommands),
+			family.AllowedClaim,
+			family.CurrentGap,
+		})
+	}
+	return encodeCSV(
+		[]string{"family", "state", "summary", "examples", "backing_commands", "allowed_claim", "current_gap"},
+		rows,
+	)
+}
+
+func chainsFamilyCSV(payload models.ChainsOutput) (string, error) {
+	if renderer, ok := chainsFamilyCSVRenderers[payload.Family]; ok {
+		return renderer(payload)
+	}
+	return chainsCredentialPathCSV(payload)
+}
+
+func chainsComputeControlCSV(payload models.ChainsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			path.AssetID,
+			path.AssetKind,
+			path.AssetName,
+			path.ChainID,
+			path.ClueType,
+			valueOrEmpty(path.ConfidenceBoundary),
+			valueOrEmpty(path.ConfirmationBasis),
+			jsonStringSlice(path.EvidenceCommands),
+			computeControlIdentityLabel(path.TargetNames),
+			valueOrEmpty(path.InsertionPoint),
+			jsonStringSlice(path.JoinedSurfaceTypes),
+			firstNonEmptyString(path.LikelyImpact, path.StrongerOutcome),
+			valueOrEmpty(path.Location),
+			path.MissingConfirmation,
+			path.NextReview,
+			firstNonEmptyString(path.Note, path.WhyCare),
+			valueOrEmpty(path.PathConcept),
+			path.Priority,
+			computeControlProofStatusLabel(path.TargetResolution),
+			computeControlReachFromHereLabel(valueOrEmpty(path.InsertionPoint)),
+			jsonStringSlice(path.RelatedIDs),
+			valueOrEmpty(path.SourceCommand),
+			valueOrEmpty(path.SourceContext),
+			firstNonEmptyString(path.StrongerOutcome, path.LikelyImpact),
+			path.Summary,
+			intString(path.TargetCount),
+			jsonStringSlice(path.TargetIDs),
+			jsonStringSlice(path.TargetNames),
+			path.TargetResolution,
+			path.TargetService,
+			computeControlTokenPathLabel(valueOrEmpty(path.InsertionPoint)),
+			valueOrEmpty(path.Urgency),
+			path.VisiblePath,
+			computeControlWhenLabel(valueOrEmpty(path.Urgency)),
+		})
+	}
+	return encodeCSV([]string{
+		"asset_id",
+		"asset_kind",
+		"asset_name",
+		"chain_id",
+		"clue_type",
+		"confidence_boundary",
+		"confirmation_basis",
+		"evidence_commands",
+		"identity",
+		"insertion_point",
+		"joined_surface_types",
+		"likely_impact",
+		"location",
+		"missing_confirmation",
+		"next_review",
+		"note",
+		"path_concept",
+		"priority",
+		"proof_status",
+		"reach_from_here",
+		"related_ids",
+		"source_command",
+		"source_context",
+		"stronger_outcome",
+		"summary",
+		"target_count",
+		"target_ids",
+		"target_names",
+		"target_resolution",
+		"target_service",
+		"token_path",
+		"urgency",
+		"visible_path",
+		"when",
+	}, rows)
+}
+
+func chainsEscalationPathCSV(payload models.ChainsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			path.AssetID,
+			path.AssetKind,
+			path.AssetName,
+			valueOrEmpty(path.StartingFoothold),
+			path.ChainID,
+			path.ClueType,
+			valueOrEmpty(path.ConfidenceBoundary),
+			valueOrEmpty(path.ConfirmationBasis),
+			jsonStringSlice(path.EvidenceCommands),
+			jsonStringSlice(path.JoinedSurfaceTypes),
+			firstNonEmptyString(path.LikelyImpact, path.StrongerOutcome),
+			firstNonEmptyString(path.StrongerOutcome, path.LikelyImpact),
+			path.MissingConfirmation,
+			path.NextReview,
+			firstNonEmptyString(path.Note, path.WhyCare),
+			valueOrEmpty(path.PathConcept),
+			valueOrEmpty(path.PathType),
+			path.Priority,
+			jsonStringSlice(path.RelatedIDs),
+			valueOrEmpty(path.SourceCommand),
+			valueOrEmpty(path.SourceContext),
+			path.Summary,
+			intString(path.TargetCount),
+			jsonStringSlice(path.TargetIDs),
+			jsonStringSlice(path.TargetNames),
+			path.TargetResolution,
+			path.TargetService,
+			valueOrEmpty(path.Urgency),
+			path.VisiblePath,
+		})
+	}
+	return encodeCSV([]string{
+		"asset_id",
+		"asset_kind",
+		"asset_name",
+		"starting_foothold",
+		"chain_id",
+		"clue_type",
+		"confidence_boundary",
+		"confirmation_basis",
+		"evidence_commands",
+		"joined_surface_types",
+		"likely_impact",
+		"stronger_outcome",
+		"missing_confirmation",
+		"next_review",
+		"note",
+		"path_concept",
+		"path_type",
+		"priority",
+		"related_ids",
+		"source_command",
+		"source_context",
+		"summary",
+		"target_count",
+		"target_ids",
+		"target_names",
+		"target_resolution",
+		"target_service",
+		"urgency",
+		"visible_path",
+	}, rows)
+}
+
+func chainsDeploymentPathCSV(payload models.ChainsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			valueOrEmpty(path.Actionability),
+			valueOrEmpty(path.ActionabilityState),
+			path.AssetID,
+			path.AssetKind,
+			path.AssetName,
+			path.ChainID,
+			path.ClueType,
+			valueOrEmpty(path.ConfidenceBoundary),
+			valueOrEmpty(path.ConfirmationBasis),
+			jsonStringSlice(path.EvidenceCommands),
+			valueOrEmpty(path.InsertionPoint),
+			valueOrEmpty(path.InsertionPointLabel),
+			jsonStringSlice(path.JoinedSurfaceTypes),
+			firstNonEmptyString(path.LikelyAzureImpact, path.LikelyImpact),
+			firstNonEmptyString(path.LikelyImpact, path.LikelyAzureImpact),
+			valueOrEmpty(path.Location),
+			path.MissingConfirmation,
+			path.NextReview,
+			firstNonEmptyString(path.Note, path.WhyCare),
+			valueOrEmpty(path.PathConcept),
+			valueOrEmpty(path.PrimarySurface),
+			valueOrEmpty(path.PrimaryInputRef),
+			path.Priority,
+			jsonStringSlice(path.RelatedIDs),
+			valueOrEmpty(path.SettingName),
+			valueOrEmpty(path.Source),
+			valueOrEmpty(path.SourceCommand),
+			valueOrEmpty(path.SourceContext),
+			valueOrEmpty(path.StrongerOutcome),
+			path.Summary,
+			intString(path.TargetCount),
+			jsonStringSlice(path.TargetIDs),
+			jsonStringSlice(path.TargetNames),
+			path.TargetResolution,
+			path.TargetService,
+			valueOrEmpty(path.TargetVisibility),
+			valueOrEmpty(path.Urgency),
+			path.VisiblePath,
+			firstNonEmptyString(path.WhatsMissing, path.ConfidenceBoundary),
+			firstNonEmptyString(path.WhyCare, path.Note),
+		})
+	}
+	return encodeCSV([]string{
+		"actionability",
+		"actionability_state",
+		"asset_id",
+		"asset_kind",
+		"asset_name",
+		"chain_id",
+		"clue_type",
+		"confidence_boundary",
+		"confirmation_basis",
+		"evidence_commands",
+		"insertion_point",
+		"insertion_point_display",
+		"joined_surface_types",
+		"likely_azure_impact",
+		"likely_impact",
+		"location",
+		"missing_confirmation",
+		"next_review",
+		"note",
+		"path_concept",
+		"primary_injection_surface",
+		"primary_trusted_input_ref",
+		"priority",
+		"related_ids",
+		"setting_name",
+		"source",
+		"source_command",
+		"source_context",
+		"stronger_outcome",
+		"summary",
+		"target_count",
+		"target_ids",
+		"target_names",
+		"target_resolution",
+		"target_service",
+		"target_visibility_issue",
+		"urgency",
+		"visible_path",
+		"whats_missing",
+		"why_care",
+	}, rows)
+}
+
+func chainsCredentialPathCSV(payload models.ChainsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			path.ChainID,
+			path.AssetID,
+			path.AssetKind,
+			path.AssetName,
+			valueOrEmpty(path.Location),
+			valueOrEmpty(path.SettingName),
+			path.ClueType,
+			path.Priority,
+			valueOrEmpty(path.Urgency),
+			path.VisiblePath,
+			path.TargetService,
+			path.TargetResolution,
+			jsonStringSlice(path.EvidenceCommands),
+			jsonStringSlice(path.JoinedSurfaceTypes),
+			intString(path.TargetCount),
+			jsonStringSlice(path.TargetIDs),
+			jsonStringSlice(path.TargetNames),
+			valueOrEmpty(path.TargetVisibility),
+			path.NextReview,
+			valueOrEmpty(path.ConfidenceBoundary),
+			path.Summary,
+			path.MissingConfirmation,
+			jsonStringSlice(path.RelatedIDs),
+		})
+	}
+	return encodeCSV([]string{
+		"chain_id",
+		"asset_id",
+		"asset_kind",
+		"asset_name",
+		"location",
+		"setting_name",
+		"clue_type",
+		"priority",
+		"urgency",
+		"visible_path",
+		"target_service",
+		"target_resolution",
+		"evidence_commands",
+		"joined_surface_types",
+		"target_count",
+		"target_ids",
+		"target_names",
+		"target_visibility_issue",
+		"next_review",
+		"confidence_boundary",
+		"summary",
+		"missing_confirmation",
+		"related_ids",
+	}, rows)
+}
+
+func firstNonEmptyString(values ...*string) string {
+	for _, value := range values {
+		if value != nil && strings.TrimSpace(*value) != "" {
+			return *value
+		}
+	}
+	return ""
 }
 
 func appServicesCSV(payload models.AppServicesOutput) (string, error) {
@@ -1084,6 +1430,49 @@ func roleTrustsCSV(payload models.RoleTrustsOutput) (string, error) {
 			valueOrEmpty(trust.NextReview),
 			trust.Summary,
 			join(trust.RelatedIDs, ";"),
+		})
+	}
+	return encodeCSV(headers, rows)
+}
+
+func appCredentialsCSV(payload models.AppCredentialsOutput) (string, error) {
+	headers := []string{
+		"row_class",
+		"target_object_type",
+		"target_object_id",
+		"target_object_name",
+		"backing_service_principal_id",
+		"backing_service_principal_name",
+		"credential_type",
+		"control_path",
+		"role_context",
+		"tenant_context",
+		"current_evidence",
+		"missing_proof",
+		"operator_actionability",
+		"recommended_fix_focus",
+		"summary",
+		"related_ids",
+	}
+	rows := make([][]string, 0, len(payload.AppCredentials))
+	for _, item := range payload.AppCredentials {
+		rows = append(rows, []string{
+			item.RowClass,
+			item.TargetObjectType,
+			item.TargetObjectID,
+			item.TargetObjectName,
+			valueOrEmpty(item.BackingServicePrincipalID),
+			valueOrEmpty(item.BackingServicePrincipalName),
+			valueOrEmpty(item.CredentialType),
+			item.ControlPath,
+			item.RoleContext,
+			item.TenantContext,
+			item.CurrentEvidence,
+			item.MissingProof,
+			item.OperatorActionability,
+			item.RecommendedFixFocus,
+			item.Summary,
+			join(item.RelatedIDs, ";"),
 		})
 	}
 	return encodeCSV(headers, rows)

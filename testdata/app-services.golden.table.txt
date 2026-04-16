@@ -1,4 +1,8 @@
-azurefox app-services
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[app-services] Reviewing App Service runtime, hostname, identity, and ingress cues that change follow-on paths.
+ho-azure app-services
 
 ╭──────────────┬────────────────────────────────┬──────────────┬──────────────┬────────────────────────┬──────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │app service   │hostname                        │runtime       │identity      │exposure                │posture                                           │why it matters                                                                                                                                                                                                                                           │

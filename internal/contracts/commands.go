@@ -207,6 +207,18 @@ var commandContracts = map[string]CommandContract{
 			"metadata",
 		},
 	},
+	"app-credentials": {
+		Name:             "app-credentials",
+		Section:          "identity",
+		Status:           StatusImplemented,
+		Model:            "AppCredentialsOutput",
+		OperatorQuestion: "Which applications or service principals already carry authentication material or federated trust, and where does the current identity already have a visible path to change that material?",
+		TopLevelFields: []string{
+			"app_credentials",
+			"issues",
+			"metadata",
+		},
+	},
 	"arm-deployments": {
 		Name:             "arm-deployments",
 		Section:          "config",
@@ -511,7 +523,7 @@ var commandContracts = map[string]CommandContract{
 	"chains": {
 		Name:             "chains",
 		Section:          "orchestration",
-		Status:           StatusPlaceholder,
+		Status:           StatusImplemented,
 		Model:            "ChainsOutput",
 		OperatorQuestion: "Which grouped chain family best answers the next operator decision from current Azure-visible evidence?",
 		TopLevelFields: []string{

@@ -1,13 +1,53 @@
-azurefox env-vars
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
 
-╭──────────────┬───────────┬────────────────────────────────────────────────────────────────────┬───────────────────┬────────────┬─────────────────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│workload      │kind       │identity                                                            │setting            │value type  │signal                                                                           │next review                                                                                                     │why it matters                                                                                                                                                                                                                                                                     │
-├──────────────┼───────────┼────────────────────────────────────────────────────────────────────┼───────────────────┼────────────┼─────────────────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│app-public-api│AppService │SystemAssigned                                                      │DB_PASSWORD        │plain-text  │sensitive-name                                                                   │Check tokens-credentials first; this likely feeds a database credential path.                                   │AppService 'app-public-api' stores sensitive-looking setting 'DB_PASSWORD' as plain-text app configuration. Check tokens-credentials first; this likely feeds a database credential path.                                                                                          │
-│func-orders   │FunctionApp│SystemAssigned, UserAssigned; user-assigned=1; kv-ref=SystemAssigned│PAYMENT_API_KEY    │keyvault-ref│sensitive-name; keyvault-ref; kvlabopen01.vault.azure.net/secrets/payment-api-key│Check keyvault for the referenced secret path; review managed-identities for the workload token path.           │FunctionApp 'func-orders' maps setting 'PAYMENT_API_KEY' to Key Vault-backed configuration (kvlabopen01.vault.azure.net/secrets/payment-api-key) via SystemAssigned identity. Check keyvault for the referenced secret path; review managed-identities for the workload token path.│
-│app-public-api│AppService │SystemAssigned                                                      │API_BASE_URL       │plain-text  │-                                                                                │Check managed-identities for the workload token path behind this setting.                                       │AppService 'app-public-api' exposes setting 'API_BASE_URL' through management-plane app settings (plain-text). Check managed-identities for the workload token path behind this setting.                                                                                           │
-│func-orders   │FunctionApp│SystemAssigned, UserAssigned; user-assigned=1; kv-ref=SystemAssigned│AzureWebJobsStorage│plain-text  │-                                                                                │Check tokens-credentials for the config-backed access path, then managed-identities for the workload token path.│FunctionApp 'func-orders' exposes setting 'AzureWebJobsStorage' through management-plane app settings (plain-text). Check tokens-credentials for the config-backed access path, then managed-identities for the workload token path.                                               │
-╰──────────────┴───────────┴────────────────────────────────────────────────────────────────────┴───────────────────┴────────────┴─────────────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+[env-vars] Reviewing App Service and Function App settings for exposed config paths and likely credential or secret follow-on.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+╭──────────────┬──────────┬───────────┬──────────┬──────────────┬─────────╮
+│workload      │kind      │setting    │value type│identity      │reference│
+├──────────────┼──────────┼───────────┼──────────┼──────────────┼─────────┤
+│app-public-api│AppService│DB_PASSWORD│plain-text│SystemAssigned│-        │
+╰──────────────┴──────────┴───────────┴──────────┴──────────────┴─────────╯
+╭──────────────────────────────────────────────────────────────╮
+│note                                                          │
+├──────────────────────────────────────────────────────────────┤
+│This setting looks sensitive and remains exposed as plain-text│
+│management-plane app configuration.                           │
+╰──────────────────────────────────────────────────────────────╯
+
+╭───────────┬───────────┬───────────────┬────────────┬──────────────────────────────────────────────┬───────────────────────────────────────────────────╮
+│workload   │kind       │setting        │value type  │identity                                      │reference                                          │
+├───────────┼───────────┼───────────────┼────────────┼──────────────────────────────────────────────┼───────────────────────────────────────────────────┤
+│func-orders│FunctionApp│PAYMENT_API_KEY│keyvault-ref│SystemAssigned, UserAssigned (1 user-assigned)│kvlabopen01.vault.azure.net/secrets/payment-api-key│
+│           │           │               │            │                                              │reference identity: SystemAssigned                 │
+╰───────────┴───────────┴───────────────┴────────────┴──────────────────────────────────────────────┴───────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────╮
+│note                                                │
+├────────────────────────────────────────────────────┤
+│This setting maps to Key Vault-backed configuration.│
+╰────────────────────────────────────────────────────╯
+
+╭──────────────┬──────────┬────────────┬──────────┬──────────────┬─────────╮
+│workload      │kind      │setting     │value type│identity      │reference│
+├──────────────┼──────────┼────────────┼──────────┼──────────────┼─────────┤
+│app-public-api│AppService│API_BASE_URL│plain-text│SystemAssigned│-        │
+╰──────────────┴──────────┴────────────┴──────────┴──────────────┴─────────╯
+╭────────────────────────────────────────────────────────────────────────╮
+│note                                                                    │
+├────────────────────────────────────────────────────────────────────────┤
+│This setting remains visible through management-plane app configuration.│
+╰────────────────────────────────────────────────────────────────────────╯
+
+╭───────────┬───────────┬───────────────────┬──────────┬──────────────────────────────────────────────┬─────────╮
+│workload   │kind       │setting            │value type│identity                                      │reference│
+├───────────┼───────────┼───────────────────┼──────────┼──────────────────────────────────────────────┼─────────┤
+│func-orders│FunctionApp│AzureWebJobsStorage│plain-text│SystemAssigned, UserAssigned (1 user-assigned)│-        │
+╰───────────┴───────────┴───────────────────┴──────────┴──────────────────────────────────────────────┴─────────╯
+╭────────────────────────────────────────────────────────────────────────╮
+│note                                                                    │
+├────────────────────────────────────────────────────────────────────────┤
+│This setting remains visible through management-plane app configuration.│
+╰────────────────────────────────────────────────────────────────────────╯
 
 Findings:
 - MEDIUM: Sensitive-looking app setting is stored in plain text

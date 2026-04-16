@@ -1,4 +1,8 @@
-azurefox principals
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[principals] Mapping visible principals, identity footholds, and follow-on candidates.
+ho-azure principals
 
 ╭───────────────────┬────────────────┬───────────┬───────────┬───────────────────────────────────────────────────────────┬──────────────────────────────┬───────╮
 │principal          │type            │roles      │assignments│identity context                                           │sources                       │current│
