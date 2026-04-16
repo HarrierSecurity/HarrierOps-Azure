@@ -11,14 +11,14 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 
 	"harrierops-azure/internal/models"
 )
 
 const (
 	armManagementScope           = "https://management.azure.com/.default"
-	armAuthorizationAPIVersion   = "2022-04-01"
-	armManagedIdentityAPIVersion = "2023-01-31"
 	azureResourceManagerEndpoint = "https://management.azure.com"
 )
 
@@ -220,16 +220,41 @@ func (provider AzureProvider) ManagedIdentities(ctx context.Context, tenant stri
 
 func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azureSession) RBACFacts {
 	subscriptionScope := "/subscriptions/" + session.subscription.ID
-	assignments, err := armListObjects(ctx, session.credential, subscriptionScope+"/providers/Microsoft.Authorization/roleAssignments", armAuthorizationAPIVersion)
+	clientFactory, err := armauthorization.NewClientFactory(session.subscription.ID, session.credential, nil)
 	if err != nil {
 		return RBACFacts{
 			TenantID: session.tenantID,
 			Scopes: []models.ScopeRef{
 				{DisplayName: session.subscription.DisplayName, ID: subscriptionScope, ScopeType: "subscription"},
 			},
-			Issues: []models.Issue{issueFromError("rbac.role_assignments", err)},
+			Issues: []models.Issue{issueFromError("rbac.authorization_client_factory", err)},
 		}
 	}
+
+	assignments := []map[string]any{}
+	assignmentsPager := clientFactory.NewRoleAssignmentsClient().NewListForSubscriptionPager(nil)
+	for assignmentsPager.More() {
+		page, pagerErr := assignmentsPager.NextPage(ctx)
+		if pagerErr != nil {
+			return RBACFacts{
+				TenantID: session.tenantID,
+				Scopes: []models.ScopeRef{
+					{DisplayName: session.subscription.DisplayName, ID: subscriptionScope, ScopeType: "subscription"},
+				},
+				Issues: []models.Issue{issueFromError("rbac.role_assignments", pagerErr)},
+			}
+		}
+		for _, assignment := range page.Value {
+			if assignment == nil {
+				continue
+			}
+			assignmentMap := map[string]any{}
+			decodeJSONInto(assignment, &assignmentMap)
+			assignments = append(assignments, assignmentMap)
+		}
+	}
+
+	roleDefinitionsClient := clientFactory.NewRoleDefinitionsClient()
 
 	currentPrincipalID := firstNonEmpty(session.claims["oid"], session.claims["appid"], session.claims["sub"])
 	currentDisplayName := firstNonEmpty(session.claims["name"], session.claims["preferred_username"], session.claims["upn"])
@@ -263,7 +288,7 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 		}
 
 		roleDefinitionID := mapStringValue(properties, "roleDefinitionId")
-		roleName, resolveErr := resolveRoleDefinitionName(ctx, session.credential, assignmentScope, roleDefinitionID, roleNameCache)
+		roleName, resolveErr := resolveRoleDefinitionName(ctx, roleDefinitionsClient, roleDefinitionID, roleNameCache)
 		if resolveErr != nil {
 			issues = append(issues, issueFromError("rbac.role_definition["+roleDefinitionID+"]", resolveErr))
 		}
@@ -342,6 +367,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	vmssFacts, vmssErr := provider.VMSS(ctx, tenant, subscription)
 	appServiceFacts, appErr := provider.AppServices(ctx, tenant, subscription)
 	functionFacts, functionErr := provider.Functions(ctx, tenant, subscription)
+	userAssignedClient, userAssignedErr := armmsi.NewUserAssignedIdentitiesClient(session.subscription.ID, session.credential, nil)
 
 	issues := append([]models.Issue{}, rbacFacts.Issues...)
 	if vmErr != nil {
@@ -356,15 +382,8 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	if functionErr != nil {
 		issues = append(issues, issueFromError("managed-identities.functions", functionErr))
 	}
-	if vmErr != nil || vmssErr != nil || appErr != nil || functionErr != nil {
-		return ManagedIdentitiesFacts{
-			TenantID:        session.tenantID,
-			SubscriptionID:  session.subscription.ID,
-			Identities:      []models.ManagedIdentity{},
-			RoleAssignments: []models.ManagedIdentityRoleAssignment{},
-			Findings:        []models.ManagedIdentityFinding{},
-			Issues:          issues,
-		}
+	if userAssignedErr != nil {
+		issues = append(issues, issueFromError("managed-identities.user_assigned_client", userAssignedErr))
 	}
 
 	assignmentsByPrincipal := map[string][]models.RoleAssignment{}
@@ -397,7 +416,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				)
 				continue
 			}
-			details, detailIssues := loadUserAssignedIdentityDetails(ctx, session.credential, identityID, userAssignedCache)
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
 			identityMap[identityID] = managedIdentityFromAttachment(
 				identityID,
@@ -440,7 +459,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 			if strings.HasSuffix(identityID, "/identities/system") {
 				continue
 			}
-			details, detailIssues := loadUserAssignedIdentityDetails(ctx, session.credential, identityID, userAssignedCache)
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
 			identityMap[identityID] = managedIdentityFromAttachment(
 				identityID,
@@ -480,7 +499,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 			)
 		}
 		for _, identityID := range app.WorkloadIdentityIDs {
-			details, detailIssues := loadUserAssignedIdentityDetails(ctx, session.credential, identityID, userAssignedCache)
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
 			identityMap[identityID] = managedIdentityFromAttachment(
 				identityID,
@@ -520,7 +539,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 			)
 		}
 		for _, identityID := range app.WorkloadIdentityIDs {
-			details, detailIssues := loadUserAssignedIdentityDetails(ctx, session.credential, identityID, userAssignedCache)
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
 			identityMap[identityID] = managedIdentityFromAttachment(
 				identityID,
@@ -775,7 +794,7 @@ func roleDefinitionGUID(roleDefinitionID string) string {
 	return strings.ToLower(parts[len(parts)-1])
 }
 
-func resolveRoleDefinitionName(ctx context.Context, credential azcore.TokenCredential, scope string, roleDefinitionID string, cache map[string]string) (string, error) {
+func resolveRoleDefinitionName(ctx context.Context, client *armauthorization.RoleDefinitionsClient, roleDefinitionID string, cache map[string]string) (string, error) {
 	if roleDefinitionID == "" {
 		return "", nil
 	}
@@ -788,24 +807,38 @@ func resolveRoleDefinitionName(ctx context.Context, credential azcore.TokenCrede
 		return roleName, nil
 	}
 
-	roleDefinition, err := armGetObject(ctx, credential, roleDefinitionID, armAuthorizationAPIVersion)
+	if client == nil {
+		return "", fmt.Errorf("role definitions client unavailable")
+	}
+	roleDefinitionResponse, err := client.GetByID(ctx, roleDefinitionID, nil)
 	if err != nil {
 		return "", err
 	}
+	roleDefinition := map[string]any{}
+	decodeJSONInto(roleDefinitionResponse.RoleDefinition, &roleDefinition)
 	roleName := firstNonEmpty(mapStringValue(mapValue(roleDefinition, "properties"), "roleName"), mapStringValue(roleDefinition, "name"))
 	cache[cacheKey] = roleName
 	return roleName, nil
 }
 
-func loadUserAssignedIdentityDetails(ctx context.Context, credential azcore.TokenCredential, identityID string, cache map[string]userAssignedIdentityDetails) (userAssignedIdentityDetails, []models.Issue) {
+func loadUserAssignedIdentityDetails(ctx context.Context, client *armmsi.UserAssignedIdentitiesClient, identityID string, cache map[string]userAssignedIdentityDetails) (userAssignedIdentityDetails, []models.Issue) {
 	if details, ok := cache[identityID]; ok {
 		return details, nil
 	}
 
-	resource, err := armGetObject(ctx, credential, identityID, armManagedIdentityAPIVersion)
+	if client == nil {
+		return userAssignedIdentityDetails{}, nil
+	}
+	resourceGroup, identityName := resourceGroupAndNameFromID(identityID)
+	if resourceGroup == "" || identityName == "" {
+		return userAssignedIdentityDetails{}, nil
+	}
+	resourceResponse, err := client.Get(ctx, resourceGroup, identityName, nil)
 	if err != nil {
 		return userAssignedIdentityDetails{}, []models.Issue{issueFromError("managed-identities.user-assigned["+identityID+"]", err)}
 	}
+	resource := map[string]any{}
+	decodeJSONInto(resourceResponse.Identity, &resource)
 	properties := mapValue(resource, "properties")
 	details := userAssignedIdentityDetails{
 		principalID: stringPtr(mapStringValue(properties, "principalId")),

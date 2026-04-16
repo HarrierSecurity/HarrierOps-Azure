@@ -1,0 +1,123 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "chains",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "chains",
+  "family": "escalation-path",
+  "input_mode": "live",
+  "command_state": "extraction-only",
+  "summary": "Follow the strongest current-foothold escalation stories toward the next defended identity or control step.",
+  "claim_boundary": "Can claim that visible evidence suggests a current-foothold escalation story and can name what stronger control or trust consequence is in view. Cannot claim exploit success or multi-hop control without deeper evidence.",
+  "current_gap": "The live family now joins current-foothold control, trust takeover, federated trust, and app-permission reach when the transform and stronger Azure control are explicit. Broader secret-bearing or support-only starts still sit outside this family, and ranking is still heuristic within the admitted current-foothold paths.",
+  "artifact_preference_order": [],
+  "backing_commands": [
+    "permissions",
+    "role-trusts"
+  ],
+  "source_artifacts": [],
+  "paths": [
+    {
+      "chain_id": "escalation-path::33333333-3333-3333-3333-333333333333::current-foothold-direct-control",
+      "asset_id": "33333333-3333-3333-3333-333333333333",
+      "asset_name": "azurefox-lab-sp (current foothold)",
+      "asset_kind": "ServicePrincipal",
+      "starting_foothold": "azurefox-lab-sp (current foothold)",
+      "source_command": "permissions",
+      "source_context": "azurefox-lab-sp",
+      "clue_type": "direct-role-abuse",
+      "confirmation_basis": "current-identity-rooted",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "Current foothold -\u003e high-impact RBAC already visible",
+      "insertion_point": "Current foothold already holds high-impact RBAC on visible scope.",
+      "path_concept": "current-foothold-direct-control",
+      "path_type": "current-foothold direct control",
+      "stronger_outcome": "Owner across subscription-wide scope",
+      "why_care": "The current foothold already has Owner across subscription-wide scope. This row is already direct Azure control, not a separate pivot hunt. HO-Azure is not narrowing one exact downstream action beyond the control already shown here.",
+      "likely_impact": "Owner across subscription-wide scope",
+      "confidence_boundary": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
+      "target_service": "azure-control",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "current-foothold",
+        "permission-summary"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ],
+      "target_names": [
+        "subscription-wide scope"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check rbac for the exact assignment evidence behind the current foothold.",
+      "summary": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence behind the current foothold.",
+      "missing_confirmation": "HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ]
+    },
+    {
+      "chain_id": "escalation-path::33333333-3333-3333-3333-333333333333::trust-expansion::66666666-6666-6666-6666-666666666666::federated",
+      "asset_id": "33333333-3333-3333-3333-333333333333",
+      "asset_name": "azurefox-lab-sp (current foothold)",
+      "asset_kind": "ServicePrincipal",
+      "starting_foothold": "azurefox-lab-sp (current foothold)",
+      "source_command": "role-trusts",
+      "source_context": "azurefox-lab-sp",
+      "clue_type": "federated-credential",
+      "confirmation_basis": "confirmed",
+      "priority": "medium",
+      "urgency": "review-soon",
+      "visible_path": "Current foothold -\u003e app control -\u003e existing federated trust -\u003e higher-value identity",
+      "insertion_point": "Application 'build-app' already has federated trust that can yield service principal 'build-sp' access.",
+      "path_concept": "trust-expansion",
+      "path_type": "trust expansion",
+      "stronger_outcome": "Owner across 2 visible scopes",
+      "why_care": "The current foothold can control application 'build-app', and that application already has federated trust into service principal 'build-sp'. That would add Owner-level Azure control, including role assignment on resource group 'rg-build-dr' and resource group 'rg-identity'. HO-Azure is not proving that the current foothold already controls the visible federated subject or has already changed that federated trust to make 'build-sp' usable. Remove the ownership path that lets the source control application 'build-app'.",
+      "likely_impact": "Owner across 2 visible scopes",
+      "confidence_boundary": "The current foothold can control application 'build-app'. Application 'build-app' already has federated trust that can yield service principal 'build-sp' access. Federated sign-in can yield service principal 'build-sp' access. HO-Azure can also confirm the stronger target's Azure control. HO-Azure does not prove that the current foothold already controls the visible federated subject or has already changed this federated trust from this row alone.",
+      "target_service": "identity-trust",
+      "target_resolution": "path-confirmed",
+      "evidence_commands": [
+        "role-trusts",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "current-foothold",
+        "trust-edge",
+        "federated-trust"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Check permissions for Azure control on service principal 'build-sp'.",
+      "summary": "The current foothold can control application 'build-app'. Application 'build-app' already has federated trust that can yield service principal 'build-sp' access. Federated sign-in can yield service principal 'build-sp' access. HO-Azure can also confirm the stronger target's Azure control. HO-Azure does not prove that the current foothold already controls the visible federated subject or has already changed this federated trust from this row alone.",
+      "missing_confirmation": "HO-Azure does not prove that the current foothold already controls the visible federated subject or has already changed the federated trust.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "/subscriptions/22222222-2222-2222-2222-222222222222",
+        "55555555-5555-5555-5555-555555555555",
+        "fic-build-main",
+        "66666666-6666-6666-6666-666666666666"
+      ]
+    }
+  ],
+  "issues": []
+}

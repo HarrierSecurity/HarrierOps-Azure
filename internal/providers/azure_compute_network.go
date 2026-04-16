@@ -118,23 +118,23 @@ func (provider AzureProvider) NetworkPorts(ctx context.Context, tenant string, s
 		return NetworkPortsFacts{}, err
 	}
 
-	collector, err := newComputeNetworkCollector(session)
+	state, err := provider.computeNetworkState(session)
 	if err != nil {
 		return NetworkPortsFacts{}, err
 	}
 
-	_, nicByID, nicIssues := collector.collectNICAssets(ctx)
-	vmAssets, vmIssues := collector.collectVMAssets(ctx, nicByID)
+	nics := state.nicSnapshot(ctx)
+	vms := state.vmSnapshot(ctx)
 
 	rows := []models.NetworkPortSummary{}
-	issues := append([]models.Issue{}, nicIssues...)
-	issues = append(issues, vmIssues...)
+	issues := append([]models.Issue{}, nics.issues...)
+	issues = append(issues, vms.issues...)
 
 	subnetNSGCache := map[string]*string{}
 	nsgRulesCache := map[string][]networkRule{}
 	seen := map[string]struct{}{}
 
-	for _, vm := range vmAssets {
+	for _, vm := range vms.assets {
 		if len(vm.PublicIPs) == 0 {
 			continue
 		}
@@ -142,7 +142,7 @@ func (provider AzureProvider) NetworkPorts(ctx context.Context, tenant string, s
 		for _, endpoint := range endpoints {
 			for _, nicID := range vm.NICIDs {
 				nicKey := armIDJoinKey(nicID)
-				nic, ok := nicByID[nicKey]
+				nic, ok := nics.byID[nicKey]
 				if !ok {
 					continue
 				}
@@ -152,20 +152,20 @@ func (provider AzureProvider) NetworkPorts(ctx context.Context, tenant string, s
 
 				if nic.NetworkSecurityGroupID != nil {
 					visibleNSG = true
-					rules, ruleIssues := collector.resolveNSGInboundAllowRules(ctx, *nic.NetworkSecurityGroupID, nsgRulesCache)
+					rules, ruleIssues := state.collector.resolveNSGInboundAllowRules(ctx, *nic.NetworkSecurityGroupID, nsgRulesCache)
 					issues = append(issues, ruleIssues...)
 					nicRows = append(nicRows, networkPortRowsFromRules(endpoint, nic, rules, "nic", *nic.NetworkSecurityGroupID)...)
 				}
 
 				for _, subnetID := range nic.SubnetIDs {
-					subnetNSGID, subnetIssues := collector.resolveSubnetNSGID(ctx, subnetID, subnetNSGCache)
+					subnetNSGID, subnetIssues := state.collector.resolveSubnetNSGID(ctx, subnetID, subnetNSGCache)
 					issues = append(issues, subnetIssues...)
 					if subnetNSGID == nil || strings.TrimSpace(*subnetNSGID) == "" {
 						continue
 					}
 
 					visibleNSG = true
-					rules, ruleIssues := collector.resolveNSGInboundAllowRules(ctx, *subnetNSGID, nsgRulesCache)
+					rules, ruleIssues := state.collector.resolveNSGInboundAllowRules(ctx, *subnetNSGID, nsgRulesCache)
 					issues = append(issues, ruleIssues...)
 					nicRows = append(nicRows, networkPortRowsFromRules(endpoint, nic, rules, "subnet", *subnetNSGID)...)
 				}
@@ -206,17 +206,17 @@ func (provider AzureProvider) NICs(ctx context.Context, tenant string, subscript
 		return NICsFacts{}, err
 	}
 
-	collector, err := newComputeNetworkCollector(session)
+	state, err := provider.computeNetworkState(session)
 	if err != nil {
 		return NICsFacts{}, err
 	}
 
-	nicAssets, _, issues := collector.collectNICAssets(ctx)
+	nics := state.nicSnapshot(ctx)
 	return NICsFacts{
 		TenantID:       session.tenantID,
 		SubscriptionID: session.subscription.ID,
-		NICAssets:      nicAssets,
-		Issues:         issues,
+		NICAssets:      nics.assets,
+		Issues:         nics.issues,
 	}, nil
 }
 
@@ -226,19 +226,19 @@ func (provider AzureProvider) VMs(ctx context.Context, tenant string, subscripti
 		return VMsFacts{}, err
 	}
 
-	collector, err := newComputeNetworkCollector(session)
+	state, err := provider.computeNetworkState(session)
 	if err != nil {
 		return VMsFacts{}, err
 	}
 
-	_, nicByID, nicIssues := collector.collectNICAssets(ctx)
-	vmAssets, vmIssues := collector.collectVMAssets(ctx, nicByID)
+	nics := state.nicSnapshot(ctx)
+	vms := state.vmSnapshot(ctx)
 
 	return VMsFacts{
 		TenantID:       session.tenantID,
 		SubscriptionID: session.subscription.ID,
-		VMAssets:       vmAssets,
-		Issues:         append(nicIssues, vmIssues...),
+		VMAssets:       vms.assets,
+		Issues:         append(append([]models.Issue{}, nics.issues...), vms.issues...),
 	}, nil
 }
 
@@ -248,17 +248,17 @@ func (provider AzureProvider) SnapshotsDisks(ctx context.Context, tenant string,
 		return SnapshotsDisksFacts{}, err
 	}
 
-	collector, err := newComputeNetworkCollector(session)
+	state, err := provider.computeNetworkState(session)
 	if err != nil {
 		return SnapshotsDisksFacts{}, err
 	}
 
-	assets, issues := collector.collectSnapshotDiskAssets(ctx)
+	snapshots := state.snapshotDiskSnapshot(ctx)
 	return SnapshotsDisksFacts{
 		TenantID:           session.tenantID,
 		SubscriptionID:     session.subscription.ID,
-		SnapshotDiskAssets: assets,
-		Issues:             issues,
+		SnapshotDiskAssets: snapshots.assets,
+		Issues:             snapshots.issues,
 	}, nil
 }
 
@@ -268,17 +268,17 @@ func (provider AzureProvider) VMSS(ctx context.Context, tenant string, subscript
 		return VMSSFacts{}, err
 	}
 
-	collector, err := newComputeNetworkCollector(session)
+	state, err := provider.computeNetworkState(session)
 	if err != nil {
 		return VMSSFacts{}, err
 	}
 
-	vmssAssets, issues := collector.collectVMSSAssets(ctx)
+	vmss := state.vmssSnapshot(ctx)
 	return VMSSFacts{
 		TenantID:       session.tenantID,
 		SubscriptionID: session.subscription.ID,
-		VMSSAssets:     vmssAssets,
-		Issues:         issues,
+		VMSSAssets:     vmss.assets,
+		Issues:         vmss.issues,
 	}, nil
 }
 

@@ -3,50 +3,80 @@ package render
 import "harrierops-azure/internal/models"
 
 func aksTable(payload models.AksOutput) string {
-	rows := make([][]string, 0, len(payload.AksClusters))
-	for _, cluster := range payload.AksClusters {
-		rows = append(rows, []string{
-			cluster.Name,
-			aksVersionContext(cluster),
-			aksEndpointContext(cluster),
-			aksIdentityContext(cluster),
-			aksAuthContext(cluster),
-			aksNetworkContext(cluster),
-			cluster.Summary,
-		})
+	if len(payload.AksClusters) == 0 {
+		return renderListTable(
+			"ho-azure aks",
+			[]string{"cluster", "endpoint", "identity", "auth"},
+			nil,
+			[]string{"No visible AKS clusters were confirmed from current scope.", "", "", ""},
+			aksTakeaway(payload),
+		)
 	}
 
-	return renderListTable(
-		"azurefox aks",
-		[]string{"cluster", "version", "endpoint", "identity", "auth", "network", "why it matters"},
-		rows,
-		[]string{"No visible AKS clusters were confirmed from current scope.", "", "", "", "", "", ""},
-		aksTakeaway(payload),
-	)
+	sections := make([]string, 0, len(payload.AksClusters))
+	for _, cluster := range payload.AksClusters {
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"cluster", "endpoint", "identity", "auth"},
+			[][]string{{
+				cluster.Name,
+				aksEndpointContext(cluster),
+				aksIdentityContext(cluster),
+				aksAuthContext(cluster),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if signal := aksOperatorSignal(cluster); signal != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("operator signal", signal, rowWidth))
+		}
+		if note := aksNote(cluster); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + aksTakeaway(payload) + "\n"
 }
 
 func acrTable(payload models.AcrOutput) string {
-	rows := make([][]string, 0, len(payload.Registries))
-	for _, registry := range payload.Registries {
-		rows = append(rows, []string{
-			registry.Name,
-			valueOrFallback(registry.LoginServer, "-"),
-			resourceIdentityContext(registry.WorkloadIdentityType, registry.WorkloadIdentityIDs),
-			acrAuthContext(registry),
-			acrExposureContext(registry),
-			acrDepthContext(registry),
-			acrPostureContext(registry),
-			registry.Summary,
-		})
+	if len(payload.Registries) == 0 {
+		return renderListTable(
+			"ho-azure acr",
+			[]string{"registry", "login server", "identity", "auth", "exposure"},
+			nil,
+			[]string{"No visible container registries were confirmed from current scope.", "", "", "", ""},
+			acrTakeaway(payload),
+		)
 	}
 
-	return renderListTable(
-		"azurefox acr",
-		[]string{"registry", "login server", "identity", "auth", "exposure", "depth", "posture", "why it matters"},
-		rows,
-		[]string{"No visible container registries were confirmed from current scope.", "", "", "", "", "", "", ""},
-		acrTakeaway(payload),
-	)
+	sections := make([]string, 0, len(payload.Registries))
+	for _, registry := range payload.Registries {
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"registry", "login server", "identity", "auth", "exposure"},
+			[][]string{{
+				registry.Name,
+				valueOrFallback(registry.LoginServer, "-"),
+				resourceIdentityContext(registry.WorkloadIdentityType, registry.WorkloadIdentityIDs),
+				acrAuthContext(registry),
+				acrExposureContext(registry),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if signal := acrOperatorSignal(registry); signal != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("operator signal", signal, rowWidth))
+		}
+		if note := acrNote(registry); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + acrTakeaway(payload) + "\n"
 }
 
 func automationTable(payload models.AutomationOutput) string {
@@ -64,7 +94,7 @@ func automationTable(payload models.AutomationOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox automation",
+		"ho-azure automation",
 		[]string{"automation account", "identity", "execution", "triggers", "workers", "assets", "why it matters"},
 		rows,
 		[]string{"No visible Automation accounts were confirmed from current scope.", "", "", "", "", "", ""},
@@ -73,29 +103,81 @@ func automationTable(payload models.AutomationOutput) string {
 }
 
 func devopsTable(payload models.DevopsOutput) string {
-	rows := make([][]string, 0, len(payload.Pipelines))
-	for _, pipeline := range payload.Pipelines {
-		rows = append(rows, []string{
-			pipeline.ProjectName,
-			pipeline.Name,
-			devopsRepositoryContext(pipeline),
-			devopsTriggerContext(pipeline),
-			devopsInjectionContext(pipeline),
-			devopsAccessContext(pipeline),
-			devopsSecretContext(pipeline),
-			devopsTargetContext(pipeline),
-			devopsNextReview(pipeline),
-			pipeline.Summary,
-		})
+	if len(payload.Pipelines) == 0 {
+		return renderListTable(
+			"ho-azure devops",
+			[]string{"info"},
+			nil,
+			[]string{"No visible Azure DevOps build definitions were confirmed from current scope."},
+			"",
+		)
 	}
 
-	return renderListTable(
-		"azurefox devops",
-		[]string{"project", "pipeline", "source", "execution path", "injection", "control path", "secret support", "impact point", "next review", "why it matters"},
-		rows,
-		[]string{"No visible Azure DevOps build definitions were confirmed from current scope.", "", "", "", "", "", "", "", "", ""},
-		devopsTakeaway(payload),
-	)
+	sections := make([]string, 0, len(payload.Pipelines))
+	for index, pipeline := range payload.Pipelines {
+		row := renderStructuredTableWithTitle(
+			"ho-azure devops",
+			[]string{"project", "pipeline", "source", "start path", "injection", "impact point"},
+			[][]string{{
+				pipeline.ProjectName,
+				pipeline.Name,
+				devopsRepositoryContext(pipeline),
+				devopsTriggerContext(pipeline),
+				devopsInjectionContext(pipeline),
+				devopsTargetContext(pipeline),
+			}},
+			index == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if operatorSignal := devopsOperatorSignal(pipeline); operatorSignal != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("operator signal", operatorSignal, rowWidth))
+		}
+		if note := devopsNote(pipeline); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + devopsTakeaway(payload) + "\n"
+}
+
+func apiMgmtTable(payload models.ApiMgmtOutput) string {
+	if len(payload.ApiManagementServices) == 0 {
+		return renderListTable(
+			"ho-azure api-mgmt",
+			[]string{"service", "gateway", "identity", "exposure"},
+			nil,
+			[]string{"No visible API Management services were confirmed from current scope.", "", "", ""},
+			apiMgmtTakeaway(payload),
+		)
+	}
+
+	sections := make([]string, 0, len(payload.ApiManagementServices))
+	for _, service := range payload.ApiManagementServices {
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"service", "gateway", "identity", "exposure"},
+			[][]string{{
+				service.Name,
+				apiMgmtGatewayLabel(service),
+				resourceIdentityContext(service.WorkloadIdentityType, service.WorkloadIdentityIDs),
+				apiMgmtExposureContext(service),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if signal := apiMgmtOperatorSignal(service); signal != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("operator signal", signal, rowWidth))
+		}
+		if note := apiMgmtNote(service); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + apiMgmtTakeaway(payload) + "\n"
 }
 
 func databasesTable(payload models.DatabasesOutput) string {
@@ -114,7 +196,7 @@ func databasesTable(payload models.DatabasesOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox databases",
+		"ho-azure databases",
 		[]string{"server", "engine", "endpoint", "identity", "inventory", "exposure", "posture", "why it matters"},
 		rows,
 		[]string{"No visible relational database servers were confirmed from current scope.", "", "", "", "", "", "", ""},
@@ -136,12 +218,17 @@ func keyVaultTable(payload models.KeyVaultOutput) string {
 		})
 	}
 
-	return renderListTable(
-		"azurefox keyvault",
+	output := renderListTable(
+		"ho-azure keyvault",
 		[]string{"vault", "resource group", "public network", "default action", "private endpoint", "purge protection", "rbac mode"},
 		rows,
 		[]string{"No visible Key Vault assets were confirmed from current scope.", "", "", "", "", "", ""},
 		keyVaultTakeaway(payload),
+	)
+	return appendCustomFindingsSection(output, payload.Findings,
+		func(f models.KeyVaultFinding) string { return f.Severity },
+		func(f models.KeyVaultFinding) string { return f.Title },
+		func(f models.KeyVaultFinding) string { return f.Description },
 	)
 }
 
@@ -158,12 +245,17 @@ func storageTable(payload models.StorageOutput) string {
 		})
 	}
 
-	return renderListTable(
-		"azurefox storage",
+	output := renderListTable(
+		"ho-azure storage",
 		[]string{"account", "resource group", "exposure", "auth / transport", "protocols", "inventory"},
 		rows,
 		[]string{"No visible storage accounts were confirmed from current scope.", "", "", "", "", ""},
 		storageTakeaway(payload),
+	)
+	return appendCustomFindingsSection(output, payload.Findings,
+		func(f models.StorageFinding) string { return f.Severity },
+		func(f models.StorageFinding) string { return f.Title },
+		func(f models.StorageFinding) string { return f.Description },
 	)
 }
 
@@ -182,7 +274,7 @@ func snapshotsDisksTable(payload models.SnapshotsDisksOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox snapshots-disks",
+		"ho-azure snapshots-disks",
 		[]string{"asset", "kind", "priority", "attachment / source", "sharing / export", "encryption", "why it matters"},
 		rows,
 		[]string{"No visible managed disks or snapshots were confirmed from current scope.", "", "", "", "", "", ""},
@@ -204,7 +296,7 @@ func applicationGatewayTable(payload models.ApplicationGatewayOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox application-gateway",
+		"ho-azure application-gateway",
 		[]string{"gateway", "exposure", "routing", "backends", "waf", "why it matters"},
 		rows,
 		[]string{"No visible Application Gateways were confirmed from current scope.", "", "", "", "", ""},
@@ -225,33 +317,10 @@ func dnsTable(payload models.DnsOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox dns",
+		"ho-azure dns",
 		[]string{"zone", "kind", "inventory", "namespace", "why it matters"},
 		rows,
 		[]string{"No visible DNS zones were confirmed from current scope.", "", "", "", ""},
 		dnsTakeaway(payload),
-	)
-}
-
-func apiMgmtTable(payload models.ApiMgmtOutput) string {
-	rows := make([][]string, 0, len(payload.ApiManagementServices))
-	for _, service := range payload.ApiManagementServices {
-		rows = append(rows, []string{
-			service.Name,
-			join(service.GatewayHostnames, ", "),
-			resourceIdentityContext(service.WorkloadIdentityType, service.WorkloadIdentityIDs),
-			apiMgmtInventoryContext(service),
-			apiMgmtExposureContext(service),
-			apiMgmtPostureContext(service),
-			service.Summary,
-		})
-	}
-
-	return renderListTable(
-		"azurefox api-mgmt",
-		[]string{"service", "gateway", "identity", "inventory", "exposure", "posture", "why it matters"},
-		rows,
-		[]string{"No visible API Management services were confirmed from current scope.", "", "", "", "", "", ""},
-		apiMgmtTakeaway(payload),
 	)
 }

@@ -16,7 +16,7 @@ type Paths struct {
 	CSV   string
 }
 
-func Write(command string, payload any, outDir string) (Paths, error) {
+func Write(command string, payload any, outDir string, context models.RenderContext) (Paths, error) {
 	paths := Paths{
 		Loot:  filepath.Join(outDir, "loot", command+".json"),
 		JSON:  filepath.Join(outDir, "json", command+".json"),
@@ -38,15 +38,15 @@ func Write(command string, payload any, outDir string) (Paths, error) {
 	if err != nil {
 		return Paths{}, err
 	}
-	jsonContent, err := output.Render(models.OutputJSON, command, payload)
+	jsonContent, err := output.RenderWithContext(models.OutputJSON, command, payload, context)
 	if err != nil {
 		return Paths{}, err
 	}
-	tableContent, err := output.Render(models.OutputTable, command, payload)
+	tableContent, err := output.RenderWithContext(models.OutputTable, command, payload, context)
 	if err != nil {
 		return Paths{}, err
 	}
-	csvContent, err := output.Render(models.OutputCSV, command, payload)
+	csvContent, err := output.RenderWithContext(models.OutputCSV, command, payload, context)
 	if err != nil {
 		return Paths{}, err
 	}

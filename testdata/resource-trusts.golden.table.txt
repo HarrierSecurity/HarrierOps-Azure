@@ -1,4 +1,8 @@
-azurefox resource-trusts
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[resource-trusts] Correlating resource trust surfaces across public network and private-link paths.
+ho-azure resource-trusts
 
 ╭─────────────┬──────────────┬──────────────────────┬──────────────┬──────────┬─────────────────────────────────────────────────────────────────────────────────────────╮
 │resource     │type          │trust                 │target        │exposure  │why it matters                                                                           │
@@ -12,5 +16,17 @@ azurefox resource-trusts
 │stlabpriv01  │StorageAccount│private-endpoint      │private-link  │restricted│Storage account 'stlabpriv01' exposes a private endpoint path through Azure Private Link.│
 │stlabpub01   │StorageAccount│public-network-default│public-network│medium    │Storage account 'stlabpub01' accepts public network traffic by default.                  │
 ╰─────────────┴──────────────┴──────────────────────┴──────────────┴──────────┴─────────────────────────────────────────────────────────────────────────────────────────╯
+
+Findings:
+- HIGH: Storage account allows public blob access
+  Storage account 'stlabpub01' has blob public access enabled. Validate anonymous access and exposed data paths.
+- MEDIUM: Storage account network default action is Allow
+  Storage account 'stlabpub01' default firewall action is Allow. Review allowed network sources and private endpoint posture.
+- HIGH: Key Vault is broadly reachable on the public network
+  Key Vault 'kvlabopen01' has public network access enabled, Azure omitted the network ACL object, and no private endpoint is visible. Azure can return that shape for a fully open vault. Review whether that secret-management surface is intentionally internet reachable.
+- MEDIUM: Key Vault remains reachable through a public network path
+  Key Vault 'kvlabdeny01' keeps public network access enabled with default network action 'Deny' and no private endpoint visible. Review whether that public path is still intended.
+- LOW: Key Vault keeps a public network path alongside Private Link
+  Key Vault 'kvlabhybrid01' has public network access enabled while a private endpoint is also present. Validate whether the public path is still required.
 
 Takeaway: 8 resource trust surfaces visible; 2 high, 3 medium, 3 restricted.

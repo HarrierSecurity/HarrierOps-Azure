@@ -18,7 +18,7 @@
         "Owner"
       ],
       "starting_foothold": "azurefox-lab-sp (current foothold)",
-      "missing_proof": "AzureFox does not prove which exact abuse action is the best next step from this row alone.",
+      "missing_proof": "HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
       "next_review": "Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
       "operator_signal": "Current foothold already has direct control.",
       "path_type": "current-foothold-direct-control",
@@ -31,7 +31,7 @@
         "33333333-3333-3333-3333-333333333333",
         "/subscriptions/22222222-2222-2222-2222-222222222222"
       ],
-      "summary": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. AzureFox does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead."
+      "summary": "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead."
     },
     {
       "asset": "vm-web-01",
@@ -40,7 +40,7 @@
         "Owner"
       ],
       "starting_foothold": "azurefox-lab-sp (current foothold)",
-      "missing_proof": "AzureFox does not prove control of the workload or successful token use from it.",
+      "missing_proof": "HO-Azure does not prove control of the workload or successful token use from it.",
       "next_review": "Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
       "operator_signal": "Visible ingress-backed lead; not yet rooted in current foothold.",
       "path_type": "ingress-backed-workload-identity",
@@ -55,7 +55,7 @@
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
         "/subscriptions/22222222-2222-2222-2222-222222222222"
       ],
-      "summary": "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). AzureFox does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead."
+      "summary": "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). HO-Azure does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead."
     }
   ]
 }

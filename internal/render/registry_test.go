@@ -25,3 +25,18 @@ func TestRendererRegistryCoversImplementedContracts(t *testing.T) {
 		}
 	}
 }
+
+func TestChainsFamilyRenderersCoverImplementedFamilies(t *testing.T) {
+	for _, familyName := range contracts.FamilyNames() {
+		family, ok := contracts.Family(familyName)
+		if !ok || family.Status != contracts.StatusImplemented {
+			continue
+		}
+		if chainsFamilyTableRenderers[familyName] == nil {
+			t.Fatalf("expected implemented family %q to have a table renderer", familyName)
+		}
+		if chainsFamilyCSVRenderers[familyName] == nil {
+			t.Fatalf("expected implemented family %q to have a csv renderer", familyName)
+		}
+	}
+}

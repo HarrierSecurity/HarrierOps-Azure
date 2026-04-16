@@ -51,6 +51,8 @@ func renderRegistryEntry(command string) (rendererEntry, error) {
 		return rendererEntry{table: wrapTableRenderer("aks", aksTable), csv: wrapCSVRenderer("aks", aksCSV)}, nil
 	case "api-mgmt":
 		return rendererEntry{table: wrapTableRenderer("api-mgmt", apiMgmtTable), csv: wrapCSVRenderer("api-mgmt", apiMgmtCSV)}, nil
+	case "app-credentials":
+		return rendererEntry{table: wrapTableRenderer("app-credentials", appCredentialsTable), csv: wrapCSVRenderer("app-credentials", appCredentialsCSV)}, nil
 	case "app-services":
 		return rendererEntry{table: wrapTableRenderer("app-services", appServicesTable), csv: wrapCSVRenderer("app-services", appServicesCSV)}, nil
 	case "functions":
@@ -97,6 +99,8 @@ func renderRegistryEntry(command string) (rendererEntry, error) {
 		return rendererEntry{table: wrapTableRenderer("env-vars", envVarsTable), csv: wrapCSVRenderer("env-vars", envVarsCSV)}, nil
 	case "tokens-credentials":
 		return rendererEntry{table: wrapTableRenderer("tokens-credentials", tokensCredentialsTable), csv: wrapCSVRenderer("tokens-credentials", tokensCredentialsCSV)}, nil
+	case "chains":
+		return rendererEntry{table: chainsTableRenderer, csv: chainsCSVRenderer}, nil
 	case "role-trusts":
 		return rendererEntry{table: wrapTableRenderer("role-trusts", roleTrustsTable), csv: wrapCSVRenderer("role-trusts", roleTrustsCSV)}, nil
 	case "inventory":

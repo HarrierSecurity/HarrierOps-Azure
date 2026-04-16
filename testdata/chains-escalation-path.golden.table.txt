@@ -1,0 +1,37 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[chains] Correlating grouped chain evidence with conservative cross-command joins.
+ho-azure chains
+
+╭────────┬─────────┬──────────────────────────────────┬───────────────────────────────┬────────────────────────────────────╮
+│priority│urgency  │starting foothold                 │path type                      │stronger outcome                    │
+├────────┼─────────┼──────────────────────────────────┼───────────────────────────────┼────────────────────────────────────┤
+│high    │pivot-now│azurefox-lab-sp (current foothold)│current-foothold direct control│Owner across subscription-wide scope│
+╰────────┴─────────┴──────────────────────────────────┴───────────────────────────────┴────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────╮
+│note                                                                                        │
+├────────────────────────────────────────────────────────────────────────────────────────────┤
+│The current foothold already has Owner across subscription-wide scope.                      │
+│This row is already direct Azure control, not a separate pivot hunt.                        │
+│HO-Azure is not narrowing one exact downstream action beyond the control already shown here.│
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭────────┬───────────┬──────────────────────────────────┬───────────────┬─────────────────────────────╮
+│priority│urgency    │starting foothold                 │path type      │stronger outcome             │
+├────────┼───────────┼──────────────────────────────────┼───────────────┼─────────────────────────────┤
+│medium  │review-soon│azurefox-lab-sp (current foothold)│trust expansion│Owner across 2 visible scopes│
+╰────────┴───────────┴──────────────────────────────────┴───────────────┴─────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│note                                                                                                │
+├────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│The current foothold can control application 'build-app', and that application already has federated│
+│trust into service principal 'build-sp'.                                                            │
+│That would add Owner-level Azure control, including role assignment on resource group 'rg-build-dr' │
+│and resource group 'rg-identity'.                                                                   │
+│HO-Azure is not proving that the current foothold already controls the visible federated subject or │
+│has already changed that federated trust to make 'build-sp' usable.                                 │
+│Remove the ownership path that lets the source control application 'build-app'.                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Claim boundary: Can claim that visible evidence suggests a current-foothold escalation story and can name what stronger control or trust consequence is in view. Cannot claim exploit success or multi-hop control without deeper evidence.

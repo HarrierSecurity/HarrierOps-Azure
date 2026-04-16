@@ -1,4 +1,8 @@
-azurefox automation
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[automation] Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.
+ho-azure automation
 
 ╭──────────────────┬──────────────┬──────────────────────────────┬───────────────────────┬────────┬──────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │automation account│identity      │execution                     │triggers               │workers │assets                                │why it matters                                                                                                                                                                                                                                                                                                                          │

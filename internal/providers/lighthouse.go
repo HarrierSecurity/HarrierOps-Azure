@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
 
 	"harrierops-azure/internal/models"
 )
@@ -313,6 +314,7 @@ func lighthouseRoleNames(
 	roleNameCache map[string]string,
 ) []string {
 	roleNames := []string{}
+	roleDefinitionsClient, _ := armauthorization.NewRoleDefinitionsClient(credential, nil)
 	for _, authorization := range authorizations {
 		item, ok := authorization.(map[string]any)
 		if !ok {
@@ -322,7 +324,7 @@ func lighthouseRoleNames(
 		if roleDefinitionID == "" {
 			continue
 		}
-		roleName, err := resolveRoleDefinitionName(ctx, credential, scope, roleDefinitionID, roleNameCache)
+		roleName, err := resolveRoleDefinitionName(ctx, roleDefinitionsClient, roleDefinitionID, roleNameCache)
 		if err != nil || strings.TrimSpace(roleName) == "" {
 			roleName = firstNonEmpty(builtInHighImpactRolesByID[roleDefinitionGUID(roleDefinitionID)], "Unknown")
 		}

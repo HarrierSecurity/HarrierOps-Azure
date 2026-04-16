@@ -1,17 +1,115 @@
-azurefox role-trusts
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
 
-╭────────────────────────┬───────────────────┬────────────────┬──────────┬─────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│trust                   │source             │target          │confidence│operator signal                                      │next review                                                                                                                        │
-├────────────────────────┼───────────────────┼────────────────┼──────────┼─────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│federated-credential    │build-app          │build-sp        │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                               │
-│federated-credential    │orphan-build-app   │orphan-build-app│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for the backing identity behind application 'orphan-build-app'.                                                  │
-│service-principal-owner │aa-hybrid-prod     │ops-deploy-sp   │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'ops-deploy-sp'.                                                          │
-│service-principal-owner │automation-runner  │build-sp        │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                               │
-│service-principal-owner │azurefox-lab-sp    │build-sp        │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.                                                               │
-│app-owner               │azurefox-lab-sp    │build-app       │confirmed │Indirect control visible; ownership review next.     │Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.       │
-│app-owner               │ci-admin@lab.local │build-app       │confirmed │Indirect control visible; ownership review next.     │Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.       │
-│app-owner               │ops-admin@lab.local│orphan-build-app│confirmed │Indirect control visible; ownership review next.     │Review ownership around application 'orphan-build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
-│app-to-service-principal│reporting-sp       │Microsoft Graph │confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'reporting-sp'.                                                           │
-╰────────────────────────┴───────────────────┴────────────────┴──────────┴─────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+[role-trusts] Reviewing high-signal identity trust edges and the clearest next review without implying delegated or admin consent.
+ho-azure role-trusts
+
+╭────────────────────┬─────────┬────────┬──────────┬─────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────╮
+│trust               │source   │target  │confidence│operator signal                                      │next review                                                         │
+├────────────────────┼─────────┼────────┼──────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
+│federated-credential│build-app│build-sp│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.│
+╰────────────────────┴─────────┴────────┴──────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────╯
+
+╭────────────────────────────────────────────────────────────────╮
+│how control could widen                                         │
+├────────────────────────────────────────────────────────────────┤
+│Federated sign-in can yield service principal 'build-sp' access.│
+╰────────────────────────────────────────────────────────────────╯
+
+╭────────────────────┬────────────────┬────────────────┬──────────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────╮
+│trust               │source          │target          │confidence│operator signal                                      │next review                                                                      │
+├────────────────────┼────────────────┼────────────────┼──────────┼─────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────┤
+│federated-credential│orphan-build-app│orphan-build-app│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for the backing identity behind application 'orphan-build-app'.│
+╰────────────────────┴────────────────┴────────────────┴──────────┴─────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────╮
+│how control could widen                                           │
+├──────────────────────────────────────────────────────────────────┤
+│Application 'orphan-build-app' already has a federated trust path.│
+╰──────────────────────────────────────────────────────────────────╯
+
+╭───────────────────────┬──────────────┬─────────────┬──────────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────╮
+│trust                  │source        │target       │confidence│operator signal                                      │next review                                                              │
+├───────────────────────┼──────────────┼─────────────┼──────────┼─────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────┤
+│service-principal-owner│aa-hybrid-prod│ops-deploy-sp│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'ops-deploy-sp'.│
+╰───────────────────────┴──────────────┴─────────────┴──────────┴─────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────────────────────────╮
+│how control could widen                                  │
+├─────────────────────────────────────────────────────────┤
+│That could make service principal 'ops-deploy-sp' usable.│
+╰─────────────────────────────────────────────────────────╯
+
+╭───────────────────────┬─────────────────┬────────┬──────────┬─────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────╮
+│trust                  │source           │target  │confidence│operator signal                                      │next review                                                         │
+├───────────────────────┼─────────────────┼────────┼──────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
+│service-principal-owner│automation-runner│build-sp│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.│
+╰───────────────────────┴─────────────────┴────────┴──────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────╯
+
+╭────────────────────────────────────────────────────╮
+│how control could widen                             │
+├────────────────────────────────────────────────────┤
+│That could make service principal 'build-sp' usable.│
+╰────────────────────────────────────────────────────╯
+
+╭───────────────────────┬───────────────┬────────┬──────────┬─────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────╮
+│trust                  │source         │target  │confidence│operator signal                                      │next review                                                         │
+├───────────────────────┼───────────────┼────────┼──────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
+│service-principal-owner│azurefox-lab-sp│build-sp│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'build-sp'.│
+╰───────────────────────┴───────────────┴────────┴──────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────╯
+
+╭────────────────────────────────────────────────────╮
+│how control could widen                             │
+├────────────────────────────────────────────────────┤
+│That could make service principal 'build-sp' usable.│
+╰────────────────────────────────────────────────────╯
+
+╭─────────┬───────────────┬─────────┬──────────┬────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│trust    │source         │target   │confidence│operator signal                                 │next review                                                                                                                 │
+├─────────┼───────────────┼─────────┼──────────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│app-owner│azurefox-lab-sp│build-app│confirmed │Indirect control visible; ownership review next.│Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
+╰─────────┴───────────────┴─────────┴──────────┴────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────╮
+│how control could widen                                                           │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│Control of application 'build-app' could make service principal 'build-sp' usable.│
+╰──────────────────────────────────────────────────────────────────────────────────╯
+
+╭─────────┬──────────────────┬─────────┬──────────┬────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│trust    │source            │target   │confidence│operator signal                                 │next review                                                                                                                 │
+├─────────┼──────────────────┼─────────┼──────────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│app-owner│ci-admin@lab.local│build-app│confirmed │Indirect control visible; ownership review next.│Review ownership around application 'build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
+╰─────────┴──────────────────┴─────────┴──────────┴────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────╮
+│how control could widen                                                           │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│Control of application 'build-app' could make service principal 'build-sp' usable.│
+╰──────────────────────────────────────────────────────────────────────────────────╯
+
+╭─────────┬───────────────────┬────────────────┬──────────┬────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│trust    │source             │target          │confidence│operator signal                                 │next review                                                                                                                        │
+├─────────┼───────────────────┼────────────────┼──────────┼────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│app-owner│ops-admin@lab.local│orphan-build-app│confirmed │Indirect control visible; ownership review next.│Review ownership around application 'orphan-build-app'; if it backs an Azure-facing identity, confirm that identity in permissions.│
+╰─────────┴───────────────────┴────────────────┴──────────┴────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│how control could widen                                                                                                                │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│Control of application 'orphan-build-app' could change authentication material Azure accepts for identities backed by that application.│
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭────────────────────────┬────────────┬───────────────┬──────────┬─────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────╮
+│trust                   │source      │target         │confidence│operator signal                                      │next review                                                             │
+├────────────────────────┼────────────┼───────────────┼──────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│app-to-service-principal│reporting-sp│Microsoft Graph│confirmed │Trust expansion visible; privilege confirmation next.│Check permissions for Azure control on service principal 'reporting-sp'.│
+╰────────────────────────┴────────────┴───────────────┴──────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────╯
+
+╭───────────────────────────────────────────────────────────────────────────────────────────────╮
+│how control could widen                                                                        │
+├───────────────────────────────────────────────────────────────────────────────────────────────┤
+│Service principal 'reporting-sp' already has application-permission reach to 'Microsoft Graph'.│
+╰───────────────────────────────────────────────────────────────────────────────────────────────╯
 
 Takeaway: 9 trust edges surfaced in full mode; 3 app-owner, 1 app-to-service-principal, 2 federated-credential, 3 service-principal-owner. 6 privilege-confirmation follow-ons, 3 ownership-review follow-ons, and 0 outside-tenant follow-ons. Delegated and admin consent grants are out of scope for this command.

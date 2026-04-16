@@ -15,6 +15,7 @@ type Request struct {
 	Tenant             string
 	Subscription       string
 	DevOpsOrganization string
+	ChainFamily        string
 	Output             models.OutputMode
 	RoleTrustsMode     models.RoleTrustsMode
 	OutDir             string
@@ -78,6 +79,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return aksHandler(provider, now)
 	case "api-mgmt":
 		return apiMgmtHandler(provider, now)
+	case "app-credentials":
+		return appCredentialsHandler(provider, now)
 	case "app-services":
 		return appServicesHandler(provider, now)
 	case "functions":
@@ -126,6 +129,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return envVarsHandler(provider, now)
 	case "tokens-credentials":
 		return tokensCredentialsHandler(provider, now)
+	case "chains":
+		return chainsHandler(provider, now)
 	default:
 		return nil
 	}

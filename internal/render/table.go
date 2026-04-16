@@ -11,7 +11,73 @@ import (
 	"harrierops-azure/internal/models"
 )
 
-func Table(command string, payload any) (string, error) {
+const findingNoteWrapWidth = 100
+
+var commandNarration = map[string]string{
+	"whoami":             "Checking caller context and active subscription scope.",
+	"inventory":          "Scoping the visible Azure resource footprint.",
+	"automation":         "Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.",
+	"app-credentials":    "Reviewing application and service-principal authentication material, federated trust, and visible current-identity control paths.",
+	"devops":             "Reviewing Azure DevOps build definitions for trusted source inputs, visible injection surfaces, and Azure-facing change paths.",
+	"app-services":       "Reviewing App Service runtime, hostname, identity, and ingress cues that change follow-on paths.",
+	"acr":                "Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.",
+	"databases":          "Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.",
+	"dns":                "Reviewing public and private DNS zone inventory and namespace boundaries.",
+	"aks":                "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
+	"api-mgmt":           "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
+	"functions":          "Reviewing Function App runtime, storage binding, identity, and deployment posture.",
+	"arm-deployments":    "Reviewing ARM deployment history for config exposure and linked content.",
+	"endpoints":          "Mapping reachable IP and hostname surfaces from compute and web workloads.",
+	"network-effective":  "Prioritizing likely public-IP reachability by combining visible endpoint and NSG evidence.",
+	"env-vars":           "Reviewing App Service and Function App settings for exposed config paths and likely credential or secret follow-on.",
+	"network-ports":      "Tracing likely inbound port exposure from visible NIC and subnet NSG rules.",
+	"tokens-credentials": "Correlating token-minting workloads, credential-bearing metadata paths, and the next likely follow-on.",
+	"rbac":               "Collecting raw RBAC assignments across the current subscription.",
+	"principals":         "Mapping visible principals, identity footholds, and follow-on candidates.",
+	"permissions":        "Ranking principals by high-impact RBAC exposure and the next likely follow-on.",
+	"privesc":            "Triage likely privilege-escalation and workload identity abuse paths.",
+	"role-trusts":        "Reviewing high-signal identity trust edges and the clearest next review without implying delegated or admin consent.",
+	"cross-tenant":       "Reviewing outside-tenant trust, delegated management, and tenant policy cues that most change control or pivot paths.",
+	"lighthouse":         "Reviewing Azure Lighthouse delegations for cross-tenant management scope and high-impact access cues.",
+	"auth-policies":      "Reviewing tenant auth controls that widen guest, consent, app-creation, or sign-in abuse paths.",
+	"managed-identities": "Mapping workload-linked managed identities and their visible privilege cues.",
+	"keyvault":           "Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.",
+	"resource-trusts":    "Correlating resource trust surfaces across public network and private-link paths.",
+	"storage":            "Checking storage exposure and network posture for likely data targets.",
+	"snapshots-disks":    "Reviewing managed disks and snapshots for offline-copy, sharing/export, and encryption posture with highest-value targets first.",
+	"nics":               "Enumerating NIC attachments, IP context, and network boundary references.",
+	"workloads":          "Joining workload assets with identity context and visible ingress paths.",
+	"vms":                "Summarizing reachable compute assets and identity-bearing workloads.",
+	"vmss":               "Reviewing Virtual Machine Scale Sets (VMSS) for fleet posture, identity, and frontend network cues.",
+	"chains":             "Correlating grouped chain evidence with conservative cross-command joins.",
+}
+
+var commandCompactIntroHint = map[string]string{
+	"aks":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"acr":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"api-mgmt": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"env-vars": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+}
+
+var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
+	"compute-control": chainsComputeControlTable,
+	"credential-path": chainsCredentialPathTable,
+	"deployment-path": chainsDeploymentPathTable,
+	"escalation-path": chainsEscalationPathTable,
+}
+
+func chainsTableRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.ChainsOverviewOutput:
+		return chainsOverviewTable(out), nil
+	case models.ChainsOutput:
+		return chainsFamilyTable(out), nil
+	default:
+		return "", fmt.Errorf("unexpected payload type for chains: %T", payload)
+	}
+}
+
+func Table(command string, payload any, context models.RenderContext) (string, error) {
 	entry, err := renderRegistryEntry(command)
 	if err != nil {
 		return "", err
@@ -19,10 +85,20 @@ func Table(command string, payload any) (string, error) {
 	if entry.table == nil {
 		return "", fmt.Errorf("table rendering is not implemented for command %q", command)
 	}
-	return entry.table(payload)
+	body, err := entry.table(payload)
+	if err != nil {
+		return "", err
+	}
+	body = appendPayloadFindingsSection(body, payload)
+	body = appendPayloadIssuesSection(body, payload)
+	return renderTableDocument(command, context, body), nil
 }
 
 func renderStructuredTable(title string, headers []string, rows [][]string) string {
+	return renderStructuredTableWithTitle(title, headers, rows, true)
+}
+
+func renderStructuredTableWithTitle(title string, headers []string, rows [][]string, includeTitle bool) string {
 	headerStyle := lipgloss.NewStyle().Bold(true)
 	titleStyle := lipgloss.NewStyle().Bold(true)
 
@@ -36,7 +112,11 @@ func renderStructuredTable(title string, headers []string, rows [][]string) stri
 			return lipgloss.NewStyle()
 		})
 
-	return titleStyle.Render(title) + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	body := strings.TrimRight(table.String(), "\n") + "\n"
+	if !includeTitle {
+		return body
+	}
+	return titleStyle.Render(title) + "\n\n" + body
 }
 
 func renderListTable(title string, headers []string, rows [][]string, emptyRow []string, takeaway string) string {
@@ -51,10 +131,44 @@ func renderListTable(title string, headers []string, rows [][]string, emptyRow [
 	return output
 }
 
-func rbacTable(payload models.RbacOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
+func renderTableDocument(command string, context models.RenderContext, body string) string {
+	prelude := renderTablePrelude(command, context)
+	if prelude == "" {
+		return body
+	}
+	return prelude + body
+}
 
+func renderTablePrelude(command string, context models.RenderContext) string {
+	narration := commandNarration[command]
+	if narration == "" {
+		narration = "Running command."
+	}
+	lines := []string{
+		"HO-Azure :: attack-path-focused Azure recon",
+		fmt.Sprintf(
+			"context :: tenant=%s subscription=%s output=table",
+			tableContextValue(context.Tenant),
+			tableContextValue(context.Subscription),
+		),
+		"",
+		fmt.Sprintf("[%s] %s", command, narration),
+	}
+	if compactHint := commandCompactIntroHint[command]; compactHint != "" {
+		lines = append(lines, compactHint)
+	}
+	lines = append(lines, "")
+	return strings.Join(lines, "\n")
+}
+
+func tableContextValue(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "auto"
+	}
+	return value
+}
+
+func rbacTable(payload models.RbacOutput) string {
 	rows := make([][]string, 0, len(payload.RoleAssignments))
 	for _, assignment := range payload.RoleAssignments {
 		rows = append(rows, []string{
@@ -66,46 +180,37 @@ func rbacTable(payload models.RbacOutput) string {
 			assignment.ScopeID,
 		})
 	}
-	if len(rows) == 0 {
-		rows = append(rows, []string{"", "", "", "", "no records", ""})
-	}
-
-	table := liptable.New().
-		Headers("id", "principal_id", "principal_type", "role_definition_id", "role_name", "scope_id").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	return titleStyle.Render("azurefox rbac") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	return renderListTable(
+		"ho-azure rbac",
+		[]string{"id", "principal id", "principal type", "role definition id", "role name", "scope id"},
+		rows,
+		[]string{"no records", "", "", "", "", ""},
+		rbacTakeaway(payload),
+	)
 }
 
 func inventoryTable(payload models.InventoryOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
-	topType, _ := topResourceType(payload.TopResourceTypes)
-
-	rows := [][]string{
-		{"resource_groups", fmt.Sprintf("%d", payload.ResourceGroupCount)},
-		{"resources", fmt.Sprintf("%d", payload.ResourceCount)},
-		{"top_type", topType},
-		{"issues", fmt.Sprintf("%d", len(payload.Issues))},
+	topType := "none visible"
+	for _, key := range sortedResourceTypeKeys(payload.TopResourceTypes) {
+		topType = key
+		break
 	}
 
-	table := liptable.New().
-		Headers("field", "value").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	return titleStyle.Render("azurefox inventory") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	rows := [][]string{
+		{
+			fmt.Sprintf("%d", payload.ResourceGroupCount),
+			fmt.Sprintf("%d", payload.ResourceCount),
+			topType,
+			fmt.Sprintf("%d", len(payload.Issues)),
+		},
+	}
+	return renderListTable(
+		"ho-azure inventory",
+		[]string{"resource groups", "resources", "top type", "issues"},
+		rows,
+		[]string{"0", "0", "none visible", "0"},
+		inventoryTakeaway(payload),
+	)
 }
 
 func appServicesTable(payload models.AppServicesOutput) string {
@@ -121,7 +226,7 @@ func appServicesTable(payload models.AppServicesOutput) string {
 			app.Summary,
 		})
 	}
-	return renderListTable("azurefox app-services", []string{
+	return renderListTable("ho-azure app-services", []string{
 		"app service", "hostname", "runtime", "identity", "exposure", "posture", "why it matters",
 	}, rows, []string{"no App Service apps visible", "", "", "", "", "", ""}, appServicesTakeaway(payload))
 }
@@ -139,7 +244,7 @@ func functionsTable(payload models.FunctionsOutput) string {
 			app.Summary,
 		})
 	}
-	return renderListTable("azurefox functions", []string{
+	return renderListTable("ho-azure functions", []string{
 		"function app", "hostname", "runtime", "identity", "deployment", "posture", "why it matters",
 	}, rows, []string{"no Function Apps visible", "", "", "", "", "", ""}, functionsTakeaway(payload))
 }
@@ -157,7 +262,7 @@ func containerAppsTable(payload models.ContainerAppsOutput) string {
 			app.Summary,
 		})
 	}
-	return renderListTable("azurefox container-apps", []string{
+	return renderListTable("ho-azure container-apps", []string{
 		"container app", "environment", "hostname", "ingress", "identity", "revisions", "why it matters",
 	}, rows, []string{"no Container Apps visible", "", "", "", "", "", ""}, containerAppsTakeaway(payload))
 }
@@ -175,7 +280,7 @@ func containerInstancesTable(payload models.ContainerInstancesOutput) string {
 			item.Summary,
 		})
 	}
-	return renderListTable("azurefox container-instances", []string{
+	return renderListTable("ho-azure container-instances", []string{
 		"container group", "endpoint", "network", "identity", "runtime", "images", "why it matters",
 	}, rows, []string{"no Container Instances visible", "", "", "", "", "", ""}, containerInstancesTakeaway(payload))
 }
@@ -196,17 +301,14 @@ func armDeploymentsTable(payload models.ArmDeploymentsOutput) string {
 		rows = append(rows, []string{"", "", "no deployment history visible", "", "", ""})
 	}
 
-	output := renderStructuredTable("azurefox arm-deployments", []string{
+	output := renderStructuredTable("ho-azure arm-deployments", []string{
 		"deployment", "scope", "state", "outputs", "linked refs", "why it matters",
 	}, rows)
-	if len(payload.Findings) > 0 {
-		output += "\nFindings:\n"
-		for _, finding := range payload.Findings {
-			output += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
-			output += fmt.Sprintf("  %s\n", finding.Description)
-		}
-	}
-
+	output = appendCustomFindingsSection(output, payload.Findings,
+		func(f models.ArmDeploymentFinding) string { return f.Severity },
+		func(f models.ArmDeploymentFinding) string { return f.Title },
+		func(f models.ArmDeploymentFinding) string { return f.Description },
+	)
 	return output + "\nTakeaway: " + armDeploymentsTakeaway(payload) + "\n"
 }
 
@@ -330,9 +432,9 @@ func endpointsTable(payload models.EndpointsOutput) string {
 		rows = append(rows, []string{"", "no endpoints visible", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox endpoints", []string{
+	return renderStructuredTable("ho-azure endpoints", []string{
 		"endpoint", "asset", "kind", "family", "ingress", "why it matters",
-	}, rows)
+	}, rows) + "\nTakeaway: " + endpointsTakeaway(payload) + "\n"
 }
 
 func networkPortsTable(payload models.NetworkPortsOutput) string {
@@ -352,7 +454,7 @@ func networkPortsTable(payload models.NetworkPortsOutput) string {
 		rows = append(rows, []string{"no NIC-backed public port rows visible", "", "", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox network-ports", []string{
+	return renderStructuredTable("ho-azure network-ports", []string{
 		"asset", "endpoint", "protocol", "port", "allow source", "confidence", "why it matters",
 	}, rows) + "\nTakeaway: " + networkPortsTakeaway(payload) + "\n"
 }
@@ -401,7 +503,7 @@ func networkEffectiveTable(payload models.NetworkEffectiveOutput) string {
 		rows = append(rows, []string{"no public-IP exposure summaries visible", "", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox network-effective", []string{
+	return renderStructuredTable("ho-azure network-effective", []string{
 		"asset", "endpoint", "priority", "internet ports", "narrower ports", "why it matters",
 	}, rows) + "\nTakeaway: " + networkEffectiveTakeaway(payload) + "\n"
 }
@@ -434,20 +536,20 @@ func nicsTable(payload models.NicsOutput) string {
 	for _, nic := range payload.NicAssets {
 		rows = append(rows, []string{
 			nic.Name,
-			nicDisplayResourceName(nic.AttachedAssetID),
+			stringOrFallback(nicDisplayResourceName(nic.AttachedAssetID), "-"),
 			join(nic.PrivateIPs, ", "),
-			nicDisplayResourceRefs(nic.PublicIPIDs),
+			stringOrFallback(nicDisplayResourceRefs(nic.PublicIPIDs), "-"),
 			nicNetworkScopeSummary(nic),
-			nicDisplayResourceName(nic.NetworkSecurityGroupID),
+			stringOrFallback(nicDisplayResourceName(nic.NetworkSecurityGroupID), "-"),
 		})
 	}
 	if len(rows) == 0 {
 		rows = append(rows, []string{"no nic assets visible", "", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox nics", []string{
+	return renderStructuredTable("ho-azure nics", []string{
 		"nic", "attached asset", "private ips", "public ip refs", "subnet / vnet", "nsg",
-	}, rows)
+	}, rows) + "\nTakeaway: " + nicsTakeaway(payload) + "\n"
 }
 
 func vmsTable(payload models.VmsOutput) string {
@@ -458,24 +560,21 @@ func vmsTable(payload models.VmsOutput) string {
 			vm.VMType,
 			join(vm.PublicIPs, ", "),
 			join(vm.PrivateIPs, ", "),
-			fmt.Sprintf("%d", len(vm.IdentityIDs)),
+			join(vm.IdentityIDs, ", "),
 		})
 	}
 	if len(rows) == 0 {
 		rows = append(rows, []string{"no compute assets visible", "", "", "", ""})
 	}
 
-	output := renderStructuredTable("azurefox vms", []string{
+	output := renderStructuredTable("ho-azure vms", []string{
 		"asset", "type", "public ips", "private ips", "identities",
 	}, rows)
-	if len(payload.Findings) > 0 {
-		output += "\nFindings:\n"
-		for _, finding := range payload.Findings {
-			output += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
-			output += fmt.Sprintf("  %s\n", finding.Description)
-		}
-	}
-
+	output = appendCustomFindingsSection(output, payload.Findings,
+		func(f models.VmsFinding) string { return f.Severity },
+		func(f models.VmsFinding) string { return f.Title },
+		func(f models.VmsFinding) string { return f.Description },
+	)
 	return output + "\nTakeaway: " + vmsTakeaway(payload) + "\n"
 }
 
@@ -507,7 +606,7 @@ func vmssTable(payload models.VmssOutput) string {
 		rows = append(rows, []string{"no scale sets visible", "", "", "", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox vmss", []string{
+	return renderStructuredTable("ho-azure vmss", []string{
 		"scale set", "location", "sku / capacity", "orchestration", "identity", "frontend", "network", "why it matters",
 	}, rows) + "\nTakeaway: " + vmssTakeaway(payload) + "\n"
 }
@@ -554,7 +653,7 @@ func workloadsTable(payload models.WorkloadsOutput) string {
 		rows = append(rows, []string{"no workloads visible", "", "", "", "", ""})
 	}
 
-	return renderStructuredTable("azurefox workloads", []string{
+	return renderStructuredTable("ho-azure workloads", []string{
 		"workload", "kind", "identity", "endpoints", "ingress", "why it matters",
 	}, rows) + "\nTakeaway: " + workloadsTakeaway(payload) + "\n"
 }
@@ -900,6 +999,88 @@ func aksNetworkContext(cluster models.AksClusterAsset) string {
 	return strings.Join(parts, "; ")
 }
 
+func aksOperatorSignal(cluster models.AksClusterAsset) string {
+	parts := []string{}
+	if version := aksVersionContext(cluster); version != "-" {
+		parts = append(parts, version)
+	}
+	if boolPtrValue(cluster.PrivateClusterEnabled) && valueOrEmpty(cluster.PrivateFQDN) != "" {
+		parts = append(parts, "api-host="+valueOrEmpty(cluster.PrivateFQDN))
+		if boolPtrValue(cluster.PublicFQDNEnabled) && valueOrEmpty(cluster.FQDN) != "" {
+			parts = append(parts, "public-fqdn="+valueOrEmpty(cluster.FQDN))
+		}
+	} else if valueOrEmpty(cluster.FQDN) != "" {
+		parts = append(parts, "api-host="+valueOrEmpty(cluster.FQDN))
+	}
+	if cluster.NetworkPlugin != nil {
+		parts = append(parts, "plugin="+*cluster.NetworkPlugin)
+	}
+	if cluster.NetworkPolicy != nil {
+		parts = append(parts, "policy="+*cluster.NetworkPolicy)
+	}
+	if cluster.OutboundType != nil {
+		parts = append(parts, "outbound="+*cluster.OutboundType)
+	}
+	if len(cluster.AddonNames) == 1 {
+		parts = append(parts, "addons="+cluster.AddonNames[0])
+	} else if len(cluster.AddonNames) > 1 {
+		parts = append(parts, fmt.Sprintf("addons=%s (+%d more)", cluster.AddonNames[0], len(cluster.AddonNames)-1))
+	}
+	if cluster.WebAppRoutingEnabled != nil {
+		if *cluster.WebAppRoutingEnabled {
+			parts = append(parts, "webapp-routing=yes")
+		} else {
+			parts = append(parts, "webapp-routing=no")
+		}
+	}
+	if cluster.NodeResourceGroup != nil {
+		parts = append(parts, "node-rg="+*cluster.NodeResourceGroup)
+	}
+	if boolPtrValue(cluster.OIDCIssuerEnabled) && valueOrEmpty(cluster.OIDCIssuerURL) != "" {
+		parts = append(parts, "oidc-url="+valueOrEmpty(cluster.OIDCIssuerURL))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func aksNote(cluster models.AksClusterAsset) string {
+	if cluster.PrivateClusterEnabled != nil && !*cluster.PrivateClusterEnabled && valueOrEmpty(cluster.FQDN) != "" {
+		parts := []string{"public API stays visible"}
+		if valueOrEmpty(cluster.ClusterIdentityType) == "ServicePrincipal" {
+			parts = append(parts, "service-principal-backed credentials are in use")
+		}
+		if cluster.AzureRBACEnabled != nil && !*cluster.AzureRBACEnabled {
+			parts = append(parts, "Azure RBAC is disabled")
+		}
+		if cluster.LocalAccountsDisabled != nil && !*cluster.LocalAccountsDisabled {
+			parts = append(parts, "local accounts remain enabled")
+		}
+		return "This cluster is the broadest visible AKS surface in the current set: " + strings.Join(parts, ", ") + "."
+	}
+
+	parts := []string{}
+	if boolPtrValue(cluster.PrivateClusterEnabled) {
+		parts = append(parts, "private API is visible")
+	}
+	switch valueOrEmpty(cluster.ClusterIdentityType) {
+	case "SystemAssigned":
+		parts = append(parts, "system-assigned identity is visible")
+	case "UserAssigned":
+		parts = append(parts, "user-assigned identity is visible")
+	case "SystemAssigned, UserAssigned":
+		parts = append(parts, "system- and user-assigned identity is visible")
+	}
+	if boolPtrValue(cluster.AzureRBACEnabled) {
+		parts = append(parts, "Azure RBAC is enabled")
+	}
+	if boolPtrValue(cluster.WorkloadIdentityEnabled) {
+		parts = append(parts, "workload identity is enabled")
+	}
+	if len(parts) == 0 {
+		return "This cluster has narrower visible edge exposure in the current set."
+	}
+	return "This cluster is less exposed at the edge, but it still shows " + strings.Join(parts, ", ") + "."
+}
+
 func acrAuthContext(registry models.AcrRegistryAsset) string {
 	parts := []string{}
 	if registry.AdminUserEnabled != nil {
@@ -960,7 +1141,7 @@ func acrDepthContext(registry models.AcrRegistryAsset) string {
 func acrPostureContext(registry models.AcrRegistryAsset) string {
 	parts := []string{}
 	if registry.SKUName != nil {
-		parts = append(parts, *registry.SKUName)
+		parts = append(parts, "sku="+*registry.SKUName)
 	}
 	if registry.NetworkRuleBypassOptions != nil {
 		parts = append(parts, "bypass="+*registry.NetworkRuleBypassOptions)
@@ -989,6 +1170,56 @@ func acrPostureContext(registry models.AcrRegistryAsset) string {
 		return "-"
 	}
 	return strings.Join(parts, "; ")
+}
+
+func acrOperatorSignal(registry models.AcrRegistryAsset) string {
+	parts := []string{}
+	if posture := acrPostureContext(registry); posture != "-" {
+		parts = append(parts, posture)
+	}
+	if depth := acrDepthContext(registry); depth != "-" {
+		parts = append(parts, depth)
+	}
+	return strings.Join(parts, "; ")
+}
+
+func acrNote(registry models.AcrRegistryAsset) string {
+	if strings.EqualFold(valueOrEmpty(registry.PublicNetworkAccess), "Enabled") ||
+		boolPtrValue(registry.AdminUserEnabled) ||
+		boolPtrValue(registry.AnonymousPullEnabled) {
+		parts := []string{}
+		if strings.EqualFold(valueOrEmpty(registry.PublicNetworkAccess), "Enabled") {
+			parts = append(parts, "public network access")
+		}
+		if boolPtrValue(registry.AdminUserEnabled) {
+			parts = append(parts, "admin-user authentication")
+		}
+		if boolPtrValue(registry.AnonymousPullEnabled) {
+			parts = append(parts, "anonymous pull")
+		}
+		return "This registry is the broadest visible ACR surface in the current set: " + strings.Join(parts, ", ") + " are all enabled."
+	}
+
+	parts := []string{}
+	if strings.EqualFold(valueOrEmpty(registry.PublicNetworkAccess), "Disabled") {
+		parts = append(parts, "public network access is disabled")
+	}
+	if intPtrValue(registry.PrivateEndpointConnectionCount) > 0 {
+		parts = append(parts, "private endpoint coverage is visible")
+	}
+	if valueOrEmpty(registry.WorkloadIdentityType) != "" {
+		parts = append(parts, "managed identity is visible")
+	}
+	if intPtrValue(registry.ReplicationCount) > 0 {
+		parts = append(parts, "replication is visible")
+	}
+	if strings.EqualFold(valueOrEmpty(registry.TrustPolicyStatus), "enabled") {
+		parts = append(parts, "content trust is enabled")
+	}
+	if len(parts) == 0 {
+		return "This registry has narrower visible exposure in the current set."
+	}
+	return "This registry is less exposed at the edge, but it still shows " + strings.Join(parts, ", ") + "."
 }
 
 func databasesInventoryContext(server models.DatabaseServerAsset) string {
@@ -1199,7 +1430,7 @@ func apiMgmtExposureContext(service models.ApiMgmtServiceAsset) string {
 func apiMgmtPostureContext(service models.ApiMgmtServiceAsset) string {
 	parts := []string{}
 	if service.SKUName != nil {
-		parts = append(parts, *service.SKUName)
+		parts = append(parts, "sku="+*service.SKUName)
 	}
 	if service.VirtualNetworkType != nil {
 		parts = append(parts, "vnet="+*service.VirtualNetworkType)
@@ -1226,6 +1457,74 @@ func apiMgmtPostureContext(service models.ApiMgmtServiceAsset) string {
 	return strings.Join(parts, "; ")
 }
 
+func apiMgmtGatewayLabel(service models.ApiMgmtServiceAsset) string {
+	lines := []string{}
+	for _, hostname := range service.GatewayHostnames {
+		lines = append(lines, "gateway: "+hostname)
+	}
+	for _, hostname := range service.ManagementHostnames {
+		lines = append(lines, "management: "+hostname)
+	}
+	for _, hostname := range service.PortalHostnames {
+		lines = append(lines, "portal: "+hostname)
+	}
+	if len(lines) == 0 {
+		return "-"
+	}
+	return strings.Join(lines, "\n")
+}
+
+func apiMgmtOperatorSignal(service models.ApiMgmtServiceAsset) string {
+	parts := []string{}
+	if inventory := apiMgmtInventoryContext(service); inventory != "-" {
+		parts = append(parts, inventory)
+	}
+	if posture := apiMgmtPostureContext(service); posture != "-" {
+		parts = append(parts, posture)
+	}
+	return strings.Join(parts, "; ")
+}
+
+func apiMgmtNote(service models.ApiMgmtServiceAsset) string {
+	if strings.EqualFold(valueOrEmpty(service.PublicNetworkAccess), "Enabled") && len(service.GatewayHostnames) > 0 {
+		parts := []string{"public gateway hostnames are visible"}
+		if len(service.PortalHostnames) > 0 {
+			parts = append(parts, "portal hostnames are visible")
+		}
+		if valueOrEmpty(service.WorkloadIdentityType) != "" {
+			parts = append(parts, "managed identity is visible")
+		}
+		if intPtrValue(service.BackendCount) > 0 {
+			parts = append(parts, "backend depth is visible")
+		}
+		if intPtrValue(service.NamedValueSecretCount) > 0 || intPtrValue(service.NamedValueKeyVaultCount) > 0 {
+			parts = append(parts, "named-value secret depth is visible")
+		}
+		return "This service is the broadest visible API Management surface in the current set: " + strings.Join(parts, ", ") + "."
+	}
+
+	parts := []string{}
+	if strings.EqualFold(valueOrEmpty(service.PublicNetworkAccess), "Disabled") {
+		parts = append(parts, "public network access is disabled")
+	}
+	if valueOrEmpty(service.VirtualNetworkType) != "" {
+		parts = append(parts, "virtual network type "+valueOrEmpty(service.VirtualNetworkType)+" is visible")
+	}
+	if valueOrEmpty(service.WorkloadIdentityType) != "" {
+		parts = append(parts, "managed identity is visible")
+	}
+	if intPtrValue(service.BackendCount) > 0 {
+		parts = append(parts, "backend depth is visible")
+	}
+	if intPtrValue(service.NamedValueSecretCount) > 0 || intPtrValue(service.NamedValueKeyVaultCount) > 0 {
+		parts = append(parts, "named-value secret depth is visible")
+	}
+	if len(parts) == 0 {
+		return "This service has narrower visible API gateway exposure in the current set."
+	}
+	return "This service is less exposed at the edge, but it still shows " + strings.Join(parts, ", ") + "."
+}
+
 func yesNo(value bool) string {
 	if value {
 		return "yes"
@@ -1242,6 +1541,13 @@ func valueOrFallback(value *string, fallback string) string {
 		return fallback
 	}
 	return *value
+}
+
+func stringOrFallback(value string, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
 }
 
 func keyVaultTableDefaultAction(vault models.KeyVaultAsset) string {
@@ -1390,6 +1696,83 @@ func devopsTargetContext(item models.DevopsPipelineAsset) string {
 	return strings.Join(item.TargetClues, ", ")
 }
 
+func devopsOperatorSignal(item models.DevopsPipelineAsset) string {
+	parts := []string{}
+	if access := strings.TrimSpace(devopsAccessContext(item)); access != "" && access != "-" {
+		parts = append(parts, access)
+	}
+	if secret := strings.TrimSpace(devopsSecretContext(item)); secret != "" && secret != "none visible" {
+		parts = append(parts, secret)
+	}
+	if item.PartialRead {
+		parts = append(parts, "read-path coverage still partial")
+	}
+	return strings.Join(parts, "; ")
+}
+
+func devopsNote(item models.DevopsPipelineAsset) string {
+	statement := ""
+	switch {
+	case item.PartialRead:
+		statement = "Trusted input is visible here, but Azure DevOps read coverage is still partial."
+	case len(item.CurrentOperatorInjectionSurfaceTypes) > 0:
+		statement = "Current Azure DevOps evidence shows this pipeline trusts an input the operator can poison here."
+	case devopsPrimaryAccessState(item) == "read":
+		statement = "Trusted repository input is visible here, but current Azure DevOps evidence only proves read access, not poisoning."
+	case devopsPrimaryAccessState(item) == "exists-only":
+		statement = "This path trusts a source reference, but current Azure DevOps evidence only proves that the source exists."
+	case boolPtrValue(item.CurrentOperatorCanQueue):
+		statement = "Current credentials can start this pipeline, but Azure DevOps evidence does not yet prove a poisonable trusted input."
+	default:
+		statement = firstSentence(item.Summary)
+	}
+
+	hint := devopsHint(item)
+	switch {
+	case statement == "":
+		return hint
+	case hint == "":
+		return statement
+	default:
+		return statement + " " + hint
+	}
+}
+
+func devopsHint(item models.DevopsPipelineAsset) string {
+	targetHint := ""
+	for _, clue := range item.TargetClues {
+		switch clue {
+		case "AKS/Kubernetes":
+			targetHint = "Start with aks."
+		case "App Service":
+			targetHint = "Start with app-services."
+		case "Functions":
+			targetHint = "Start with functions."
+		case "ARM/Bicep/Terraform":
+			targetHint = "Start with arm-deployments."
+		case "ACR/Containers":
+			targetHint = "Start with acr."
+		}
+		if targetHint != "" {
+			break
+		}
+	}
+
+	controlHint := ""
+	if len(item.AzureServiceConnectionNames) > 0 {
+		controlHint = "Then validate Azure control behind " + item.AzureServiceConnectionNames[0] + "."
+	}
+
+	switch {
+	case targetHint != "" && controlHint != "":
+		return targetHint + " " + controlHint
+	case targetHint != "":
+		return targetHint
+	default:
+		return controlHint
+	}
+}
+
 func devopsNextReview(item models.DevopsPipelineAsset) string {
 	if item.PartialRead {
 		return "Restore missing Azure DevOps read paths before deciding the next Azure follow-up."
@@ -1475,8 +1858,33 @@ func devopsPrimaryAccessState(item models.DevopsPipelineAsset) string {
 	return item.TrustedInputs[0].CurrentOperatorAccessState
 }
 
+func firstSentence(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	for index, r := range text {
+		if r != '.' && r != '!' && r != '?' {
+			continue
+		}
+		next := index + len(string(r))
+		if next < len(text) && text[next] != ' ' {
+			continue
+		}
+		return strings.TrimSpace(text[:next])
+	}
+	return text
+}
+
 func boolPtrValue(value *bool) bool {
 	return value != nil && *value
+}
+
+func intPtrValue(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func intOrUnknown(value *int) string {
@@ -2211,39 +2619,83 @@ func nicNetworkScopeSummary(nic models.NicAsset) string {
 		value := vnetID
 		vnets = append(vnets, nicDisplayResourceName(&value))
 	}
-	return join(subnets, ", ") + " / " + join(vnets, ", ")
+	parts := []string{}
+	if subnet := join(subnets, ", "); subnet != "" {
+		parts = append(parts, "subnet="+subnet)
+	}
+	if vnet := join(vnets, ", "); vnet != "" {
+		parts = append(parts, "vnet="+vnet)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
 }
 
 func whoAmITable(payload models.WhoAmIOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
-
 	rows := [][]string{
-		{"tenant_id", payload.TenantID},
-		{"subscription_id", payload.Subscription.ID},
-		{"subscription_display_name", payload.Subscription.DisplayName},
-		{"subscription_state", payload.Subscription.State},
-		{"principal_id", payload.Principal.ID},
-		{"principal_type", payload.Principal.PrincipalType},
-		{"principal_display_name", payload.Principal.DisplayName},
-		{"effective_scope_ids", joinScopes(payload.EffectiveScopes, "id")},
-		{"effective_scope_display_names", joinScopes(payload.EffectiveScopes, "display_name")},
-		{"token_source", valueOrEmpty(payload.Metadata.TokenSource)},
-		{"auth_mode", valueOrEmpty(payload.Metadata.AuthMode)},
-		{"schema_version", payload.Metadata.SchemaVersion},
+		{
+			stringOrFallback(payload.Subscription.DisplayName, payload.Subscription.ID),
+			stringOrFallback(payload.Principal.DisplayName, payload.Principal.ID),
+			payload.Principal.PrincipalType,
+			authModeLabel(payload.Metadata.AuthMode),
+			stringOrFallback(valueOrEmpty(payload.Metadata.TokenSource), "unknown"),
+			whoAmIScopeContext(payload.EffectiveScopes),
+		},
+	}
+	return renderListTable(
+		fmt.Sprintf("ho-azure %s", payload.Metadata.Command),
+		[]string{"subscription", "principal", "type", "auth", "token", "scope"},
+		rows,
+		[]string{"unknown", "unknown", "unknown", "unknown", "unknown", "unknown"},
+		whoAmITakeaway(payload),
+	)
+}
+
+func whoAmIScopeContext(scopes []models.ScopeRef) string {
+	if len(scopes) == 0 {
+		return "unknown"
+	}
+	scope := scopes[0]
+	return stringOrFallback(scope.DisplayName, scope.ID)
+}
+
+func whoAmITakeaway(payload models.WhoAmIOutput) string {
+	return fmt.Sprintf(
+		"Operating as %s (%s) in %s via %s.",
+		stringOrFallback(payload.Principal.DisplayName, payload.Principal.ID),
+		stringOrFallback(payload.Principal.PrincipalType, "unknown"),
+		stringOrFallback(payload.Subscription.DisplayName, payload.Subscription.ID),
+		authModeLabel(payload.Metadata.AuthMode),
+	)
+}
+
+func authModeLabel(value *string) string {
+	normalized := strings.TrimSpace(valueOrEmpty(value))
+	if normalized == "" {
+		return "unknown"
 	}
 
-	table := liptable.New().
-		Headers("field", "value").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	return titleStyle.Render(fmt.Sprintf("azurefox %s", payload.Metadata.Command)) + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	switch normalized {
+	case "azure_cli":
+		return "Azure CLI"
+	case "azure_cli_user":
+		return "Azure CLI user"
+	case "azure_cli_service_principal":
+		return "Azure CLI service principal"
+	case "azure_cli_managed_identity":
+		return "Azure CLI managed identity"
+	case "environment":
+		return "Environment credential"
+	case "environment_client_secret":
+		return "Environment client secret"
+	case "environment_client_certificate":
+		return "Environment client certificate"
+	case "fixture":
+		return "Fixture"
+	default:
+		return strings.ReplaceAll(normalized, "_", " ")
+	}
 }
 
 func permissionsTable(payload models.PermissionsOutput) string {
@@ -2276,7 +2728,8 @@ func permissionsTable(payload models.PermissionsOutput) string {
 			return lipgloss.NewStyle()
 		})
 
-	return titleStyle.Render("azurefox permissions") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	return titleStyle.Render("ho-azure permissions") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n" +
+		"\nTakeaway: " + permissionsTakeaway(payload) + "\n"
 }
 
 func principalsTable(payload models.PrincipalsOutput) string {
@@ -2294,7 +2747,7 @@ func principalsTable(payload models.PrincipalsOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox principals",
+		"ho-azure principals",
 		[]string{"principal", "type", "roles", "assignments", "identity context", "sources", "current"},
 		rows,
 		[]string{"No visible principals were confirmed from current scope.", "", "", "", "", "", ""},
@@ -2317,7 +2770,7 @@ func privescTable(payload models.PrivescOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox privesc",
+		"ho-azure privesc",
 		[]string{"priority", "starting foothold", "path type", "target", "operator signal", "note", "next review"},
 		rows,
 		[]string{"No visible privilege-escalation paths were confirmed from current scope.", "", "", "", "", "", ""},
@@ -2339,7 +2792,7 @@ func lighthouseTable(payload models.LighthouseOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox lighthouse",
+		"ho-azure lighthouse",
 		[]string{"scope", "managing tenant", "managed tenant", "access", "state", "why it matters"},
 		rows,
 		[]string{"No visible Azure Lighthouse delegations were confirmed from current scope.", "", "", "", "", ""},
@@ -2362,7 +2815,7 @@ func crossTenantTable(payload models.CrossTenantOutput) string {
 	}
 
 	return renderListTable(
-		"azurefox cross-tenant",
+		"ho-azure cross-tenant",
 		[]string{"signal", "type", "tenant", "scope", "posture", "attack path", "why it matters"},
 		rows,
 		[]string{"No visible cross-tenant signals were confirmed from current scope.", "", "", "", "", "", ""},
@@ -2381,12 +2834,17 @@ func authPoliciesTable(payload models.AuthPoliciesOutput) string {
 		})
 	}
 
-	return renderListTable(
-		"azurefox auth-policies",
+	output := renderListTable(
+		"ho-azure auth-policies",
 		[]string{"policy", "state", "scope", "operator signal"},
 		rows,
 		[]string{"No visible auth policy rows were confirmed from current scope.", "", "", ""},
 		authPoliciesTakeaway(payload),
+	)
+	return appendCustomFindingsSection(output, payload.Findings,
+		func(f models.AuthPolicyFinding) string { return f.Severity },
+		func(f models.AuthPolicyFinding) string { return f.Title },
+		func(f models.AuthPolicyFinding) string { return f.Description },
 	)
 }
 
@@ -2403,49 +2861,87 @@ func resourceTrustsTable(payload models.ResourceTrustsOutput) string {
 		})
 	}
 
-	return renderListTable(
-		"azurefox resource-trusts",
+	output := renderListTable(
+		"ho-azure resource-trusts",
 		[]string{"resource", "type", "trust", "target", "exposure", "why it matters"},
 		rows,
 		[]string{"No visible resource trust surfaces were confirmed from current scope.", "", "", "", "", ""},
 		resourceTrustsTakeaway(payload),
 	)
+	return appendCustomFindingsSection(output, payload.Findings,
+		func(f models.ResourceTrustFinding) string { return f.Severity },
+		func(f models.ResourceTrustFinding) string { return f.Title },
+		func(f models.ResourceTrustFinding) string { return f.Description },
+	)
+}
+
+func appCredentialsTable(payload models.AppCredentialsOutput) string {
+	if len(payload.AppCredentials) == 0 {
+		return renderListTable(
+			"ho-azure app-credentials",
+			[]string{"target", "row", "auth surface"},
+			nil,
+			[]string{"No visible high-signal application or service-principal credential rows were confirmed from current scope.", "", ""},
+			appCredentialsTakeaway(payload),
+		)
+	}
+
+	sections := make([]string, 0, len(payload.AppCredentials))
+	for index, item := range payload.AppCredentials {
+		row := renderStructuredTableWithTitle(
+			"ho-azure app-credentials",
+			[]string{"target", "row", "auth surface"},
+			[][]string{{
+				appCredentialTargetLabel(item),
+				appCredentialRowClassLabel(item.RowClass),
+				appCredentialSurfaceLabel(item.CredentialType),
+			}},
+			index == 0,
+		)
+		note := renderWrappedNoteTableWithWidth(appCredentialEvidenceLabel(item), renderedTableCellWidth(row))
+		sections = append(sections, joinRenderedSections(row, note))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + appCredentialsTakeaway(payload) + "\n"
 }
 
 func roleTrustsTable(payload models.RoleTrustsOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
-
-	rows := make([][]string, 0, len(payload.Trusts))
-	for _, trust := range payload.Trusts {
-		rows = append(rows, []string{
-			trust.TrustType,
-			valueOrEmpty(trust.SourceName),
-			valueOrEmpty(trust.TargetName),
-			trust.Confidence,
-			valueOrEmpty(trust.OperatorSignal),
-			valueOrEmpty(trust.NextReview),
-		})
-	}
-	if len(rows) == 0 {
-		rows = append(rows, []string{"", "no trust edges visible", "", "", "", ""})
-	}
-
-	table := liptable.New().
-		Headers("trust", "source", "target", "confidence", "operator signal", "next review").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	body := titleStyle.Render("azurefox role-trusts") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
 	if len(payload.Trusts) == 0 {
-		return body
+		return renderListTable(
+			"ho-azure role-trusts",
+			[]string{"info"},
+			nil,
+			[]string{"No visible role-trusts were confirmed from current scope."},
+			"",
+		)
 	}
-	return body + "\nTakeaway: " + roleTrustsTakeaway(payload) + "\n"
+
+	sections := make([]string, 0, len(payload.Trusts))
+	for index, trust := range payload.Trusts {
+		sections = append(sections, renderStructuredTableWithTitle(
+			"ho-azure role-trusts",
+			[]string{"trust", "source", "target", "confidence", "operator signal", "next review"},
+			[][]string{{
+				trust.TrustType,
+				stringOrFallback(valueOrEmpty(trust.SourceName), trust.SourceObjectID),
+				stringOrFallback(valueOrEmpty(trust.TargetName), trust.TargetObjectID),
+				trust.Confidence,
+				valueOrEmpty(trust.OperatorSignal),
+				valueOrEmpty(trust.NextReview),
+			}},
+			index == 0,
+		))
+		if visibleTransform := roleTrustVisibleTransform(trust); visibleTransform != "" {
+			sections = append(sections, renderStructuredTableWithTitle(
+				"",
+				[]string{"how control could widen"},
+				[][]string{{visibleTransform}},
+				false,
+			))
+		}
+	}
+
+	return strings.Join(sections, "\n") + "\nTakeaway: " + roleTrustsTakeaway(payload) + "\n"
 }
 
 func resourceTrustsTakeaway(payload models.ResourceTrustsOutput) string {
@@ -2476,6 +2972,199 @@ func resourceTrustsTakeaway(payload models.ResourceTrustsOutput) string {
 		len(payload.ResourceTrusts),
 		strings.Join(parts, ", "),
 	)
+}
+
+func appCredentialsTakeaway(payload models.AppCredentialsOutput) string {
+	if len(payload.AppCredentials) == 0 {
+		return "0 app-credential rows visible; no high-signal credential or federated-trust evidence surfaced from the current foothold."
+	}
+
+	counts := map[string]int{}
+	for _, item := range payload.AppCredentials {
+		counts[item.RowClass]++
+	}
+
+	parts := []string{}
+	if counts["directly_addable_federated_trust"] > 0 {
+		parts = append(parts, fmt.Sprintf("%d direct federated-trust control path(s)", counts["directly_addable_federated_trust"]))
+	}
+	if counts["directly_addable"] > 0 {
+		parts = append(parts, fmt.Sprintf("%d direct credential-control path(s)", counts["directly_addable"]))
+	}
+	if counts["federated_trust_present"] > 0 {
+		parts = append(parts, fmt.Sprintf("%d existing federated trust row(s)", counts["federated_trust_present"]))
+	}
+	if counts["existing_credential"] > 0 {
+		parts = append(parts, fmt.Sprintf("%d existing credential row(s)", counts["existing_credential"]))
+	}
+	if counts["control_context_only"] > 0 {
+		parts = append(parts, fmt.Sprintf("%d control-context-only row(s)", counts["control_context_only"]))
+	}
+	if len(parts) == 0 {
+		parts = append(parts, "no classified app-credential evidence")
+	}
+
+	return fmt.Sprintf("%d app-credential row(s) visible; %s.", len(payload.AppCredentials), strings.Join(parts, ", "))
+}
+
+func inventoryTakeaway(payload models.InventoryOutput) string {
+	return fmt.Sprintf("%d resources across %d resource groups.", payload.ResourceCount, payload.ResourceGroupCount)
+}
+
+func rbacTakeaway(payload models.RbacOutput) string {
+	return fmt.Sprintf("%d RBAC assignments across %d principals.", len(payload.RoleAssignments), len(payload.Principals))
+}
+
+func endpointsTakeaway(payload models.EndpointsOutput) string {
+	families := map[string]int{}
+	for _, endpoint := range payload.Endpoints {
+		key := endpoint.ExposureFamily
+		if key == "" {
+			key = "unknown"
+		}
+		families[key]++
+	}
+
+	ordered := []string{"public-ip", "managed-web-hostname"}
+	seen := map[string]bool{}
+	parts := []string{}
+	for _, key := range ordered {
+		if families[key] > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", families[key], key))
+			seen[key] = true
+		}
+	}
+	for _, key := range sortedFamilyKeys(families) {
+		if seen[key] {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", families[key], key))
+	}
+
+	counts := "no reachable surfaces visible"
+	if len(parts) > 0 {
+		counts = strings.Join(parts, ", ")
+	}
+	return fmt.Sprintf("%d reachable surfaces visible; %s.", len(payload.Endpoints), counts)
+}
+
+func nicsTakeaway(payload models.NicsOutput) string {
+	attached := 0
+	publicRefs := 0
+	for _, nic := range payload.NicAssets {
+		if nic.AttachedAssetID != nil && strings.TrimSpace(*nic.AttachedAssetID) != "" {
+			attached++
+		}
+		publicRefs += len(nic.PublicIPIDs)
+	}
+	return fmt.Sprintf("%d NICs visible; %d attached to visible assets and %d reference public IP resources.", len(payload.NicAssets), attached, publicRefs)
+}
+
+func permissionsTakeaway(payload models.PermissionsOutput) string {
+	privileged := 0
+	workloadPivots := 0
+	trustFollowOns := 0
+	for _, permission := range payload.Permissions {
+		if permission.Privileged {
+			privileged++
+		}
+		signal := strings.ToLower(permission.OperatorSignal)
+		if strings.Contains(signal, "workload pivot visible") {
+			workloadPivots++
+		}
+		if strings.Contains(signal, "trust expansion follow-on") {
+			trustFollowOns++
+		}
+	}
+	return fmt.Sprintf("%d of %d principals hold high-impact RBAC roles; %d workload-pivot follow-ons and %d trust-expansion follow-ons.", privileged, len(payload.Permissions), workloadPivots, trustFollowOns)
+}
+
+func appendFindingsSection(output string, findings []models.Finding) string {
+	return appendCustomFindingsSection(output, findings,
+		func(f models.Finding) string { return f.Severity },
+		func(f models.Finding) string { return f.Title },
+		func(f models.Finding) string { return f.Description },
+	)
+}
+
+func appendCustomFindingsSection[T any](output string, findings []T, severity func(T) string, title func(T) string, description func(T) string) string {
+	if len(findings) == 0 {
+		return output
+	}
+
+	findingsBlock := "\nFindings:\n"
+	for _, finding := range findings {
+		findingsBlock += fmt.Sprintf("- %s: %s\n", strings.ToUpper(severity(finding)), title(finding))
+		findingsBlock += fmt.Sprintf("  %s\n", description(finding))
+	}
+
+	if marker := strings.Index(output, "\nTakeaway: "); marker >= 0 {
+		return output[:marker] + findingsBlock + output[marker:]
+	}
+	if !strings.HasSuffix(output, "\n") {
+		output += "\n"
+	}
+	return output + findingsBlock
+}
+
+func appendPayloadFindingsSection(output string, payload any) string {
+	if strings.Contains(output, "\nFindings:\n") {
+		return output
+	}
+
+	findings := payloadFindings(payload)
+	if len(findings) == 0 {
+		return output
+	}
+
+	findingsBlock := "\nFindings:\n"
+	limit := minInt(len(findings), 5)
+	for _, finding := range findings[:limit] {
+		findingsBlock += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
+		findingsBlock += fmt.Sprintf("  %s\n", finding.Description)
+	}
+	if remaining := len(findings) - limit; remaining > 0 {
+		findingsBlock += fmt.Sprintf("- ... plus %d more findings in JSON artifacts.\n", remaining)
+	}
+	return insertBeforeTakeaway(output, findingsBlock)
+}
+
+func appendPayloadIssuesSection(output string, payload any) string {
+	if strings.Contains(output, "\nCurrent-scope issues:\n") {
+		return output
+	}
+
+	issues := payloadIssues(payload)
+	if len(issues) == 0 {
+		return output
+	}
+
+	issuesBlock := "\nCurrent-scope issues:\n"
+	limit := minInt(len(issues), 5)
+	for _, issue := range issues[:limit] {
+		issuesBlock += fmt.Sprintf("- %s: %s\n", issue.Kind, issue.Message)
+	}
+	if remaining := len(issues) - limit; remaining > 0 {
+		issuesBlock += fmt.Sprintf("- ... plus %d more current-scope issues in JSON artifacts.\n", remaining)
+	}
+	return insertBeforeTakeaway(output, issuesBlock)
+}
+
+func insertBeforeTakeaway(output string, block string) string {
+	if marker := strings.Index(output, "\nTakeaway: "); marker >= 0 {
+		return output[:marker] + block + output[marker:]
+	}
+	if !strings.HasSuffix(output, "\n") {
+		output += "\n"
+	}
+	return output + block
+}
+
+func minInt(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func resourceTrustDisplayName(trust models.ResourceTrustSummary) string {
@@ -2741,6 +3430,13 @@ func authPoliciesTakeaway(payload models.AuthPoliciesOutput) string {
 	return fmt.Sprintf("%d policy rows, %d findings, and %d current-scope issues.", len(payload.AuthPolicies), len(payload.Findings), len(payload.Issues))
 }
 
+func roleTrustVisibleTransform(trust models.RoleTrustSummary) string {
+	if value := strings.TrimSpace(valueOrEmpty(trust.UsableIdentityResult)); value != "" {
+		return value
+	}
+	return strings.TrimSpace(valueOrEmpty(trust.EscalationMechanism))
+}
+
 func roleTrustsTakeaway(payload models.RoleTrustsOutput) string {
 	families := map[string]int{}
 	for _, trust := range payload.Trusts {
@@ -2810,15 +3506,12 @@ func managedIdentitiesTable(payload models.ManagedIdentitiesOutput) string {
 			return lipgloss.NewStyle()
 		})
 
-	output := titleStyle.Render("azurefox managed-identities") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
-	if len(payload.Findings) > 0 {
-		output += "\nFindings:\n"
-		for _, finding := range payload.Findings {
-			output += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
-			output += fmt.Sprintf("  %s\n", finding.Description)
-		}
-	}
-
+	output := titleStyle.Render("ho-azure managed-identities") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	output = appendCustomFindingsSection(output, payload.Findings,
+		func(f models.ManagedIdentityFinding) string { return f.Severity },
+		func(f models.ManagedIdentityFinding) string { return f.Title },
+		func(f models.ManagedIdentityFinding) string { return f.Description },
+	)
 	return output + "\nTakeaway: " + managedIdentitiesTakeaway(payload) + "\n"
 }
 
@@ -2843,45 +3536,50 @@ func managedIdentitiesTakeaway(payload models.ManagedIdentitiesOutput) string {
 }
 
 func envVarsTable(payload models.EnvVarsOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
+	if len(payload.EnvVars) == 0 {
+		output := renderStructuredTableWithTitle(
+			"",
+			[]string{"workload", "kind", "setting", "value type", "identity", "reference"},
+			[][]string{{"no environment variable rows visible", "", "", "", "", ""}},
+			false,
+		)
+		output = appendCustomFindingsSection(output, payload.Findings,
+			func(f models.EnvVarFinding) string { return f.Severity },
+			func(f models.EnvVarFinding) string { return f.Title },
+			func(f models.EnvVarFinding) string { return f.Description },
+		)
+		return output + "\nTakeaway: " + envVarsTakeaway(payload) + "\n"
+	}
 
-	rows := make([][]string, 0, len(payload.EnvVars))
+	sections := make([]string, 0, len(payload.EnvVars))
 	for _, envVar := range payload.EnvVars {
-		rows = append(rows, []string{
-			envVar.AssetName,
-			envVar.AssetKind,
-			envVarIdentityContext(envVar),
-			envVar.SettingName,
-			envVar.ValueType,
-			envVarSignal(envVar),
-			envVarNextReview(envVar),
-			envVar.Summary,
-		})
-	}
-	if len(rows) == 0 {
-		rows = append(rows, []string{"", "", "no environment variable rows visible", "", "", "", "", ""})
-	}
-
-	table := liptable.New().
-		Headers("workload", "kind", "identity", "setting", "value type", "signal", "next review", "why it matters").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	output := titleStyle.Render("azurefox env-vars") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
-	if len(payload.Findings) > 0 {
-		output += "\nFindings:\n"
-		for _, finding := range payload.Findings {
-			output += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
-			output += fmt.Sprintf("  %s\n", finding.Description)
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"workload", "kind", "setting", "value type", "identity", "reference"},
+			[][]string{{
+				envVar.AssetName,
+				envVar.AssetKind,
+				envVar.SettingName,
+				envVar.ValueType,
+				envVarWorkloadIdentityLabel(envVar),
+				envVarReferenceLabel(envVar),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := envVarNote(envVar); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
 		}
+		sections = append(sections, joinRenderedSections(parts...))
 	}
 
+	output := joinRenderedBlocks(sections) + "\n"
+	output = appendCustomFindingsSection(output, payload.Findings,
+		func(f models.EnvVarFinding) string { return f.Severity },
+		func(f models.EnvVarFinding) string { return f.Title },
+		func(f models.EnvVarFinding) string { return f.Description },
+	)
 	return output + "\nTakeaway: " + envVarsTakeaway(payload) + "\n"
 }
 
@@ -2916,16 +3614,635 @@ func tokensCredentialsTable(payload models.TokensCredentialsOutput) string {
 			return lipgloss.NewStyle()
 		})
 
-	output := titleStyle.Render("azurefox tokens-credentials") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
-	if len(payload.Findings) > 0 {
-		output += "\nFindings:\n"
-		for _, finding := range payload.Findings {
-			output += fmt.Sprintf("- %s: %s\n", strings.ToUpper(finding.Severity), finding.Title)
-			output += fmt.Sprintf("  %s\n", finding.Description)
-		}
+	output := titleStyle.Render("ho-azure tokens-credentials") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
+	output = appendCustomFindingsSection(output, payload.Findings,
+		func(f models.TokenCredentialFinding) string { return f.Severity },
+		func(f models.TokenCredentialFinding) string { return f.Title },
+		func(f models.TokenCredentialFinding) string { return f.Description },
+	)
+	return output + "\nTakeaway: " + tokensCredentialsTakeaway(payload) + "\n"
+}
+
+func chainsOverviewTable(payload models.ChainsOverviewOutput) string {
+	rows := make([][]string, 0, len(payload.Families))
+	for _, family := range payload.Families {
+		rows = append(rows, []string{
+			family.Family,
+			family.State,
+			family.Summary,
+			strings.Join(family.BestCurrentExamples, ", "),
+			chainsBackingCommands(family.SourceCommands),
+		})
 	}
 
-	return output + "\nTakeaway: " + tokensCredentialsTakeaway(payload) + "\n"
+	output := renderListTable(
+		"ho-azure chains",
+		[]string{"family", "state", "summary", "best examples", "backing commands"},
+		rows,
+		[]string{"no chain families are currently registered", "", "", "", ""},
+		"",
+	)
+
+	boundaryRows := make([][]string, 0, len(payload.Families))
+	for _, family := range payload.Families {
+		boundaryRows = append(boundaryRows, []string{
+			family.Family,
+			family.AllowedClaim,
+			family.CurrentGap,
+		})
+	}
+
+	return output + "\n" + renderStructuredTable(
+		"chains claim boundaries",
+		[]string{"family", "allowed claim", "current gap"},
+		boundaryRows,
+	)
+}
+
+func chainsFamilyTable(payload models.ChainsOutput) string {
+	if renderer, ok := chainsFamilyTableRenderers[payload.Family]; ok {
+		return renderer(payload)
+	}
+
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			path.Priority,
+			path.AssetName,
+			valueOrEmpty(path.SettingName),
+			path.TargetService,
+			path.TargetResolution,
+			strings.Join(path.TargetNames, ","),
+			path.NextReview,
+			credentialPathNote(path),
+		})
+	}
+
+	return renderListTable(
+		"ho-azure chains",
+		[]string{"priority", "asset", "setting", "target", "target resolution", "visible targets", "next review", "note"},
+		rows,
+		[]string{"no visible credential paths were confirmed from current scope", "", "", "", "", "", "", ""},
+		chainsCredentialPathTakeaway(payload.Paths),
+	)
+}
+
+func chainsCredentialPathTable(payload models.ChainsOutput) string {
+	sections := []string{}
+
+	if len(payload.Paths) == 0 {
+		sections = append(sections, renderListTable(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "asset", "setting", "target", "target resolution", "visible targets", "next review", "confidence boundary"},
+			nil,
+			[]string{"no visible credential paths were confirmed from current scope", "", "", "", "", "", "", "", ""},
+			"",
+		))
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+
+	for _, path := range payload.Paths {
+		sections = append(sections, renderStructuredTableWithTitle(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "asset", "setting", "target", "target resolution", "visible targets", "next review", "confidence boundary"},
+			[][]string{{
+				path.Priority,
+				valueOrEmpty(path.Urgency),
+				path.AssetName,
+				valueOrEmpty(path.SettingName),
+				path.TargetService,
+				path.TargetResolution,
+				chainsTargetContext(path),
+				path.NextReview,
+				credentialPathConfidenceBoundary(path),
+			}},
+			len(sections) == 0,
+		))
+	}
+
+	return strings.Join(sections, "\n\n") + "\n"
+}
+
+func chainsComputeControlTable(payload models.ChainsOutput) string {
+	sections := []string{}
+
+	if len(payload.Paths) == 0 {
+		sections = append(sections, renderListTable(
+			"ho-azure chains",
+			[]string{"priority", "when", "reach from here", "compute foothold", "token path", "identity", "Azure access", "proof status"},
+			nil,
+			[]string{"no visible compute-control paths were confirmed from current scope", "", "", "", "", "", "", ""},
+			"",
+		))
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+
+	for _, path := range payload.Paths {
+		row := renderStructuredTableWithTitle(
+			"ho-azure chains",
+			[]string{"priority", "when", "reach from here", "compute foothold", "token path", "identity", "Azure access", "proof status"},
+			[][]string{{
+				path.Priority,
+				computeControlWhenLabel(valueOrEmpty(path.Urgency)),
+				computeControlReachFromHereLabel(valueOrEmpty(path.InsertionPoint)),
+				path.AssetName,
+				computeControlTokenPathLabel(valueOrEmpty(path.InsertionPoint)),
+				computeControlIdentityLabel(path.TargetNames),
+				firstNonEmptyText(valueOrEmpty(path.StrongerOutcome), valueOrEmpty(path.LikelyImpact), "-"),
+				computeControlProofStatusLabel(path.TargetResolution),
+			}},
+			len(sections) == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := firstNonEmptyText(valueOrEmpty(path.Note), valueOrEmpty(path.WhyCare)); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		if missingConfirmation := strings.TrimSpace(path.MissingConfirmation); missingConfirmation != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("what is still missing", missingConfirmation, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+	return joinRenderedBlocks(sections) + "\n"
+}
+
+func chainsDeploymentPathTable(payload models.ChainsOutput) string {
+	sections := []string{}
+
+	if len(payload.Paths) == 0 {
+		sections = append(sections, renderListTable(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "source", "actionability", "insertion point", "likely azure impact", "what's missing", "next review"},
+			nil,
+			[]string{"no visible deployment paths were confirmed from current scope", "", "", "", "", "", "", ""},
+			"",
+		))
+		if payload.ClaimBoundary != "" {
+			sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+		}
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+
+	for _, path := range payload.Paths {
+		row := renderStructuredTableWithTitle(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "source", "actionability", "insertion point", "likely azure impact", "what's missing", "next review"},
+			[][]string{{
+				path.Priority,
+				valueOrEmpty(path.Urgency),
+				valueOrEmpty(path.Source),
+				firstNonEmpty(path.Actionability, path.ActionabilityState),
+				valueOrEmpty(path.InsertionPointLabel),
+				firstNonEmpty(path.LikelyAzureImpact, path.LikelyImpact),
+				firstNonEmpty(path.WhatsMissing, path.ConfidenceBoundary),
+				path.NextReview,
+			}},
+			len(sections) == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := firstNonEmpty(path.Note, path.WhyCare); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+	if payload.ClaimBoundary != "" {
+		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+	}
+	return joinRenderedBlocks(sections) + "\n"
+}
+
+func chainsEscalationPathTable(payload models.ChainsOutput) string {
+	sections := []string{}
+
+	if len(payload.Paths) == 0 {
+		sections = append(sections, renderListTable(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "starting foothold", "path type", "stronger outcome"},
+			nil,
+			[]string{"no visible escalation paths were confirmed from current scope", "", "", "", ""},
+			"",
+		))
+		if payload.ClaimBoundary != "" {
+			sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+		}
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+
+	for _, path := range payload.Paths {
+		row := renderStructuredTableWithTitle(
+			"ho-azure chains",
+			[]string{"priority", "urgency", "starting foothold", "path type", "stronger outcome"},
+			[][]string{{
+				path.Priority,
+				valueOrEmpty(path.Urgency),
+				firstNonEmptyText(valueOrEmpty(path.StartingFoothold), path.AssetName),
+				firstNonEmptyText(valueOrEmpty(path.PathType), chainsEscalationPathTypeLabel(valueOrEmpty(path.PathConcept))),
+				firstNonEmptyText(valueOrEmpty(path.StrongerOutcome), valueOrEmpty(path.LikelyImpact), "Potential stronger Azure control; exact privilege not yet confirmed"),
+			}},
+			len(sections) == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := firstNonEmptyText(valueOrEmpty(path.Note), valueOrEmpty(path.WhyCare)); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+	if payload.ClaimBoundary != "" {
+		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+	}
+	return joinRenderedBlocks(sections) + "\n"
+}
+
+func chainsTargetContext(path models.ChainPathRecord) string {
+	if path.TargetVisibility != nil && strings.TrimSpace(*path.TargetVisibility) != "" {
+		return *path.TargetVisibility
+	}
+	if len(path.TargetNames) == 0 {
+		if path.TargetCount > 0 {
+			return fmt.Sprintf("%d visible target(s)", path.TargetCount)
+		}
+		return "none visible"
+	}
+	if len(path.TargetNames) == 1 {
+		return path.TargetNames[0]
+	}
+	return strings.Join(path.TargetNames, "\n")
+}
+
+func credentialPathConfidenceBoundary(path models.ChainPathRecord) string {
+	if path.ConfidenceBoundary != nil && strings.TrimSpace(*path.ConfidenceBoundary) != "" {
+		return *path.ConfidenceBoundary
+	}
+	if note := credentialPathNote(path); strings.TrimSpace(note) != "" {
+		return note
+	}
+	return path.Summary
+}
+
+func chainsEscalationPathTypeLabel(pathConcept string) string {
+	switch pathConcept {
+	case "current-foothold-direct-control":
+		return "current foothold direct control"
+	case "app-permission-reach":
+		return "app-permission reach"
+	case "trust-expansion":
+		return "trust expansion"
+	default:
+		return firstNonEmptyText(pathConcept, "escalation path")
+	}
+}
+
+func computeControlWhenLabel(urgency string) string {
+	switch urgency {
+	case "pivot-now":
+		return "act now"
+	case "review-soon":
+		return "review soon"
+	case "bookmark":
+		return "keep in view"
+	default:
+		return firstNonEmptyText(urgency, "-")
+	}
+}
+
+func computeControlTokenPathLabel(insertionPoint string) string {
+	switch insertionPoint {
+	case "reachable service token request path":
+		return "service token request"
+	case "public IMDS token path":
+		return "public VM metadata token"
+	case "IMDS token path":
+		return "VM metadata token"
+	default:
+		return firstNonEmptyText(insertionPoint, "-")
+	}
+}
+
+func computeControlReachFromHereLabel(insertionPoint string) string {
+	switch insertionPoint {
+	case "reachable service token request path", "public IMDS token path":
+		return "public exposure visible; exploitation not proved"
+	default:
+		return "current access does not show the start"
+	}
+}
+
+func computeControlIdentityLabel(targetNames []string) string {
+	names := make([]string, 0, len(targetNames))
+	for _, name := range targetNames {
+		if strings.TrimSpace(name) != "" {
+			names = append(names, name)
+		}
+	}
+	switch len(names) {
+	case 0:
+		return "not visible"
+	case 1:
+		return names[0]
+	default:
+		return "multiple possible: " + strings.Join(names, ", ")
+	}
+}
+
+func computeControlProofStatusLabel(targetResolution string) string {
+	switch targetResolution {
+	case "path-confirmed":
+		return "confirmed"
+	case "identity-choice-corroborated":
+		return "best current match"
+	case "narrowed candidates":
+		return "multiple identities possible"
+	case "visibility blocked":
+		return "limited visibility"
+	case "tenant-wide candidates":
+		return "broad match only"
+	case "service hint only":
+		return "early signal only"
+	case "named target not visible":
+		return "named identity not visible"
+	default:
+		return "bounded"
+	}
+}
+
+func firstNonEmptyText(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func appCredentialTargetLabel(item models.AppCredentialSummary) string {
+	target := firstNonEmptyText(item.TargetObjectName, item.TargetObjectID, "unknown target")
+	if item.TargetObjectType == "" {
+		return target
+	}
+	return fmt.Sprintf("%s (%s)", target, item.TargetObjectType)
+}
+
+func appCredentialRowClassLabel(rowClass string) string {
+	switch rowClass {
+	case "directly_addable_federated_trust":
+		return "direct federated trust control"
+	case "directly_addable":
+		return "direct credential control"
+	case "federated_trust_present":
+		return "federated trust present"
+	case "existing_credential":
+		return "credential material present"
+	case "control_context_only":
+		return "control context only"
+	default:
+		return firstNonEmptyText(rowClass, "unknown")
+	}
+}
+
+func appCredentialSurfaceLabel(kind *string) string {
+	switch valueOrEmpty(kind) {
+	case "password":
+		return "password credential"
+	case "key":
+		return "key credential"
+	case "federated":
+		return "federated trust"
+	case "password-or-key":
+		return "password or key"
+	default:
+		return "-"
+	}
+}
+
+func appCredentialEvidenceLabel(item models.AppCredentialSummary) string {
+	evidence := firstNonEmptyText(item.CurrentEvidence, item.Summary, "-")
+	roleContext := strings.TrimSpace(item.RoleContext)
+	if roleContext == "" {
+		return evidence
+	}
+	switch {
+	case strings.Contains(strings.ToLower(roleContext), "high-impact azure roles"):
+		return evidence + " " + appCredentialRoleContextLabel(roleContext)
+	case strings.Contains(strings.ToLower(roleContext), "visible azure roles"):
+		return evidence + " " + appCredentialRoleContextLabel(roleContext)
+	default:
+		return evidence
+	}
+}
+
+func appCredentialRoleContextLabel(roleContext string) string {
+	lower := strings.ToLower(strings.TrimSpace(roleContext))
+	switch {
+	case strings.Contains(lower, "high-impact azure roles"):
+		return strings.Replace(roleContext, "Backed identity", "Backing identity", 1)
+	case strings.Contains(lower, "visible azure roles"):
+		return strings.Replace(roleContext, "Backed identity", "Backing identity", 1)
+	default:
+		return roleContext
+	}
+}
+
+func wrapTableNote(text string, width int) string {
+	text = strings.TrimSpace(text)
+	if text == "" || width <= 0 {
+		return text
+	}
+
+	paragraphs := strings.Split(text, "\n")
+	lines := make([]string, 0, len(paragraphs))
+	for _, paragraph := range paragraphs {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			lines = append(lines, "")
+			continue
+		}
+		for _, sentence := range splitTableNoteSentences(paragraph) {
+			lines = append(lines, wrapTableNoteLine(sentence, width)...)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderWrappedNoteTable(note string) string {
+	return renderWrappedNoteTableWithWidth(note, findingNoteWrapWidth)
+}
+
+func renderWrappedNoteTableWithWidth(note string, width int) string {
+	return renderWrappedDetailTableWithWidth("note", note, width)
+}
+
+func renderWrappedDetailTableWithWidth(title string, text string, width int) string {
+	if width <= 0 {
+		width = findingNoteWrapWidth
+	}
+	return renderStructuredTableWithTitle(
+		"",
+		[]string{title},
+		[][]string{{wrapTableNote(text, width)}},
+		false,
+	)
+}
+
+func renderedTableCellWidth(rendered string) int {
+	maxWidth := 0
+	for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+		if width := lipgloss.Width(line); width > maxWidth {
+			maxWidth = width
+		}
+	}
+	if maxWidth <= 2 {
+		return findingNoteWrapWidth
+	}
+	return maxWidth - 2
+}
+
+func joinRenderedSections(sections ...string) string {
+	normalized := make([]string, 0, len(sections))
+	for _, section := range sections {
+		section = strings.TrimRight(section, "\n")
+		if section == "" {
+			continue
+		}
+		normalized = append(normalized, section)
+	}
+	return strings.Join(normalized, "\n")
+}
+
+func joinRenderedBlocks(blocks []string) string {
+	normalized := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		block = strings.TrimRight(block, "\n")
+		if block == "" {
+			continue
+		}
+		normalized = append(normalized, block)
+	}
+	return strings.Join(normalized, "\n\n")
+}
+
+func splitTableNoteSentences(text string) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+
+	sentences := []string{}
+	start := 0
+	for index, r := range text {
+		if r != '.' && r != '!' && r != '?' {
+			continue
+		}
+		next := index + len(string(r))
+		if next < len(text) && text[next] != ' ' {
+			continue
+		}
+		sentence := strings.TrimSpace(text[start:next])
+		if sentence != "" {
+			sentences = append(sentences, sentence)
+		}
+		start = next
+	}
+
+	remainder := strings.TrimSpace(text[start:])
+	if remainder != "" {
+		sentences = append(sentences, remainder)
+	}
+	if len(sentences) == 0 {
+		return []string{text}
+	}
+	return sentences
+}
+
+func wrapTableNoteLine(text string, width int) []string {
+	words := strings.Fields(strings.TrimSpace(text))
+	if len(words) == 0 {
+		return nil
+	}
+
+	lines := []string{}
+	current := words[0]
+	for _, word := range words[1:] {
+		if len(current)+1+len(word) <= width {
+			current += " " + word
+			continue
+		}
+		lines = append(lines, current)
+		current = word
+	}
+	lines = append(lines, current)
+	return lines
+}
+
+func chainsBackingCommands(sources []models.ChainSourceDescriptor) string {
+	commands := make([]string, 0, len(sources))
+	for _, source := range sources {
+		if source.Command != "" {
+			commands = append(commands, source.Command)
+		}
+	}
+	return strings.Join(commands, ", ")
+}
+
+func credentialPathNote(path models.ChainPathRecord) string {
+	switch path.TargetResolution {
+	case "named match":
+		return "Named target matched visible inventory."
+	case "visibility blocked":
+		return path.TargetService + " visibility is blocked; do not infer a target."
+	case "narrowed candidates":
+		return "Secret-shaped clue suggests a " + path.TargetService + " path; exact target unconfirmed."
+	case "tenant-wide candidates":
+		return "This app likely reaches " + path.TargetService + ", but the target set is still broad."
+	case "service hint only":
+		return "HO-Azure sees a likely " + path.TargetService + " path, but no target inventory yet."
+	case "named target not visible":
+		return "This app names a " + path.TargetService + " target HO-Azure cannot see in current inventory."
+	default:
+		return path.Summary
+	}
+}
+
+func chainsCredentialPathTakeaway(paths []models.ChainPathRecord) string {
+	if len(paths) == 0 {
+		return "No visible credential paths were confirmed from current scope."
+	}
+
+	priorityCounts := map[string]int{}
+	targetCounts := map[string]int{}
+	for _, path := range paths {
+		priorityCounts[path.Priority]++
+		targetCounts[path.TargetService]++
+	}
+
+	parts := []string{
+		fmt.Sprintf("%d visible credential paths", len(paths)),
+	}
+	for _, priority := range []string{"high", "medium", "low"} {
+		if count := priorityCounts[priority]; count > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", count, priority))
+		}
+	}
+	targets := make([]string, 0, len(targetCounts))
+	for target := range targetCounts {
+		targets = append(targets, target)
+	}
+	sort.Strings(targets)
+	for _, target := range targets {
+		parts = append(parts, fmt.Sprintf("%d %s", targetCounts[target], target))
+	}
+
+	return strings.Join(parts, ", ") + "."
+}
+
+func firstNonEmpty(values ...*string) string {
+	for _, value := range values {
+		if value != nil && strings.TrimSpace(*value) != "" {
+			return *value
+		}
+	}
+	return ""
 }
 
 func envVarsTakeaway(payload models.EnvVarsOutput) string {
@@ -2971,6 +4288,33 @@ func envVarIdentityContext(envVar models.EnvVarSummary) string {
 	return strings.Join(parts, "; ")
 }
 
+func envVarWorkloadIdentityLabel(envVar models.EnvVarSummary) string {
+	identityType := valueOrEmpty(envVar.WorkloadIdentityType)
+	switch {
+	case identityType == "" && len(envVar.WorkloadIdentityIDs) == 0:
+		return "-"
+	case len(envVar.WorkloadIdentityIDs) == 0:
+		return identityType
+	case identityType == "":
+		return fmt.Sprintf("%d user-assigned", len(envVar.WorkloadIdentityIDs))
+	default:
+		return fmt.Sprintf("%s (%d user-assigned)", identityType, len(envVar.WorkloadIdentityIDs))
+	}
+}
+
+func envVarReferenceLabel(envVar models.EnvVarSummary) string {
+	target := valueOrEmpty(envVar.ReferenceTarget)
+	refIdentity := valueOrEmpty(envVar.KeyVaultReferenceIdentity)
+	switch {
+	case target == "":
+		return "-"
+	case refIdentity == "":
+		return target
+	default:
+		return target + "\nreference identity: " + refIdentity
+	}
+}
+
 func envVarSignal(envVar models.EnvVarSummary) string {
 	parts := make([]string, 0, 3)
 	if envVar.LooksSensitive {
@@ -2996,6 +4340,22 @@ func envVarNextReview(envVar models.EnvVarSummary) string {
 		valueOrEmpty(envVar.WorkloadIdentityType),
 		envVar.TargetServices,
 	)
+}
+
+func envVarNote(envVar models.EnvVarSummary) string {
+	if envVar.ValueType == "keyvault-ref" {
+		return "This setting maps to Key Vault-backed configuration."
+	}
+
+	if envVar.LooksSensitive && envVar.ValueType == "plain-text" {
+		return "This setting looks sensitive and remains exposed as plain-text management-plane app configuration."
+	}
+
+	if envVar.ValueType == "plain-text" {
+		return "This setting remains visible through management-plane app configuration."
+	}
+
+	return strings.TrimSpace(envVar.Summary)
 }
 
 func envVarNextReviewHint(valueType string, looksSensitive bool, referenceTarget string, workloadIdentityType string, targetServices []models.EnvVarTargetService) string {
