@@ -1,4 +1,4 @@
-name: release
+name: ho-azure release
 
 on:
   push:
@@ -32,9 +32,9 @@ jobs:
       - name: Smoke-test fixtureless execution
         run: |
           set -euo pipefail
-          go build -o /tmp/azurefox ./cmd/azurefox
-          /tmp/azurefox help >/dev/null
-          /tmp/azurefox whoami --output json >/dev/null
+          go build -o /tmp/ho-azure ./cmd/azurefox
+          /tmp/ho-azure help >/dev/null
+          /tmp/ho-azure whoami --output json >/dev/null
 
   build:
     runs-on: ubuntu-latest
@@ -82,8 +82,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist pkg
-          binary_name="azurefox${{ matrix.binary_ext }}"
-          package_root="azurefox-${{ matrix.goos }}-${{ matrix.goarch }}"
+          binary_name="ho-azure${{ matrix.binary_ext }}"
+          package_root="ho-azure-${{ matrix.goos }}-${{ matrix.goarch }}"
           package_dir="pkg/${package_root}"
 
           go build -trimpath -ldflags="-s -w" -o "${package_dir}/${binary_name}" ./cmd/azurefox
