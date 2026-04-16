@@ -1,0 +1,78 @@
+{
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "event-grid",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  },
+  "routes": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stlanding/providers/Microsoft.EventGrid/eventSubscriptions/to-function",
+      "route": "to-function",
+      "source": "stlanding (Microsoft.Storage/storageAccounts)",
+      "destination": "fa-ingest/BlobCreated",
+      "destination_type": "AzureFunction",
+      "classification": "execution-capable",
+      "source_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stlanding",
+      "source_type": "Microsoft.Storage/storageAccounts",
+      "destination_target_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-app/providers/Microsoft.Web/sites/fa-ingest/functions/BlobCreated",
+      "external_delivery": false,
+      "provisioning_state": "Succeeded",
+      "event_delivery_schema": "EventGridSchema",
+      "included_event_types": [
+        "Microsoft.Storage.BlobCreated"
+      ],
+      "summary": "Storage account events are visibly routed into an Azure Function destination, so this path already looks execution-capable from the current control-plane read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stlanding",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-app/providers/Microsoft.Web/sites/fa-ingest/functions/BlobCreated"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.EventGrid/topics/ops-topic/providers/Microsoft.EventGrid/eventSubscriptions/to-webhook",
+      "route": "to-webhook",
+      "source": "ops-topic (Microsoft.EventGrid/topics)",
+      "destination": "webhook (redacted)",
+      "destination_type": "WebHook",
+      "classification": "external-callback",
+      "source_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.EventGrid/topics/ops-topic",
+      "source_type": "Microsoft.EventGrid/topics",
+      "external_delivery": true,
+      "provisioning_state": "Succeeded",
+      "event_delivery_schema": "CloudEventSchemaV1_0",
+      "included_event_types": [
+        "All"
+      ],
+      "summary": "Custom topic events are visibly delivered to a webhook destination. The base command keeps the callback target redacted, but this route already crosses the normal Azure service boundary.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.EventGrid/topics/ops-topic"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/providers/Microsoft.EventGrid/eventSubscriptions/subscription-to-queue",
+      "route": "subscription-to-queue",
+      "source": "subscription root (subscription)",
+      "destination": "incoming-events",
+      "destination_type": "StorageQueue",
+      "classification": "supporting-context",
+      "source_id": "/subscriptions/22222222-2222-2222-2222-222222222222",
+      "source_type": "subscription",
+      "destination_target_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-queue/providers/Microsoft.Storage/storageAccounts/stqueue/queueServices/default/queues/incoming-events",
+      "external_delivery": false,
+      "provisioning_state": "Succeeded",
+      "event_delivery_schema": "EventGridSchema",
+      "included_event_types": [
+        "Microsoft.Resources.ResourceWriteSuccess"
+      ],
+      "summary": "Subscription-scoped resource events are visibly buffered into Storage Queue. This is useful trigger context, but the current read path does not yet show the consumer that would turn the queue into execution.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-queue/providers/Microsoft.Storage/storageAccounts/stqueue/queueServices/default/queues/incoming-events"
+      ]
+    }
+  ]
+}

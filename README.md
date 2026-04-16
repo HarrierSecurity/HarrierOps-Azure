@@ -1,5 +1,9 @@
 # HarrierOps Azure
 
+<p align="center">
+  <img src="assets/ho-azure-logo.png" alt="HarrierOps Azure logo" height="280" />
+</p>
+
 Find attack paths, pivot opportunities, and movement across Azure before you drown in inventory.
 
 Most Azure tools tell you what exists.
@@ -101,7 +105,8 @@ ho-azure permissions
 
 | Grouped Command | Live Families |
 | --- | --- |
-| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control. |
+| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control.<br><br>`persistence-path`<br>Highlights the durable identity and Automation surfaces that can keep Azure access in place or recreate it later. |
+| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place. |
 
 ### Flat Commands
 
@@ -319,14 +324,17 @@ Artifact intent:
   follow-up and later chain-oriented workflows
 - `table/` and `csv/` are convenience views rendered from the same underlying command result
 
-## Sections And Chains
+## Sections And Grouped Commands
 
-HarrierOps Azure keeps flat standalone commands and also supports grouped execution through `chains`.
+HarrierOps Azure keeps flat standalone commands and also supports grouped execution through `chains`
+and `persistence`.
 
 For narrower current work:
 
 - run the flat commands directly when you already know the lane you want
 - use `chains` when you want a higher-value grouped answer instead of every source command on its own
+- use `persistence` when you want a service-specific end-to-end persistence walkthrough from the
+  current identity
 
 Current section mappings:
 
@@ -338,7 +346,7 @@ Current section mappings:
 - `network`: `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`
 - `compute`: `workloads`, `app-services`, `functions`, `container-apps`, `container-instances`, `aks`, `vms`, `vmss`, `snapshots-disks`
 - `core`: `inventory`
-- `orchestration`: `chains`
+- `orchestration`: `chains`, `persistence`
 
 Current `chains` families:
 
@@ -346,6 +354,11 @@ Current `chains` families:
 - `deployment-path`
 - `escalation-path`
 - `compute-control`
+- `persistence-path`
+
+Current `persistence` surfaces:
+
+- `automation`
 
 ## Help
 
@@ -363,7 +376,7 @@ ho-azure -h permissions
 Command help includes ATT&CK cloud leads as investigation prompts, not proof that a technique
 occurred.
 
-Help also points grouped follow-up toward `chains` where those presets exist.
+Help also points grouped follow-up toward `chains` and `persistence` where those presets exist.
 
 For ad hoc demos or local testing, use a dedicated path like `--outdir ./ho-azure-demo` so
 artifacts do not pile up in the repo root.

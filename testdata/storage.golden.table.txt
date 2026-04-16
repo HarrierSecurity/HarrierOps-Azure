@@ -4,12 +4,12 @@ context :: tenant=auto subscription=auto output=table
 [storage] Checking storage exposure and network posture for likely data targets.
 ho-azure storage
 
-╭───────────┬──────────────┬───────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────┬───────────────────────────────────────┬────────────────────────────────╮
-│account    │resource group│exposure                                                               │auth / transport                         │protocols                              │inventory                       │
-├───────────┼──────────────┼───────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────┼───────────────────────────────────────┼────────────────────────────────┤
-│stlabpub01 │rg-data       │blob-public=yes; public-net=enabled; default=Allow; private-endpoint=no│shared-key=yes; tls=TLS1_0; https-only=no│hns=no; sftp=no; nfs=no; dns=standard  │blob=3; file=1; queue=2; table=0│
-│stlabpriv01│rg-data       │blob-public=no; public-net=disabled; default=Deny; private-endpoint=yes│shared-key=no; tls=TLS1_2; https-only=yes│hns=yes; sftp=yes; nfs=no; dns=standard│blob=2; file=0; queue=0; table=1│
-╰───────────┴──────────────┴───────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────┴───────────────────────────────────────┴────────────────────────────────╯
+╭─────────────┬────────────────┬─────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────┬─────────────────────────────────────────┬──────────────────────────────────╮
+│ account     │ resource group │ exposure                                                                │ auth / transport                          │ protocols                               │ inventory                        │
+├─────────────┼────────────────┼─────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────┼─────────────────────────────────────────┼──────────────────────────────────┤
+│ stlabpub01  │ rg-data        │ blob-public=yes; public-net=enabled; default=Allow; private-endpoint=no │ shared-key=yes; tls=TLS1_0; https-only=no │ hns=no; sftp=no; nfs=no; dns=standard   │ blob=3; file=1; queue=2; table=0 │
+│ stlabpriv01 │ rg-data        │ blob-public=no; public-net=disabled; default=Deny; private-endpoint=yes │ shared-key=no; tls=TLS1_2; https-only=yes │ hns=yes; sftp=yes; nfs=no; dns=standard │ blob=2; file=0; queue=0; table=1 │
+╰─────────────┴────────────────┴─────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────┴─────────────────────────────────────────┴──────────────────────────────────╯
 
 Findings:
 - HIGH: Storage account allows public blob access

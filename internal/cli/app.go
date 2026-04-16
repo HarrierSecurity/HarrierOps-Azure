@@ -30,7 +30,7 @@ var (
 		"-h":     {},
 		"--help": {},
 	}
-	sectionOrder      = []string{"identity", "core", "config", "storage", "secrets", "resource", "compute", "network", "ai"}
+	sectionOrder      = []string{"identity", "core", "config", "storage", "secrets", "resource", "compute", "workflow", "network", "orchestration", "ai"}
 	sectionHelpTopics = map[string]sectionHelpTopic{
 		"identity": {
 			Summary:      "Review caller context, RBAC, principal trust, and tenant-wide identity control paths.",
@@ -60,9 +60,17 @@ var (
 			Summary:      "Review workload-bearing assets for identity, ingress, and runtime follow-up.",
 			OperatorGoal: "Identify the workloads that most change reachable execution, identity pivot, or deployment paths.",
 		},
+		"workflow": {
+			Summary:      "Review workflow and event-driven surfaces that can re-enter, schedule, or route useful execution paths.",
+			OperatorGoal: "Find the visible workflows, event routes, and ML runtime surfaces most worth operator follow-up first.",
+		},
 		"network": {
 			Summary:      "Review ingress, addressability, and network boundary context around visible assets.",
 			OperatorGoal: "Understand what is reachable, what it belongs to, and which network clues deserve follow-up first.",
+		},
+		"orchestration": {
+			Summary:      "Run grouped operator views that turn multiple source commands into one higher-value answer.",
+			OperatorGoal: "Start from the next operator question instead of manually stitching several flat command outputs together.",
 		},
 		"ai": {
 			Summary:      "Reserved for future coverage.",
@@ -131,6 +139,7 @@ func (app *App) Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		Subscription:       options.Subscription,
 		DevOpsOrganization: options.DevOpsOrganization,
 		ChainFamily:        options.ChainFamily,
+		PersistenceSurface: options.PersistenceSurface,
 		Output:             options.Output,
 		RoleTrustsMode:     options.RoleTrustsMode,
 		OutDir:             options.OutDir,
@@ -172,6 +181,7 @@ type Options struct {
 	Subscription       string
 	DevOpsOrganization string
 	ChainFamily        string
+	PersistenceSurface string
 	Output             models.OutputMode
 	RoleTrustsMode     models.RoleTrustsMode
 	OutDir             string
@@ -224,6 +234,12 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 		}
 		args = args[1:]
 	}
+	if commandName == "persistence" && len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		if args[0] != "help" {
+			options.PersistenceSurface = args[0]
+		}
+		args = args[1:]
+	}
 
 	if err := flags.Parse(args); err != nil {
 		return Options{}, err
@@ -235,6 +251,16 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 		case 1:
 			if remainingArgs[0] != "help" {
 				options.ChainFamily = remainingArgs[0]
+			}
+		default:
+			return Options{}, fmt.Errorf("unexpected arguments: %s", strings.Join(remainingArgs, " "))
+		}
+	} else if commandName == "persistence" {
+		switch len(remainingArgs) {
+		case 0:
+		case 1:
+			if remainingArgs[0] != "help" {
+				options.PersistenceSurface = remainingArgs[0]
 			}
 		default:
 			return Options{}, fmt.Errorf("unexpected arguments: %s", strings.Join(remainingArgs, " "))
@@ -277,7 +303,7 @@ func (app *App) rootHelp() string {
 	}
 	builder.WriteString("\nNotes:\n")
 	builder.WriteString("  - Shared flags such as --tenant, --subscription, --output, and --outdir work before or after the command.\n")
-	builder.WriteString("  - Grouped chains help stays available while additional chain families land.\n")
+	builder.WriteString("  - Grouped `chains` and `persistence` help stays available while additional grouped surfaces land.\n")
 	builder.WriteString("  - Default output prefers exact claims when proven and bounded weaker claims when they stay honest and useful.\n")
 	return builder.String()
 }
@@ -325,6 +351,17 @@ func (app *App) commandHelp(name string) string {
 				continue
 			}
 			builder.WriteString(fmt.Sprintf("  %s: %s\n", family.Name, family.Summary))
+		}
+	}
+	if name == "persistence" {
+		builder.WriteString("\nUsage:\n  ho-azure persistence [surface|help] [flags]\n")
+		builder.WriteString("\nCurrent surfaces:\n")
+		for _, surfaceName := range contracts.PersistenceSurfaceNames() {
+			surface, ok := contracts.PersistenceSurface(surfaceName)
+			if !ok {
+				continue
+			}
+			builder.WriteString(fmt.Sprintf("  %s: %s\n", surface.Name, surface.Summary))
 		}
 	}
 	builder.WriteString("\nNotes:\n")
@@ -378,6 +415,8 @@ func commandExample(name string) string {
 		return "ho-azure role-trusts --mode full --output table"
 	case "chains":
 		return "ho-azure chains deployment-path --output table"
+	case "persistence":
+		return "ho-azure persistence automation --output table"
 	default:
 		return fmt.Sprintf("ho-azure %s --output table", name)
 	}

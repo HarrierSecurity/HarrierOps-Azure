@@ -4,14 +4,14 @@ context :: tenant=auto subscription=auto output=table
 [keyvault] Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.
 ho-azure keyvault
 
-╭─────────────┬──────────────┬──────────────┬────────────────────────────┬────────────────┬────────────────┬─────────╮
-│vault        │resource group│public network│default action              │private endpoint│purge protection│rbac mode│
-├─────────────┼──────────────┼──────────────┼────────────────────────────┼────────────────┼────────────────┼─────────┤
-│kvlabopen01  │rg-secrets    │Enabled       │implicit allow (ACL omitted)│no              │no              │no       │
-│kvlabdeny01  │rg-secrets    │Enabled       │Deny                        │no              │yes             │yes      │
-│kvlabhybrid01│rg-secrets    │Enabled       │Deny                        │yes             │yes             │yes      │
-│kvlabpriv01  │rg-secrets    │Disabled      │Deny                        │yes             │yes             │yes      │
-╰─────────────┴──────────────┴──────────────┴────────────────────────────┴────────────────┴────────────────┴─────────╯
+╭───────────────┬────────────────┬────────────────┬──────────────────────────────┬──────────────────┬──────────────────┬───────────╮
+│ vault         │ resource group │ public network │ default action               │ private endpoint │ purge protection │ rbac mode │
+├───────────────┼────────────────┼────────────────┼──────────────────────────────┼──────────────────┼──────────────────┼───────────┤
+│ kvlabopen01   │ rg-secrets     │ Enabled        │ implicit allow (ACL omitted) │ no               │ no               │ no        │
+│ kvlabdeny01   │ rg-secrets     │ Enabled        │ Deny                         │ no               │ yes              │ yes       │
+│ kvlabhybrid01 │ rg-secrets     │ Enabled        │ Deny                         │ yes              │ yes              │ yes       │
+│ kvlabpriv01   │ rg-secrets     │ Disabled       │ Deny                         │ yes              │ yes              │ yes       │
+╰───────────────┴────────────────┴────────────────┴──────────────────────────────┴──────────────────┴──────────────────┴───────────╯
 
 Findings:
 - HIGH: Key Vault is broadly reachable on the public network

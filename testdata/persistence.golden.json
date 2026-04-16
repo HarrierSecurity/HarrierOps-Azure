@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "command_state": "implemented",
+  "current_behavior": "Grouped persistence walkthroughs. Use `ho-azure persistence` or `ho-azure persistence help` to list surfaces, then `ho-azure persistence \u003csurface\u003e` to run an implemented surface.",
+  "planned_input_modes": [
+    "live"
+  ],
+  "preferred_artifact_order": [
+    "loot",
+    "json"
+  ],
+  "selected_surface": null,
+  "surfaces": [
+    {
+      "surface": "automation",
+      "state": "implemented",
+      "summary": "Walk the current identity through the end-to-end Azure Automation steps that can store runnable code and make Azure invoke it again later.",
+      "operator_question": "Given the current identity, how far can I go in Azure Automation to create, modify, publish, and trigger automation that Azure will run again later?",
+      "backing_commands": [
+        "automation",
+        "permissions",
+        "rbac"
+      ]
+    }
+  ],
+  "issues": []
+}

@@ -3,15 +3,15 @@ package models
 type TokenCredentialSurfaceSummary struct {
 	AccessPath     string                     `json:"access_path"`
 	AssetID        string                     `json:"asset_id"`
-	AssetKind      string                     `json:"asset_kind"`
-	AssetName      string                     `json:"asset_name"`
+	AssetKind      string                     `json:"kind"`
+	AssetName      string                     `json:"asset"`
 	Location       *string                    `json:"location"`
 	OperatorSignal string                     `json:"operator_signal"`
 	Priority       string                     `json:"priority"`
 	RelatedIDs     []string                   `json:"related_ids"`
 	ResourceGroup  *string                    `json:"resource_group"`
 	Summary        string                     `json:"summary"`
-	SurfaceType    TokenCredentialSurfaceType `json:"surface_type"`
+	SurfaceType    TokenCredentialSurfaceType `json:"surface"`
 
 	NextReviewKind    TokenCredentialNextReviewKind `json:"-"`
 	PubliclyReachable bool                          `json:"-"`

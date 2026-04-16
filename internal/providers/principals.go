@@ -96,7 +96,7 @@ func principalsFactsFromSources(
 			continue
 		}
 		record := ensureRecord(*identity.PrincipalID)
-		record.principalType = normalizePrincipalType(record.principalType, "ServicePrincipal")
+		record.principalType = normalizePrincipalType(record.principalType, "ManagedIdentity")
 		if record.displayName == "" {
 			record.displayName = identity.Name
 		}

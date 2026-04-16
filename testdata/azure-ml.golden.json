@@ -1,0 +1,140 @@
+{
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "azure-ml",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  },
+  "workspaces": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub",
+      "workspace": "ml-ops-hub",
+      "runtime": "compute=2; jobs=2; schedules=1",
+      "serving": "endpoints=1; auth=AADToken; public=Enabled",
+      "identity": "SystemAssigned,UserAssigned; user-assigned=1",
+      "storage": "datastores=2; storage-account; key-vault; container-registry",
+      "classification": "execution-capable",
+      "resource_group": "rg-ml",
+      "location": "eastus",
+      "workspace_kind": "Default",
+      "state": "Succeeded",
+      "public_network_access": "Enabled",
+      "identity_type": "SystemAssigned,UserAssigned",
+      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "identity_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub/identities/system",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-ml-ops"
+      ],
+      "compute_count": 2,
+      "compute_types": [
+        "ComputeCluster",
+        "ComputeInstance"
+      ],
+      "job_count": 2,
+      "job_types": [
+        "Command",
+        "Pipeline"
+      ],
+      "schedule_count": 1,
+      "schedule_trigger_types": [
+        "Cron"
+      ],
+      "endpoint_count": 1,
+      "endpoint_auth_modes": [
+        "AADToken"
+      ],
+      "endpoint_public_access": [
+        "Enabled"
+      ],
+      "datastore_count": 2,
+      "datastore_types": [
+        "AzureBlob",
+        "AzureDataLakeGen2"
+      ],
+      "storage_account_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stamlops",
+      "key_vault_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-amlops",
+      "container_registry_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-app/providers/Microsoft.ContainerRegistry/registries/cramlops",
+      "summary": "Visible Azure ML workspace already shows execution-capable runtime surfaces through compute, jobs, and an online endpoint. Cron-backed scheduling is also visible, and the workspace carries managed identity plus linked datastore and storage context for follow-up.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub/identities/system",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-ml-ops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stamlops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-amlops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-app/providers/Microsoft.ContainerRegistry/registries/cramlops"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-nightly-train",
+      "workspace": "ml-nightly-train",
+      "runtime": "schedules=1",
+      "storage": "datastores=1; storage-account",
+      "classification": "supporting-persistence-context",
+      "resource_group": "rg-ml",
+      "location": "centralus",
+      "workspace_kind": "Default",
+      "state": "Succeeded",
+      "public_network_access": "Disabled",
+      "identity_ids": null,
+      "compute_count": 0,
+      "compute_types": null,
+      "job_count": 0,
+      "job_types": null,
+      "schedule_count": 1,
+      "schedule_trigger_types": [
+        "Recurrence"
+      ],
+      "endpoint_count": 0,
+      "endpoint_auth_modes": null,
+      "endpoint_public_access": null,
+      "datastore_count": 1,
+      "datastore_types": [
+        "AzureBlob"
+      ],
+      "storage_account_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmltrain",
+      "summary": "Visible recurrence-backed scheduling makes this workspace relevant as persistence-adjacent ML context. The current control-plane read path does not yet prove a stronger compute, job, or serving surface behind that schedule.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-nightly-train",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmltrain"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-catalog",
+      "workspace": "ml-catalog",
+      "storage": "datastores=2; storage-account",
+      "classification": "supporting-context",
+      "resource_group": "rg-ml",
+      "location": "westus2",
+      "workspace_kind": "Default",
+      "state": "Succeeded",
+      "public_network_access": "Enabled",
+      "identity_ids": null,
+      "compute_count": 0,
+      "compute_types": null,
+      "job_count": 0,
+      "job_types": null,
+      "schedule_count": 0,
+      "schedule_trigger_types": null,
+      "endpoint_count": 0,
+      "endpoint_auth_modes": null,
+      "endpoint_public_access": null,
+      "datastore_count": 2,
+      "datastore_types": [
+        "AzureBlob",
+        "AzureDataLakeGen2"
+      ],
+      "storage_account_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmlcatalog",
+      "application_insights_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/components/ai-mlcatalog",
+      "summary": "Visible Azure ML workspace currently reads more like supporting context than an active execution surface. Storage-linked and datastore relationships are visible, but no compute, job, schedule, or online endpoint is confirmed from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-catalog",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmlcatalog",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/components/ai-mlcatalog"
+      ]
+    }
+  ]
+}

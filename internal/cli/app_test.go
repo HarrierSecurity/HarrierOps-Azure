@@ -124,6 +124,24 @@ func implementedArtifactCases() []artifactCase {
 		csvGolden:    "chains-compute-control.golden.csv",
 		tableGolden:  "chains-compute-control.golden.table.txt",
 	})
+	cases = append(cases, artifactCase{
+		name:         "chains-persistence-path",
+		args:         []string{"chains", "persistence-path", "--output", "json"},
+		artifactBase: "chains",
+		jsonGolden:   "chains-persistence-path.golden.json",
+		lootGolden:   "chains-persistence-path.golden.json",
+		csvGolden:    "chains-persistence-path.golden.csv",
+		tableGolden:  "chains-persistence-path.golden.table.txt",
+	})
+	cases = append(cases, artifactCase{
+		name:         "persistence-automation",
+		args:         []string{"persistence", "automation", "--output", "json"},
+		artifactBase: "persistence",
+		jsonGolden:   "persistence-automation.golden.json",
+		lootGolden:   "persistence-automation.golden.json",
+		csvGolden:    "persistence-automation.golden.csv",
+		tableGolden:  "persistence-automation.golden.table.txt",
+	})
 
 	return cases
 }
@@ -253,6 +271,41 @@ func TestSectionHelpTopicIsAvailable(t *testing.T) {
 	}
 }
 
+func TestWorkflowSectionHelpTopicIsAvailable(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"help", "workflow"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "HO-Azure Help :: workflow") {
+		t.Fatalf("expected workflow section help output, got %q", stdout.String())
+	}
+	for _, commandName := range []string{"logic-apps:", "event-grid:", "azure-ml:"} {
+		if !strings.Contains(stdout.String(), commandName) {
+			t.Fatalf("expected workflow section help to include %q, got %q", commandName, stdout.String())
+		}
+	}
+}
+
+func TestRootHelpListsWorkflowSection(t *testing.T) {
+	app := newTestApp()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := app.Run([]string{"help"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "workflow: Review workflow and event-driven surfaces") {
+		t.Fatalf("expected root help to list workflow section, got %q", stdout.String())
+	}
+}
+
 func TestRootHelpListsOnlyImplementedCommands(t *testing.T) {
 	app := newTestApp()
 
@@ -318,6 +371,15 @@ func TestChainsHelpMatchesOverviewJSON(t *testing.T) {
 	assertMatchesGolden(t, overview, "chains.golden.json")
 	if overview != helpView {
 		t.Fatalf("expected chains help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
+	}
+}
+
+func TestPersistenceHelpMatchesOverviewJSON(t *testing.T) {
+	overview, _ := runSuccess(t, "persistence", "--output", "json")
+	helpView, _ := runSuccess(t, "persistence", "help", "--output", "json")
+	assertMatchesGolden(t, overview, "persistence.golden.json")
+	if overview != helpView {
+		t.Fatalf("expected persistence help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
 	}
 }
 

@@ -127,6 +127,10 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.PermissionsOutput:
 		return cloneIssues(out.Issues)
+	case models.PersistenceAutomationOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceOverviewOutput:
+		return cloneIssues(out.Issues)
 	case models.PrincipalsOutput:
 		return cloneIssues(out.Issues)
 	case models.PrivescOutput:

@@ -26,6 +26,9 @@ var commandNarration = map[string]string{
 	"aks":                "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
 	"api-mgmt":           "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
 	"functions":          "Reviewing Function App runtime, storage binding, identity, and deployment posture.",
+	"azure-ml":           "Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.",
+	"event-grid":         "Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.",
+	"logic-apps":         "Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.",
 	"arm-deployments":    "Reviewing ARM deployment history for config exposure and linked content.",
 	"endpoints":          "Mapping reachable IP and hostname surfaces from compute and web workloads.",
 	"network-effective":  "Prioritizing likely public-IP reachability by combining visible endpoint and NSG evidence.",
@@ -50,20 +53,27 @@ var commandNarration = map[string]string{
 	"vms":                "Summarizing reachable compute assets and identity-bearing workloads.",
 	"vmss":               "Reviewing Virtual Machine Scale Sets (VMSS) for fleet posture, identity, and frontend network cues.",
 	"chains":             "Correlating grouped chain evidence with conservative cross-command joins.",
+	"persistence":        "Walking the current identity through Azure-native persistence surfaces one service at a time.",
 }
 
 var commandCompactIntroHint = map[string]string{
-	"aks":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"acr":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"api-mgmt": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"env-vars": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"aks":                "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"acr":                "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"api-mgmt":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"env-vars":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"functions":          "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"azure-ml":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"event-grid":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"logic-apps":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"tokens-credentials": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
 }
 
 var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
-	"compute-control": chainsComputeControlTable,
-	"credential-path": chainsCredentialPathTable,
-	"deployment-path": chainsDeploymentPathTable,
-	"escalation-path": chainsEscalationPathTable,
+	"compute-control":  chainsComputeControlTable,
+	"credential-path":  chainsCredentialPathTable,
+	"deployment-path":  chainsDeploymentPathTable,
+	"escalation-path":  chainsEscalationPathTable,
+	"persistence-path": chainsPersistencePathTable,
 }
 
 func chainsTableRenderer(payload any) (string, error) {
@@ -89,9 +99,20 @@ func Table(command string, payload any, context models.RenderContext) (string, e
 	if err != nil {
 		return "", err
 	}
-	body = appendPayloadFindingsSection(body, payload)
+	if !commandSuppressesBottomFindings(command) {
+		body = appendPayloadFindingsSection(body, payload)
+	}
 	body = appendPayloadIssuesSection(body, payload)
 	return renderTableDocument(command, context, body), nil
+}
+
+func commandSuppressesBottomFindings(command string) bool {
+	switch command {
+	case "tokens-credentials":
+		return true
+	default:
+		return false
+	}
 }
 
 func renderStructuredTable(title string, headers []string, rows [][]string) string {
@@ -99,7 +120,8 @@ func renderStructuredTable(title string, headers []string, rows [][]string) stri
 }
 
 func renderStructuredTableWithTitle(title string, headers []string, rows [][]string, includeTitle bool) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := cellStyle.Bold(true)
 	titleStyle := lipgloss.NewStyle().Bold(true)
 
 	table := liptable.New().
@@ -109,7 +131,7 @@ func renderStructuredTableWithTitle(title string, headers []string, rows [][]str
 			if row == liptable.HeaderRow {
 				return headerStyle
 			}
-			return lipgloss.NewStyle()
+			return cellStyle
 		})
 
 	body := strings.TrimRight(table.String(), "\n") + "\n"
@@ -232,21 +254,39 @@ func appServicesTable(payload models.AppServicesOutput) string {
 }
 
 func functionsTable(payload models.FunctionsOutput) string {
-	rows := make([][]string, 0, len(payload.FunctionApps))
-	for _, app := range payload.FunctionApps {
-		rows = append(rows, []string{
-			app.Name,
-			valueOrEmpty(app.DefaultHostname),
-			functionRuntimeContext(app),
-			resourceIdentityContext(app.WorkloadIdentityType, app.WorkloadIdentityIDs),
-			functionDeploymentContext(app),
-			functionPostureContext(app),
-			app.Summary,
-		})
+	if len(payload.FunctionApps) == 0 {
+		return renderListTable(
+			"ho-azure functions",
+			[]string{"function app", "hostname", "runtime", "identity", "deployment"},
+			nil,
+			[]string{"no Function Apps visible", "", "", "", ""},
+			functionsTakeaway(payload),
+		)
 	}
-	return renderListTable("ho-azure functions", []string{
-		"function app", "hostname", "runtime", "identity", "deployment", "posture", "why it matters",
-	}, rows, []string{"no Function Apps visible", "", "", "", "", "", ""}, functionsTakeaway(payload))
+
+	sections := make([]string, 0, len(payload.FunctionApps))
+	for _, app := range payload.FunctionApps {
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"function app", "hostname", "runtime", "identity", "deployment"},
+			[][]string{{
+				app.Name,
+				valueOrEmpty(app.DefaultHostname),
+				functionRuntimeContext(app),
+				resourceIdentityContext(app.WorkloadIdentityType, app.WorkloadIdentityIDs),
+				functionDeploymentContext(app),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := strings.TrimSpace(app.Summary); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + functionsTakeaway(payload) + "\n"
 }
 
 func containerAppsTable(payload models.ContainerAppsOutput) string {
@@ -2699,7 +2739,8 @@ func authModeLabel(value *string) string {
 }
 
 func permissionsTable(payload models.PermissionsOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := cellStyle.Bold(true)
 	titleStyle := lipgloss.NewStyle().Bold(true)
 
 	rows := make([][]string, 0, len(payload.Permissions))
@@ -2725,7 +2766,7 @@ func permissionsTable(payload models.PermissionsOutput) string {
 			if row == liptable.HeaderRow {
 				return headerStyle
 			}
-			return lipgloss.NewStyle()
+			return cellStyle
 		})
 
 	return titleStyle.Render("ho-azure permissions") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n" +
@@ -2756,26 +2797,38 @@ func principalsTable(payload models.PrincipalsOutput) string {
 }
 
 func privescTable(payload models.PrivescOutput) string {
-	rows := make([][]string, 0, len(payload.Paths))
-	for _, path := range payload.Paths {
-		rows = append(rows, []string{
-			path.Priority,
-			path.StartingFoothold,
-			privescPathLabel(path.PathType),
-			privescTarget(path),
-			path.OperatorSignal,
-			privescProofBoundary(path),
-			path.NextReview,
-		})
+	if len(payload.Paths) == 0 {
+		return renderListTable(
+			"ho-azure privesc",
+			[]string{"priority", "starting foothold", "path type", "target"},
+			nil,
+			[]string{"No visible privilege-escalation paths were confirmed from current scope.", "", "", ""},
+			privescTakeaway(payload),
+		)
 	}
 
-	return renderListTable(
-		"ho-azure privesc",
-		[]string{"priority", "starting foothold", "path type", "target", "operator signal", "note", "next review"},
-		rows,
-		[]string{"No visible privilege-escalation paths were confirmed from current scope.", "", "", "", "", "", ""},
-		privescTakeaway(payload),
-	)
+	sections := make([]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		row := renderStructuredTableWithTitle(
+			"",
+			[]string{"priority", "starting foothold", "path type", "target"},
+			[][]string{{
+				path.Priority,
+				path.StartingFoothold,
+				privescPathLabel(path.PathType),
+				privescTarget(path),
+			}},
+			false,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := privescNote(path); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + privescTakeaway(payload) + "\n"
 }
 
 func lighthouseTable(payload models.LighthouseOutput) string {
@@ -3362,15 +3415,16 @@ func privescProofBoundary(path models.PrivescPathSummary) string {
 
 func privescTarget(path models.PrivescPathSummary) string {
 	if path.CurrentIdentity {
-		return "current foothold"
+		return "current foothold (" + privescOperatorPrincipalType(path.PrincipalType) + ")"
 	}
 	principal := strings.TrimSpace(path.Principal)
 	asset := strings.TrimSpace(valueOrEmpty(path.Asset))
+	principalType := privescOperatorPrincipalType(path.PrincipalType)
 	if principal != "" && asset != "" {
-		return principal + " via " + asset
+		return principalType + " " + principal + " via " + asset
 	}
 	if principal != "" {
-		return principal
+		return principalType + " " + principal
 	}
 	if asset != "" {
 		return asset
@@ -3423,7 +3477,78 @@ func privescTakeaway(payload models.PrivescOutput) string {
 		visibleLabel = "visible-only lead"
 	}
 
-	return fmt.Sprintf("%d privilege-escalation paths surfaced; %d current-identity-rooted, %d %s, %s.", len(payload.Paths), rooted, visibleOnly, visibleLabel, counts)
+	countSummary := fmt.Sprintf("%d privilege-escalation paths surfaced; %d current-identity-rooted, %d %s, %s.", len(payload.Paths), rooted, visibleOnly, visibleLabel, counts)
+	return countSummary
+}
+
+func privescPreferredTakeaway(paths []models.PrivescPathSummary) string {
+	for _, path := range paths {
+		if path.Preferred && strings.TrimSpace(path.PreferredReason) != "" {
+			return path.PreferredReason
+		}
+	}
+	return ""
+}
+
+func privescNote(path models.PrivescPathSummary) string {
+	parts := []string{}
+	if path.Preferred && strings.TrimSpace(path.PreferredReason) != "" {
+		parts = append(parts, strings.TrimSpace(path.PreferredReason))
+	}
+	if boundary := strings.TrimSpace(privescProofBoundary(path)); boundary != "" {
+		parts = append(parts, boundary)
+	}
+	if review := privescCompactNextReview(path); review != "" {
+		parts = append(parts, review)
+	}
+	return strings.Join(parts, " ")
+}
+
+func privescCompactNextReview(path models.PrivescPathSummary) string {
+	switch {
+	case path.CurrentIdentity:
+		return "Next review: rbac assignment evidence and scope."
+	case strings.TrimSpace(path.PathType) == "ingress-backed-workload-identity":
+		return "Next review: managed-identities workload-to-identity anchor."
+	case strings.TrimSpace(path.NextReview) != "":
+		return "Next review: role-trusts influence paths."
+	default:
+		return ""
+	}
+}
+
+func privescDisplayPrincipalType(principalType string) string {
+	switch strings.TrimSpace(principalType) {
+	case "ManagedIdentity":
+		return "ManagedIdentity"
+	case "ServicePrincipal":
+		return "ServicePrincipal"
+	case "User":
+		return "User"
+	default:
+		normalized := strings.TrimSpace(principalType)
+		if normalized == "" {
+			return "unknown"
+		}
+		return normalized
+	}
+}
+
+func privescOperatorPrincipalType(principalType string) string {
+	switch strings.TrimSpace(principalType) {
+	case "ManagedIdentity":
+		return "managed identity"
+	case "ServicePrincipal":
+		return "service principal"
+	case "User":
+		return "user"
+	default:
+		normalized := strings.TrimSpace(principalType)
+		if normalized == "" {
+			return "unknown"
+		}
+		return strings.ToLower(normalized)
+	}
 }
 
 func authPoliciesTakeaway(payload models.AuthPoliciesOutput) string {
@@ -3479,7 +3604,8 @@ func roleTrustsTakeaway(payload models.RoleTrustsOutput) string {
 }
 
 func managedIdentitiesTable(payload models.ManagedIdentitiesOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := cellStyle.Bold(true)
 	titleStyle := lipgloss.NewStyle().Bold(true)
 
 	rows := make([][]string, 0, len(payload.Identities))
@@ -3503,7 +3629,7 @@ func managedIdentitiesTable(payload models.ManagedIdentitiesOutput) string {
 			if row == liptable.HeaderRow {
 				return headerStyle
 			}
-			return lipgloss.NewStyle()
+			return cellStyle
 		})
 
 	output := titleStyle.Render("ho-azure managed-identities") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
@@ -3584,43 +3710,63 @@ func envVarsTable(payload models.EnvVarsOutput) string {
 }
 
 func tokensCredentialsTable(payload models.TokensCredentialsOutput) string {
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	titleStyle := lipgloss.NewStyle().Bold(true)
+	if len(payload.Surfaces) == 0 {
+		output := tokenCredentialMainRowTable(
+			[]string{"priority", "asset", "kind", "surface", "access path", "operator signal"},
+			[][]string{{"", "no token or credential surfaces visible", "", "", "", ""}},
+		)
+		output = appendCustomFindingsSection(output, payload.Findings,
+			func(f models.TokenCredentialFinding) string { return f.Severity },
+			func(f models.TokenCredentialFinding) string { return f.Title },
+			func(f models.TokenCredentialFinding) string { return f.Description },
+		)
+		return output + "\nTakeaway: " + tokensCredentialsTakeaway(payload) + "\n"
+	}
 
-	rows := make([][]string, 0, len(payload.Surfaces))
+	sections := make([]string, 0, len(payload.Surfaces))
 	for _, surface := range payload.Surfaces {
-		rows = append(rows, []string{
-			surface.AssetName,
-			surface.AssetKind,
-			string(surface.SurfaceType),
-			surface.AccessPath,
-			surface.Priority,
-			surface.OperatorSignal,
-			tokenCredentialNextReview(surface),
-			surface.Summary,
-		})
-	}
-	if len(rows) == 0 {
-		rows = append(rows, []string{"", "", "no token or credential surfaces visible", "", "", "", "", ""})
+		row := tokenCredentialMainRowTable(
+			[]string{"priority", "asset", "kind", "surface", "access path", "operator signal"},
+			[][]string{{
+				surface.Priority,
+				surface.AssetName,
+				surface.AssetKind,
+				string(surface.SurfaceType),
+				surface.AccessPath,
+				surface.OperatorSignal,
+			}},
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := tokenCredentialNote(surface); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
 	}
 
-	table := liptable.New().
-		Headers("asset", "kind", "surface", "access path", "priority", "operator signal", "next review", "why it matters").
-		Rows(rows...).
-		StyleFunc(func(row int, col int) lipgloss.Style {
-			if row == liptable.HeaderRow {
-				return headerStyle
-			}
-			return lipgloss.NewStyle()
-		})
-
-	output := titleStyle.Render("ho-azure tokens-credentials") + "\n\n" + strings.TrimRight(table.String(), "\n") + "\n"
-	output = appendCustomFindingsSection(output, payload.Findings,
-		func(f models.TokenCredentialFinding) string { return f.Severity },
-		func(f models.TokenCredentialFinding) string { return f.Title },
-		func(f models.TokenCredentialFinding) string { return f.Description },
-	)
+	output := joinRenderedBlocks(sections) + "\n"
 	return output + "\nTakeaway: " + tokensCredentialsTakeaway(payload) + "\n"
+}
+
+func tokenCredentialNote(surface models.TokenCredentialSurfaceSummary) string {
+	return strings.TrimSpace(surface.Summary)
+}
+
+func tokenCredentialMainRowTable(headers []string, rows [][]string) string {
+	return strings.TrimRight(
+		liptable.New().
+			Headers(headers...).
+			Rows(rows...).
+			StyleFunc(func(row int, col int) lipgloss.Style {
+				style := lipgloss.NewStyle().Padding(0, 1)
+				if row == liptable.HeaderRow {
+					return style.Bold(true)
+				}
+				return style
+			}).
+			String(),
+		"\n",
+	) + "\n"
 }
 
 func chainsOverviewTable(payload models.ChainsOverviewOutput) string {
@@ -3853,6 +3999,90 @@ func chainsEscalationPathTable(payload models.ChainsOutput) string {
 		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
 	}
 	return joinRenderedBlocks(sections) + "\n"
+}
+
+func chainsPersistencePathTable(payload models.ChainsOutput) string {
+	sections := []string{}
+
+	if len(payload.Paths) == 0 {
+		sections = append(sections, renderListTable(
+			"ho-azure chains",
+			[]string{"priority", "row", "surface", "persistence type", "durability", "anchor"},
+			nil,
+			[]string{"no visible persistence paths were confirmed from current scope", "", "", "", "", ""},
+			"",
+		))
+		if payload.ClaimBoundary != "" {
+			sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+		}
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+
+	for _, path := range payload.Paths {
+		row := renderStructuredTableWithTitle(
+			"ho-azure chains",
+			[]string{"priority", "row", "surface", "persistence type", "durability", "anchor"},
+			[][]string{{
+				path.Priority,
+				chainsPersistenceRowLabel(valueOrEmpty(path.PathType)),
+				valueOrEmpty(path.Surface),
+				valueOrEmpty(path.PersistenceType),
+				valueOrEmpty(path.Durability),
+				valueOrEmpty(path.FootholdAnchor),
+			}},
+			len(sections) == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := firstNonEmptyText(valueOrEmpty(path.Note), path.Summary); note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		if missing := firstNonEmpty(path.MissingProof, models.StringPtr(path.MissingConfirmation)); missing != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("what is still missing", missing, rowWidth))
+		}
+		if fixFocus := valueOrEmpty(path.RecommendedFixFocus); fixFocus != "" {
+			parts = append(parts, renderWrappedDetailTableWithWidth("fix focus", fixFocus, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+	sections = append(sections, "Takeaway: "+chainsPersistencePathTakeaway(payload.Paths))
+	if payload.ClaimBoundary != "" {
+		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
+	}
+	return joinRenderedBlocks(sections) + "\n"
+}
+
+func chainsPersistenceRowLabel(rowClass string) string {
+	switch rowClass {
+	case "existing_persistence":
+		return "already present"
+	case "directly_establishable":
+		return "directly establishable"
+	case "near_complete_setup":
+		return "near-complete setup"
+	case "enabler_only":
+		return "enabler only"
+	default:
+		return firstNonEmptyText(rowClass, "-")
+	}
+}
+
+func chainsPersistencePathTakeaway(paths []models.ChainPathRecord) string {
+	counts := map[string]int{}
+	for _, path := range paths {
+		counts[valueOrEmpty(path.PathType)]++
+	}
+	if len(paths) == 0 {
+		return "0 persistence rows visible; no durable cloud-side persistence path was confirmed from the current identity."
+	}
+	parts := []string{}
+	for _, rowClass := range []string{"existing_persistence", "directly_establishable", "near_complete_setup", "enabler_only"} {
+		if counts[rowClass] == 0 {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", counts[rowClass], chainsPersistenceRowLabel(rowClass)))
+	}
+	return fmt.Sprintf("%d persistence row(s) visible; %s.", len(paths), strings.Join(parts, ", "))
 }
 
 func chainsTargetContext(path models.ChainPathRecord) string {

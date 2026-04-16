@@ -1,0 +1,13 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] Walking the current identity through Azure-native persistence surfaces one service at a time.
+ho-azure persistence
+
+╭────────────┬─────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────╮
+│ surface    │ state       │ operator question                                                                                                                                    │ backing commands              │
+├────────────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
+│ automation │ implemented │ Given the current identity, how far can I go in Azure Automation to create, modify, publish, and trigger automation that Azure will run again later? │ automation, permissions, rbac │
+╰────────────┴─────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────╯
+
+Takeaway: 1 persistence surface is implemented; start with automation.

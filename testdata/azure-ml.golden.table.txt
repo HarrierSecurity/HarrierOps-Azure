@@ -1,0 +1,53 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[azure-ml] Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure azure-ml
+
+╭────────────┬────────────────────────────────┬────────────────────────────────────────────┬──────────────────────────────────────────────┬───────────────────╮
+│ workspace  │ runtime                        │ serving                                    │ identity                                     │ classification    │
+├────────────┼────────────────────────────────┼────────────────────────────────────────────┼──────────────────────────────────────────────┼───────────────────┤
+│ ml-ops-hub │ compute=2; jobs=2; schedules=1 │ endpoints=1; auth=AADToken; public=Enabled │ SystemAssigned,UserAssigned; user-assigned=1 │ execution-capable │
+╰────────────┴────────────────────────────────┴────────────────────────────────────────────┴──────────────────────────────────────────────┴───────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                        │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Visible Azure ML workspace already shows execution-capable runtime surfaces through compute, jobs, and an online endpoint.                  │
+│ Cron-backed scheduling is also visible, and the workspace carries managed identity plus linked datastore and storage context for follow-up. │
+│ Storage context: 2 visible datastore relationships, linked storage account, linked key vault, linked container registry.                    │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────┬─────────────┬─────────┬──────────┬────────────────────────────────╮
+│ workspace        │ runtime     │ serving │ identity │ classification                 │
+├──────────────────┼─────────────┼─────────┼──────────┼────────────────────────────────┤
+│ ml-nightly-train │ schedules=1 │ -       │ -        │ supporting-persistence-context │
+╰──────────────────┴─────────────┴─────────┴──────────┴────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                               │
+├────────────────────────────────────────────────────────────────────────────────────┤
+│ Visible recurrence-backed scheduling makes this workspace relevant as              │
+│ persistence-adjacent ML context.                                                   │
+│ The current control-plane read path does not yet prove a stronger compute, job, or │
+│ serving surface behind that schedule.                                              │
+│ Storage context: 1 visible datastore relationships, linked storage account.        │
+╰────────────────────────────────────────────────────────────────────────────────────╯
+
+╭────────────┬─────────┬─────────┬──────────┬────────────────────╮
+│ workspace  │ runtime │ serving │ identity │ classification     │
+├────────────┼─────────┼─────────┼──────────┼────────────────────┤
+│ ml-catalog │ -       │ -       │ -        │ supporting-context │
+╰────────────┴─────────┴─────────┴──────────┴────────────────────╯
+╭──────────────────────────────────────────────────────────────────╮
+│ note                                                             │
+├──────────────────────────────────────────────────────────────────┤
+│ Visible Azure ML workspace currently reads more like supporting  │
+│ context than an active execution surface.                        │
+│ Storage-linked and datastore relationships are visible, but no   │
+│ compute, job, schedule, or online endpoint is confirmed from the │
+│ current read path.                                               │
+│ Storage context: 2 visible datastore relationships, linked       │
+│ storage account, linked app insights.                            │
+╰──────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 workspaces surfaced; 1 execution-capable and 1 persistence-adjacent from the current control-plane read path.

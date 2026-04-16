@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,9 @@ func functionsHandler(provider providers.Provider, now func() time.Time) Handler
 		}
 
 		functionApps := sortedByLess(facts.FunctionApps, functionAppLess)
+		for idx := range functionApps {
+			functionApps[idx] = decorateFunctionAppArtifact(functionApps[idx])
+		}
 
 		return models.FunctionsOutput{
 			Findings:     []models.Finding{},
@@ -92,4 +96,68 @@ func intPtrValue(value *int) int {
 		return 0
 	}
 	return *value
+}
+
+func decorateFunctionAppArtifact(app models.FunctionAppAsset) models.FunctionAppAsset {
+	app.Runtime = compactArtifactValue(functionArtifactRuntime(app))
+	app.Identity = compactArtifactValue(functionArtifactIdentity(app))
+	app.Deployment = compactArtifactValue(functionArtifactDeployment(app))
+	return app
+}
+
+func compactArtifactValue(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" || trimmed == "-" {
+		return nil
+	}
+	return models.StringPtr(trimmed)
+}
+
+func functionArtifactRuntime(app models.FunctionAppAsset) string {
+	parts := make([]string, 0, 2)
+	if app.RuntimeStack != nil && *app.RuntimeStack != "" {
+		parts = append(parts, *app.RuntimeStack)
+	}
+	if app.FunctionsExtensionVersion != nil && *app.FunctionsExtensionVersion != "" {
+		parts = append(parts, "functions="+*app.FunctionsExtensionVersion)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func functionArtifactIdentity(app models.FunctionAppAsset) string {
+	parts := make([]string, 0, 2)
+	if app.WorkloadIdentityType != nil && *app.WorkloadIdentityType != "" {
+		parts = append(parts, *app.WorkloadIdentityType)
+	}
+	if len(app.WorkloadIdentityIDs) > 0 {
+		parts = append(parts, "user-assigned="+strconv.Itoa(len(app.WorkloadIdentityIDs)))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func functionArtifactDeployment(app models.FunctionAppAsset) string {
+	parts := make([]string, 0, 3)
+	if app.AzureWebJobsStorageValueType != nil && *app.AzureWebJobsStorageValueType != "" {
+		parts = append(parts, "storage="+*app.AzureWebJobsStorageValueType)
+	}
+	if app.RunFromPackage != nil {
+		if *app.RunFromPackage {
+			parts = append(parts, "package=yes")
+		} else {
+			parts = append(parts, "package=disabled")
+		}
+	}
+	if app.KeyVaultReferenceCount != nil {
+		parts = append(parts, "kv-refs="+strconv.Itoa(*app.KeyVaultReferenceCount))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
 }

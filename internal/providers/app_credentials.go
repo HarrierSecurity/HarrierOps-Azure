@@ -168,9 +168,7 @@ func (provider AzureProvider) AppCredentials(ctx context.Context, tenant string,
 }
 
 func currentPrincipalFromSession(session azureSession) (string, string) {
-	principalID := firstNonEmpty(session.claims["oid"], session.claims["appid"], session.claims["sub"])
-	principalName := firstNonEmpty(session.claims["name"], session.claims["preferred_username"], session.claims["upn"], principalID)
-	return principalID, principalName
+	return currentPrincipalFromClaims(session.claims)
 }
 
 func appCredentialRoleContextByPrincipal(rbacFacts RBACFacts) map[string]string {

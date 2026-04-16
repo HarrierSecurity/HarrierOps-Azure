@@ -1,0 +1,46 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[event-grid] Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure event-grid
+
+╭───────────────────────────────────────────────┬───────────────────────┬──────────────────┬───────────────────╮
+│ source                                        │ destination           │ destination type │ classification    │
+├───────────────────────────────────────────────┼───────────────────────┼──────────────────┼───────────────────┤
+│ stlanding (Microsoft.Storage/storageAccounts) │ fa-ingest/BlobCreated │ AzureFunction    │ execution-capable │
+╰───────────────────────────────────────────────┴───────────────────────┴──────────────────┴───────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Storage account events are visibly routed into an Azure Function destination, so this path already looks │
+│ execution-capable from the current control-plane read path.                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭────────────────────────────────────────┬────────────────────┬──────────────────┬───────────────────╮
+│ source                                 │ destination        │ destination type │ classification    │
+├────────────────────────────────────────┼────────────────────┼──────────────────┼───────────────────┤
+│ ops-topic (Microsoft.EventGrid/topics) │ webhook (redacted) │ WebHook          │ external-callback │
+╰────────────────────────────────────────┴────────────────────┴──────────────────┴───────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                 │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Custom topic events are visibly delivered to a webhook destination.                                  │
+│ The base command keeps the callback target redacted, but this route already crosses the normal Azure │
+│ service boundary.                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────┬─────────────────┬──────────────────┬────────────────────╮
+│ source                           │ destination     │ destination type │ classification     │
+├──────────────────────────────────┼─────────────────┼──────────────────┼────────────────────┤
+│ subscription root (subscription) │ incoming-events │ StorageQueue     │ supporting-context │
+╰──────────────────────────────────┴─────────────────┴──────────────────┴────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│ Subscription-scoped resource events are visibly buffered into Storage Queue.             │
+│ This is useful trigger context, but the current read path does not yet show the consumer │
+│ that would turn the queue into execution.                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 routes surfaced; 1 execution-capable and 1 external-callback from the current control-plane read path.

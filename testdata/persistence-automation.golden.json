@@ -1,0 +1,244 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "automation",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Walk the current identity through the end-to-end Azure Automation steps that can store runnable code and make Azure invoke it again later.",
+  "backing_commands": [
+    "automation",
+    "permissions",
+    "rbac"
+  ],
+  "automation_accounts": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+      "automation_account": "aa-hybrid-prod",
+      "resource_group": "rg-ops",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or modify account",
+          "api_surface": "automationAccounts",
+          "status": "yes"
+        },
+        {
+          "action": "add or edit runbook",
+          "api_surface": "automationAccounts/runbooks",
+          "status": "yes"
+        },
+        {
+          "action": "upload or replace code",
+          "api_surface": "runbook content update",
+          "status": "yes"
+        },
+        {
+          "action": "publish runbook",
+          "api_surface": "runbook publish action",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "account identity / automation assets",
+          "status": "yes"
+        },
+        {
+          "action": "create schedule",
+          "api_surface": "automationAccounts/schedules",
+          "status": "yes"
+        },
+        {
+          "action": "link schedule to runbook",
+          "api_surface": "automationAccounts/jobSchedules",
+          "status": "yes"
+        },
+        {
+          "action": "create webhook",
+          "api_surface": "automation webhook resource",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "stored credentials",
+        "connections",
+        "certificates",
+        "variables"
+      ],
+      "current_state": {
+        "runbook_count": 7,
+        "published_runbook_count": 6,
+        "published_runbook_names": [
+          "Baseline-Config",
+          "Nightly-Reconcile",
+          "Redeploy-App",
+          "Reapply-Agent",
+          "Sync-Secrets",
+          "Rotate-Certs"
+        ],
+        "schedule_count": 4,
+        "job_schedule_count": 5,
+        "webhook_count": 2,
+        "hybrid_worker_group_count": 1,
+        "credential_count": 2,
+        "certificate_count": 1,
+        "connection_count": 2,
+        "variable_count": 5,
+        "encrypted_variable_count": 4,
+        "primary_start_mode": "webhook",
+        "primary_runbook_name": "Redeploy-App",
+        "identity_type": "SystemAssigned",
+        "strongest_visible_execution_context": {
+          "name": "aa-hybrid-prod-mi",
+          "kind": "automation-execution-context",
+          "principal_id": "12121212-1212-1212-1212-121212121212",
+          "identity_type": "SystemAssigned",
+          "role_names": [
+            "Contributor"
+          ],
+          "scope_ids": [
+            "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops"
+          ],
+          "summary": "The strongest visible execution context here is the Automation Account identity `aa-hybrid-prod-mi`, which already holds Contributor at resource group rg-ops."
+        },
+        "nearby_thematic_names": [
+          "Baseline-Config",
+          "Nightly-Reconcile",
+          "Reapply-Agent",
+          "Lab-Maintenance"
+        ],
+        "missing_target_mapping": true
+      },
+      "still_unmapped": [
+        "the exact runbook code, content source, or operator intent behind this Automation surface",
+        "the exact downstream resources, workflows, or credentials this automation path would modify",
+        "the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata"
+      ],
+      "summary": "Current identity can manage Automation Account 'aa-hybrid-prod' end to end, and the strongest visible execution context already carries Azure control.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet",
+      "automation_account": "aa-lab-quiet",
+      "resource_group": "rg-lab",
+      "location": "centralus",
+      "capability_steps": [
+        {
+          "action": "create or modify account",
+          "api_surface": "automationAccounts",
+          "status": "yes"
+        },
+        {
+          "action": "add or edit runbook",
+          "api_surface": "automationAccounts/runbooks",
+          "status": "yes"
+        },
+        {
+          "action": "upload or replace code",
+          "api_surface": "runbook content update",
+          "status": "yes"
+        },
+        {
+          "action": "publish runbook",
+          "api_surface": "runbook publish action",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "account identity / automation assets",
+          "status": "yes"
+        },
+        {
+          "action": "create schedule",
+          "api_surface": "automationAccounts/schedules",
+          "status": "yes"
+        },
+        {
+          "action": "link schedule to runbook",
+          "api_surface": "automationAccounts/jobSchedules",
+          "status": "yes"
+        },
+        {
+          "action": "create webhook",
+          "api_surface": "automation webhook resource",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "connections",
+        "variables"
+      ],
+      "current_state": {
+        "runbook_count": 2,
+        "published_runbook_count": 1,
+        "published_runbook_names": [
+          "Lab-Maintenance"
+        ],
+        "schedule_count": 1,
+        "job_schedule_count": 1,
+        "webhook_count": 0,
+        "hybrid_worker_group_count": 0,
+        "credential_count": 0,
+        "certificate_count": 0,
+        "connection_count": 1,
+        "variable_count": 2,
+        "encrypted_variable_count": 1,
+        "primary_start_mode": "schedule",
+        "primary_runbook_name": "Lab-Maintenance",
+        "nearby_thematic_names": [
+          "Baseline-Config",
+          "Nightly-Reconcile",
+          "Reapply-Agent",
+          "Lab-Maintenance"
+        ],
+        "missing_target_mapping": true
+      },
+      "still_unmapped": [
+        "the exact runbook code, content source, or operator intent behind this Automation surface",
+        "the exact downstream resources, workflows, or credentials this automation path would modify",
+        "the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata"
+      ],
+      "summary": "Current identity can manage Automation Account 'aa-lab-quiet' end to end from current RBAC evidence.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"
+      ]
+    }
+  ],
+  "issues": []
+}
