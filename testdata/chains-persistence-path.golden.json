@@ -1,0 +1,462 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "chains",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "chains",
+  "family": "persistence-path",
+  "input_mode": "live",
+  "command_state": "extraction-only",
+  "summary": "Follow the strongest cloud-side persistence stories toward the durable identity or trigger object that would preserve access later.",
+  "claim_boundary": "Can claim durable cloud persistence only when HO-Azure can name the durable identity or trigger object and the current-identity control path behind it. Cannot claim malicious content, exploit execution, or serverless persistence from inventory alone.",
+  "current_gap": "Phase 1 stays intentionally strict: identity shadowing and Automation dominate the admitted rows today, while Function, App Service, Logic App, Event Grid, ACR, and DevOps persistence stories wait for clearer trigger or durable-object proof so the family does not drift into execution-only or inventory language.",
+  "artifact_preference_order": [],
+  "backing_commands": [
+    "app-credentials",
+    "automation",
+    "permissions",
+    "rbac",
+    "functions",
+    "app-services",
+    "managed-identities",
+    "role-trusts"
+  ],
+  "source_artifacts": [],
+  "paths": [
+    {
+      "chain_id": "persistence-path::automation::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod::existing-persistence",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+      "asset_name": "aa-hybrid-prod",
+      "asset_kind": "AutomationAccount",
+      "location": "eastus",
+      "surface": "Automation Account",
+      "persistence_type": "Automation webhook + Automation schedule",
+      "classification": "event_driven_persistence",
+      "durability": "durable Automation trigger object already exists",
+      "what_persists": "Azure keeps webhook and schedule objects that can re-run published runbooks later",
+      "foothold_anchor": "Automation Account 'aa-hybrid-prod' (runbook 'Redeploy-App')",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Current identity has Owner at subscription scope over Automation Account 'aa-hybrid-prod', and the account already exposes 6 published runbook(s) including 'Redeploy-App' backed by 2 webhook(s) and 5 job schedule(s).",
+      "missing_proof": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "operator_actionability": "Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "recommended_fix_focus": "Remove unneeded schedules or webhooks, reduce write access to the Automation Account, and rotate or trim stored Automation secrets and connections.",
+      "source_command": "automation",
+      "source_context": "Owner at subscription scope",
+      "source": "aa-hybrid-prod",
+      "clue_type": "automation-persistence",
+      "confirmation_basis": "Owner at subscription scope",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "durable cloud-side object already exists",
+      "path_concept": "event_driven_persistence",
+      "path_type": "existing_persistence",
+      "stronger_outcome": "Durable cloud-side persistence already exists and preserves access into a principal that already holds Contributor.",
+      "why_care": "Current identity has Owner at subscription scope over Automation Account 'aa-hybrid-prod', and the account already exposes 6 published runbook(s) including 'Redeploy-App' backed by 2 webhook(s) and 5 job schedule(s). The automation identity 'aa-hybrid-prod-mi' already holds Contributor across 1 visible scope. Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "confidence_boundary": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "note": "Current identity has Owner at subscription scope over Automation Account 'aa-hybrid-prod', and the account already exposes 6 published runbook(s) including 'Redeploy-App' backed by 2 webhook(s) and 5 job schedule(s). The automation identity 'aa-hybrid-prod-mi' already holds Contributor across 1 visible scope. Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "target_service": "automation-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "automation",
+        "permissions",
+        "rbac"
+      ],
+      "joined_surface_types": [
+        "automation-account",
+        "published-runbook",
+        "webhook",
+        "schedule",
+        "role-bearing-context"
+      ],
+      "target_count": 2,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+        "12121212-1212-1212-1212-121212121212"
+      ],
+      "target_names": [
+        "aa-hybrid-prod",
+        "aa-hybrid-prod-mi"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Review the runbooks, schedules, and webhooks on Automation Account 'aa-hybrid-prod'; current evidence does not show which downstream app or workflow this path reaches directly.",
+      "summary": "Current identity has Owner at subscription scope over Automation Account 'aa-hybrid-prod', and the account already exposes 6 published runbook(s) including 'Redeploy-App' backed by 2 webhook(s) and 5 job schedule(s). The automation identity 'aa-hybrid-prod-mi' already holds Contributor across 1 visible scope. Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers. This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "missing_confirmation": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system",
+        "12121212-1212-1212-1212-121212121212"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::identity::55555555-5555-5555-5555-555555555555::existing-persistence",
+      "asset_id": "55555555-5555-5555-5555-555555555555",
+      "asset_name": "build-app",
+      "asset_kind": "Application",
+      "surface": "Application",
+      "persistence_type": "application federated trust",
+      "classification": "durable_persistence",
+      "durability": "durable identity object already exists in Entra",
+      "what_persists": "An Azure-facing application trust that will keep accepting the external issuer and subject pattern later",
+      "foothold_anchor": "Application 'build-app' -\u003e service principal 'build-sp'",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Application 'build-app' already trusts federated subject 'repo:TacoRocket/AzureFox:ref:refs/heads/main' from issuer 'https://token.actions.githubusercontent.com'.",
+      "missing_proof": "This row shows existing federated trust, not that the current identity can change it.",
+      "operator_actionability": "Review whether this external trust path is still required and who can modify the application that carries it.",
+      "recommended_fix_focus": "Remove or tighten federated trust that no longer needs to yield Azure-facing access.",
+      "source_command": "app-credentials",
+      "source_context": "existing-federated-trust",
+      "source": "build-app",
+      "clue_type": "identity-shadowing",
+      "confirmation_basis": "existing-federated-trust",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "durable cloud-side object already exists",
+      "path_concept": "durable_persistence",
+      "path_type": "existing_persistence",
+      "stronger_outcome": "Durable cloud-side persistence already exists and preserves access into a principal that already holds Owner.",
+      "why_care": "Application 'build-app' already trusts federated subject 'repo:TacoRocket/AzureFox:ref:refs/heads/main' from issuer 'https://token.actions.githubusercontent.com'. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review whether this external trust path is still required and who can modify the application that carries it.",
+      "confidence_boundary": "This row shows existing federated trust, not that the current identity can change it.",
+      "note": "Application 'build-app' already trusts federated subject 'repo:TacoRocket/AzureFox:ref:refs/heads/main' from issuer 'https://token.actions.githubusercontent.com'. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review whether this external trust path is still required and who can modify the application that carries it.",
+      "target_service": "identity-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "app-credentials",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "identity-surface",
+        "federated-trust",
+        "role-bearing-context"
+      ],
+      "target_count": 2,
+      "target_ids": [
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-app",
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Review who can modify Application 'build-app' and whether this durable credential or trust is still required.",
+      "summary": "Application 'build-app' already trusts federated subject 'repo:TacoRocket/AzureFox:ref:refs/heads/main' from issuer 'https://token.actions.githubusercontent.com'. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review whether this external trust path is still required and who can modify the application that carries it. This row shows existing federated trust, not that the current identity can change it.",
+      "missing_confirmation": "This row shows existing federated trust, not that the current identity can change it.",
+      "related_ids": [
+        "55555555-5555-5555-5555-555555555555",
+        "fic-build-main",
+        "66666666-6666-6666-6666-666666666666"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::identity::66666666-6666-6666-6666-666666666666::existing-persistence",
+      "asset_id": "66666666-6666-6666-6666-666666666666",
+      "asset_name": "build-sp",
+      "asset_kind": "ServicePrincipal",
+      "surface": "ServicePrincipal",
+      "persistence_type": "service principal password credential",
+      "classification": "durable_persistence",
+      "durability": "durable identity object already exists in Entra",
+      "what_persists": "Azure-accepted authentication material on the application or service principal",
+      "foothold_anchor": "ServicePrincipal 'build-sp'",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "ServicePrincipal 'build-sp' already has 1 visible password credential metadata entry.",
+      "missing_proof": "This row shows existing authentication material, not a current-identity path to change it.",
+      "operator_actionability": "Review who can modify this object and whether the existing credential material is still needed.",
+      "recommended_fix_focus": "Remove stale authentication material and tighten ownership over the identity that accepts it.",
+      "source_command": "app-credentials",
+      "source_context": "existing-auth-material",
+      "source": "build-sp",
+      "clue_type": "identity-shadowing",
+      "confirmation_basis": "existing-auth-material",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "durable cloud-side object already exists",
+      "path_concept": "durable_persistence",
+      "path_type": "existing_persistence",
+      "stronger_outcome": "Durable cloud-side persistence already exists and preserves access into a principal that already holds Owner.",
+      "why_care": "ServicePrincipal 'build-sp' already has 1 visible password credential metadata entry. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review who can modify this object and whether the existing credential material is still needed.",
+      "confidence_boundary": "This row shows existing authentication material, not a current-identity path to change it.",
+      "note": "ServicePrincipal 'build-sp' already has 1 visible password credential metadata entry. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review who can modify this object and whether the existing credential material is still needed.",
+      "target_service": "identity-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "app-credentials",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "identity-surface",
+        "credential-material",
+        "role-bearing-context"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Review who can modify ServicePrincipal 'build-sp' and whether this durable credential or trust is still required.",
+      "summary": "ServicePrincipal 'build-sp' already has 1 visible password credential metadata entry. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Review who can modify this object and whether the existing credential material is still needed. This row shows existing authentication material, not a current-identity path to change it.",
+      "missing_confirmation": "This row shows existing authentication material, not a current-identity path to change it.",
+      "related_ids": [
+        "66666666-6666-6666-6666-666666666666",
+        "pwd-build-sp-main"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::identity::55555555-5555-5555-5555-555555555555::directly-establishable",
+      "asset_id": "55555555-5555-5555-5555-555555555555",
+      "asset_name": "build-app",
+      "asset_kind": "Application",
+      "surface": "Application",
+      "persistence_type": "application credential",
+      "classification": "durable_persistence",
+      "durability": "current identity can add the durable identity object now",
+      "what_persists": "Azure-accepted authentication material on the application or service principal",
+      "foothold_anchor": "Application 'build-app' -\u003e service principal 'build-sp'",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and application ownership can change authentication material accepted here.",
+      "missing_proof": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "operator_actionability": "Treat this as a visible path to add or replace authentication material on the application object.",
+      "recommended_fix_focus": "Remove the ownership path that lets the current identity control this application.",
+      "source_command": "app-credentials",
+      "source_context": "application-owner",
+      "source": "build-app",
+      "clue_type": "identity-shadowing",
+      "confirmation_basis": "application-owner",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "current identity can add durable object now",
+      "path_concept": "durable_persistence",
+      "path_type": "directly_establishable",
+      "stronger_outcome": "Current identity can directly establish durable cloud persistence that would preserve access into a principal that already holds Owner.",
+      "why_care": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and application ownership can change authentication material accepted here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the application object.",
+      "confidence_boundary": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "note": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and application ownership can change authentication material accepted here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the application object.",
+      "target_service": "identity-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "app-credentials",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "identity-surface",
+        "credential-material",
+        "role-bearing-context"
+      ],
+      "target_count": 2,
+      "target_ids": [
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-app",
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Remove the visible owner or credential-mutation path that lets the current identity control Application 'build-app'.",
+      "summary": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and application ownership can change authentication material accepted here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the application object. This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "missing_confirmation": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::identity::55555555-5555-5555-5555-555555555555::directly-establishable",
+      "asset_id": "55555555-5555-5555-5555-555555555555",
+      "asset_name": "build-app",
+      "asset_kind": "Application",
+      "surface": "Application",
+      "persistence_type": "application federated trust",
+      "classification": "durable_persistence",
+      "durability": "current identity can add the durable identity object now",
+      "what_persists": "An Azure-facing application trust that will keep accepting the external issuer and subject pattern later",
+      "foothold_anchor": "Application 'build-app' -\u003e service principal 'build-sp'",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and federated trust lives on that application object.",
+      "missing_proof": "This row shows direct control of the federated-trust surface, not which external subject would be trusted after a change.",
+      "operator_actionability": "Treat this as a visible path to add, replace, or widen federated trust on the application.",
+      "recommended_fix_focus": "Remove the ownership path that lets the current identity control federated trust on this application.",
+      "source_command": "app-credentials",
+      "source_context": "application-owner",
+      "source": "build-app",
+      "clue_type": "identity-shadowing",
+      "confirmation_basis": "application-owner",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "current identity can add durable object now",
+      "path_concept": "durable_persistence",
+      "path_type": "directly_establishable",
+      "stronger_outcome": "Current identity can directly establish durable cloud persistence that would preserve access into a principal that already holds Owner.",
+      "why_care": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and federated trust lives on that application object. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add, replace, or widen federated trust on the application.",
+      "confidence_boundary": "This row shows direct control of the federated-trust surface, not which external subject would be trusted after a change.",
+      "note": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and federated trust lives on that application object. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add, replace, or widen federated trust on the application.",
+      "target_service": "identity-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "app-credentials",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "identity-surface",
+        "federated-trust",
+        "role-bearing-context"
+      ],
+      "target_count": 2,
+      "target_ids": [
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-app",
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Remove the visible owner or credential-mutation path that lets the current identity control Application 'build-app'.",
+      "summary": "Current identity 'azurefox-lab-sp' visibly owns application 'build-app', and federated trust lives on that application object. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add, replace, or widen federated trust on the application. This row shows direct control of the federated-trust surface, not which external subject would be trusted after a change.",
+      "missing_confirmation": "This row shows direct control of the federated-trust surface, not which external subject would be trusted after a change.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::identity::66666666-6666-6666-6666-666666666666::directly-establishable",
+      "asset_id": "66666666-6666-6666-6666-666666666666",
+      "asset_name": "build-sp",
+      "asset_kind": "ServicePrincipal",
+      "surface": "ServicePrincipal",
+      "persistence_type": "service principal credential",
+      "classification": "durable_persistence",
+      "durability": "current identity can add the durable identity object now",
+      "what_persists": "Azure-accepted authentication material on the application or service principal",
+      "foothold_anchor": "ServicePrincipal 'build-sp'",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Current identity 'azurefox-lab-sp' visibly owns service principal 'build-sp', and service-principal ownership can change authentication material Azure accepts here.",
+      "missing_proof": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "operator_actionability": "Treat this as a visible path to add or replace authentication material on the service principal.",
+      "recommended_fix_focus": "Remove the owner-level control path that lets the current identity control this service principal.",
+      "source_command": "app-credentials",
+      "source_context": "service-principal-owner",
+      "source": "build-sp",
+      "clue_type": "identity-shadowing",
+      "confirmation_basis": "service-principal-owner",
+      "priority": "high",
+      "urgency": "pivot-now",
+      "visible_path": "current identity can add durable object now",
+      "path_concept": "durable_persistence",
+      "path_type": "directly_establishable",
+      "stronger_outcome": "Current identity can directly establish durable cloud persistence that would preserve access into a principal that already holds Owner.",
+      "why_care": "Current identity 'azurefox-lab-sp' visibly owns service principal 'build-sp', and service-principal ownership can change authentication material Azure accepts here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the service principal.",
+      "confidence_boundary": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "note": "Current identity 'azurefox-lab-sp' visibly owns service principal 'build-sp', and service-principal ownership can change authentication material Azure accepts here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the service principal.",
+      "target_service": "identity-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "app-credentials",
+        "permissions"
+      ],
+      "joined_surface_types": [
+        "identity-surface",
+        "credential-material",
+        "role-bearing-context"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "66666666-6666-6666-6666-666666666666"
+      ],
+      "target_names": [
+        "build-sp"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Remove the visible owner or credential-mutation path that lets the current identity control ServicePrincipal 'build-sp'.",
+      "summary": "Current identity 'azurefox-lab-sp' visibly owns service principal 'build-sp', and service-principal ownership can change authentication material Azure accepts here. Backed identity already holds high-impact Azure roles (Owner) across 2 visible scopes. Treat this as a visible path to add or replace authentication material on the service principal. This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "missing_confirmation": "This row shows a direct path to add durable identity material, not that a new credential or federated trust has already been created.",
+      "related_ids": [
+        "33333333-3333-3333-3333-333333333333",
+        "66666666-6666-6666-6666-666666666666"
+      ]
+    },
+    {
+      "chain_id": "persistence-path::automation::/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet::existing-persistence",
+      "asset_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet",
+      "asset_name": "aa-lab-quiet",
+      "asset_kind": "AutomationAccount",
+      "location": "centralus",
+      "surface": "Automation Account",
+      "persistence_type": "Automation schedule",
+      "classification": "event_driven_persistence",
+      "durability": "durable Automation trigger object already exists",
+      "what_persists": "Azure keeps a schedule object that can re-run published runbooks later",
+      "foothold_anchor": "Automation Account 'aa-lab-quiet' (runbook 'Lab-Maintenance')",
+      "survives_host_rebuild": true,
+      "survives_original_account_cleanup": true,
+      "current_evidence": "Current identity has Owner at subscription scope over Automation Account 'aa-lab-quiet', and the account already exposes 1 published runbook(s) including 'Lab-Maintenance' backed by 1 job schedule(s).",
+      "missing_proof": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "operator_actionability": "Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "recommended_fix_focus": "Remove unneeded schedules or webhooks, reduce write access to the Automation Account, and rotate or trim stored Automation secrets and connections.",
+      "source_command": "automation",
+      "source_context": "Owner at subscription scope",
+      "source": "aa-lab-quiet",
+      "clue_type": "automation-persistence",
+      "confirmation_basis": "Owner at subscription scope",
+      "priority": "medium",
+      "urgency": "review-soon",
+      "visible_path": "durable cloud-side object already exists",
+      "path_concept": "event_driven_persistence",
+      "path_type": "existing_persistence",
+      "stronger_outcome": "Durable cloud-side persistence already exists.",
+      "why_care": "Current identity has Owner at subscription scope over Automation Account 'aa-lab-quiet', and the account already exposes 1 published runbook(s) including 'Lab-Maintenance' backed by 1 job schedule(s). Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "confidence_boundary": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "note": "Current identity has Owner at subscription scope over Automation Account 'aa-lab-quiet', and the account already exposes 1 published runbook(s) including 'Lab-Maintenance' backed by 1 job schedule(s). Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers.",
+      "target_service": "automation-persistence",
+      "target_resolution": "named match",
+      "evidence_commands": [
+        "automation",
+        "rbac"
+      ],
+      "joined_surface_types": [
+        "automation-account",
+        "published-runbook",
+        "schedule"
+      ],
+      "target_count": 1,
+      "target_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"
+      ],
+      "target_names": [
+        "aa-lab-quiet"
+      ],
+      "target_visibility_issue": null,
+      "next_review": "Review the runbooks, schedules, and webhooks on Automation Account 'aa-lab-quiet'; current evidence does not show which downstream app or workflow this path reaches directly.",
+      "summary": "Current identity has Owner at subscription scope over Automation Account 'aa-lab-quiet', and the account already exposes 1 published runbook(s) including 'Lab-Maintenance' backed by 1 job schedule(s). Treat this as cloud-side re-entry and review who can edit the Automation Account, its published runbooks, and its durable triggers. This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "missing_confirmation": "This row shows durable trigger-backed re-entry from control-plane state, not whether the current runbook content is malicious. The current environment does not show which workflow, app, or credential target this Automation path reaches directly.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "kind": "note",
+      "message": "Static fixture data includes 5 representative app-credential rows for deterministic testing.",
+      "scope": "app_credentials.fixture"
+    }
+  ]
+}

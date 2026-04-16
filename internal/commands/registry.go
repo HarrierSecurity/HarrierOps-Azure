@@ -16,6 +16,7 @@ type Request struct {
 	Subscription       string
 	DevOpsOrganization string
 	ChainFamily        string
+	PersistenceSurface string
 	Output             models.OutputMode
 	RoleTrustsMode     models.RoleTrustsMode
 	OutDir             string
@@ -85,6 +86,12 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return appServicesHandler(provider, now)
 	case "functions":
 		return functionsHandler(provider, now)
+	case "azure-ml":
+		return azureMLHandler(provider, now)
+	case "event-grid":
+		return eventGridHandler(provider, now)
+	case "logic-apps":
+		return logicAppsHandler(provider, now)
 	case "container-apps":
 		return containerAppsHandler(provider, now)
 	case "container-instances":
@@ -131,6 +138,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return tokensCredentialsHandler(provider, now)
 	case "chains":
 		return chainsHandler(provider, now)
+	case "persistence":
+		return persistenceHandler(provider, now)
 	default:
 		return nil
 	}

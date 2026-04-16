@@ -3,25 +3,25 @@ context :: tenant=auto subscription=auto output=table
 
 [api-mgmt] Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.
 table view is compact by design; the JSON artifact keeps the fuller visible field set
-╭────────────┬─────────────────────────────────────────────────┬──────────────┬──────────────────────────────────────────────────────────────╮
-│service     │gateway                                          │identity      │exposure                                                      │
-├────────────┼─────────────────────────────────────────────────┼──────────────┼──────────────────────────────────────────────────────────────┤
-│apim-edge-01│gateway: apim-edge-01.azure-api.net              │SystemAssigned│gateway=2; management=1; portal=1; public=Enabled; public-ip=1│
-│            │gateway: api.contoso.com                         │              │                                                              │
-│            │management: apim-edge-01.management.azure-api.net│              │                                                              │
-│            │portal: portal.apim-edge-01.contoso.com          │              │                                                              │
-╰────────────┴─────────────────────────────────────────────────┴──────────────┴──────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│operator signal                                                                                                                         │
-├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│apis=2; sub-required=1/2; subs=3; active-subs=2; backends=1; backend-hosts=1; named-values=2; sku=Developer; vnet=External; gateway=yes;│
-│devportal=Enabled; named-secrets=1; kv-backed=1                                                                                         │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────┬───────────────────────────────────────────────────┬────────────────┬────────────────────────────────────────────────────────────────╮
+│ service      │ gateway                                           │ identity       │ exposure                                                       │
+├──────────────┼───────────────────────────────────────────────────┼────────────────┼────────────────────────────────────────────────────────────────┤
+│ apim-edge-01 │ gateway: apim-edge-01.azure-api.net               │ SystemAssigned │ gateway=2; management=1; portal=1; public=Enabled; public-ip=1 │
+│              │ gateway: api.contoso.com                          │                │                                                                │
+│              │ management: apim-edge-01.management.azure-api.net │                │                                                                │
+│              │ portal: portal.apim-edge-01.contoso.com           │                │                                                                │
+╰──────────────┴───────────────────────────────────────────────────┴────────────────┴────────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                      │
+│ operator signal                                                                                                                          │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│This service is the broadest visible API Management surface in the current set: public gateway hostnames are visible, portal hostnames are│
-│visible, managed identity is visible, backend depth is visible, named-value secret depth is visible.                                      │
+│ apis=2; sub-required=1/2; subs=3; active-subs=2; backends=1; backend-hosts=1; named-values=2; sku=Developer; vnet=External; gateway=yes; │
+│ devportal=Enabled; named-secrets=1; kv-backed=1                                                                                          │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                                │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ This service is the broadest visible API Management surface in the current set: public gateway hostnames are visible, portal hostnames are visible, │
+│ managed identity is visible, backend depth is visible, named-value secret depth is visible.                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 Takeaway: 1 API Management services visible; 1 keep public network access enabled, 1 carry managed identity context, and 2 named values are visible, including 1 marked secret.

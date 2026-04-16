@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -16,54 +17,56 @@ const (
 
 func (p StaticProvider) Privesc(ctx context.Context, tenant string, subscription string) (PrivescFacts, error) {
 	session := staticFixtureSession(tenant, subscription)
+	paths := []models.PrivescPathSummary{
+		{
+			Asset:            nil,
+			CurrentIdentity:  true,
+			ImpactRoles:      []string{"Owner"},
+			StartingFoothold: "azurefox-lab-sp (current foothold)",
+			MissingProof:     "HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
+			NextReview:       "Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
+			OperatorSignal:   "Current foothold already has direct control.",
+			PathType:         privescCurrentFootholdDirectControl,
+			Priority:         "high",
+			Principal:        "azurefox-lab-sp",
+			PrincipalID:      "33333333-3333-3333-3333-333333333333",
+			PrincipalType:    "ServicePrincipal",
+			ProvenPath:       "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope.",
+			RelatedIDs: []string{
+				"33333333-3333-3333-3333-333333333333",
+				"/subscriptions/22222222-2222-2222-2222-222222222222",
+			},
+			Summary: "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
+		},
+		{
+			Asset:            models.StringPtr("vm-web-01"),
+			CurrentIdentity:  false,
+			ImpactRoles:      []string{"Owner"},
+			StartingFoothold: "azurefox-lab-sp (current foothold)",
+			MissingProof:     "HO-Azure does not prove control of the workload or successful token use from it.",
+			NextReview:       "Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
+			OperatorSignal:   "Visible ingress-backed lead; not yet rooted in current foothold.",
+			PathType:         privescIngressBackedWorkloadID,
+			Priority:         "medium",
+			Principal:        "ua-app",
+			PrincipalID:      "33333333-3333-3333-3333-333333333333",
+			PrincipalType:    "ManagedIdentity",
+			ProvenPath:       "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner).",
+			RelatedIDs: []string{
+				"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
+				"33333333-3333-3333-3333-333333333333",
+				"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+				"/subscriptions/22222222-2222-2222-2222-222222222222",
+			},
+			Summary: "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). HO-Azure does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
+		},
+	}
+	paths = markPreferredPrivescPath(paths)
 	return PrivescFacts{
 		TenantID:       session.TenantID,
 		SubscriptionID: session.Subscription.ID,
-		Paths: []models.PrivescPathSummary{
-			{
-				Asset:            nil,
-				CurrentIdentity:  true,
-				ImpactRoles:      []string{"Owner"},
-				StartingFoothold: "azurefox-lab-sp (current foothold)",
-				MissingProof:     "HO-Azure does not prove which exact abuse action is the best next step from this row alone.",
-				NextReview:       "Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
-				OperatorSignal:   "Current foothold already has direct control.",
-				PathType:         privescCurrentFootholdDirectControl,
-				Priority:         "high",
-				Principal:        "azurefox-lab-sp",
-				PrincipalID:      "33333333-3333-3333-3333-333333333333",
-				PrincipalType:    "ServicePrincipal",
-				ProvenPath:       "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope.",
-				RelatedIDs: []string{
-					"33333333-3333-3333-3333-333333333333",
-					"/subscriptions/22222222-2222-2222-2222-222222222222",
-				},
-				Summary: "Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. HO-Azure does not prove which exact abuse action is the best next step from this row alone. Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.",
-			},
-			{
-				Asset:            models.StringPtr("vm-web-01"),
-				CurrentIdentity:  false,
-				ImpactRoles:      []string{"Owner"},
-				StartingFoothold: "azurefox-lab-sp (current foothold)",
-				MissingProof:     "HO-Azure does not prove control of the workload or successful token use from it.",
-				NextReview:       "Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
-				OperatorSignal:   "Visible ingress-backed lead; not yet rooted in current foothold.",
-				PathType:         privescIngressBackedWorkloadID,
-				Priority:         "medium",
-				Principal:        "ua-app",
-				PrincipalID:      "33333333-3333-3333-3333-333333333333",
-				PrincipalType:    "ManagedIdentity",
-				ProvenPath:       "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner).",
-				RelatedIDs: []string{
-					"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
-					"33333333-3333-3333-3333-333333333333",
-					"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
-					"/subscriptions/22222222-2222-2222-2222-222222222222",
-				},
-				Summary: "Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). HO-Azure does not prove control of the workload or successful token use from it. Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.",
-			},
-		},
-		Issues: []models.Issue{},
+		Paths:          paths,
+		Issues:         []models.Issue{},
 	}, nil
 }
 
@@ -200,11 +203,15 @@ func privescFactsFromSources(
 			privescPriorityRank(left.Priority),
 			privescCurrentIdentityRank(left.CurrentIdentity),
 			privescPathSortRank(left.PathType),
+			privescPrincipalTypeRank(left.PrincipalType),
+			privescThemeRank(left),
 		}
 		rightKey := []int{
 			privescPriorityRank(right.Priority),
 			privescCurrentIdentityRank(right.CurrentIdentity),
 			privescPathSortRank(right.PathType),
+			privescPrincipalTypeRank(right.PrincipalType),
+			privescThemeRank(right),
 		}
 		for index := range leftKey {
 			if leftKey[index] != rightKey[index] {
@@ -220,6 +227,7 @@ func privescFactsFromSources(
 	issues := append([]models.Issue{}, permissionsFacts.Issues...)
 	issues = append(issues, managedIdentityFacts.Issues...)
 	issues = append(issues, vmFacts.Issues...)
+	paths = markPreferredPrivescPath(paths)
 
 	return PrivescFacts{
 		TenantID:       firstNonEmpty(permissionsFacts.TenantID, principalsFacts.TenantID, managedIdentityFacts.TenantID, vmFacts.TenantID),
@@ -324,11 +332,25 @@ func privescPriorityRank(priority string) int {
 
 func privescPathSortRank(pathType string) int {
 	switch strings.TrimSpace(pathType) {
-	case privescIngressBackedWorkloadID:
+	case privescCurrentFootholdDirectControl:
 		return 0
 	case privescVisiblePrivilegedLead:
 		return 1
-	case privescCurrentFootholdDirectControl:
+	case privescIngressBackedWorkloadID:
+		return 2
+	default:
+		return 9
+	}
+}
+
+func privescPrincipalTypeRank(principalType string) int {
+	normalized := strings.ToLower(strings.TrimSpace(principalType))
+	switch normalized {
+	case "serviceprincipal", "service principal":
+		return 0
+	case "managedidentity", "managed identity":
+		return 1
+	case "user":
 		return 2
 	default:
 		return 9
@@ -347,4 +369,153 @@ func privescCurrentIdentityRank(currentIdentity bool) int {
 		return 0
 	}
 	return 1
+}
+
+func privescThemeRank(path models.PrivescPathSummary) int {
+	nameParts := strings.ToLower(strings.Join([]string{
+		path.Principal,
+		valueOrEmptyString(path.Asset),
+	}, " "))
+	for _, token := range []string{"automation", "pipeline", "maintenance", "runner", "job", "agent"} {
+		if strings.Contains(nameParts, token) {
+			return 0
+		}
+	}
+	return 1
+}
+
+func markPreferredPrivescPath(paths []models.PrivescPathSummary) []models.PrivescPathSummary {
+	if len(paths) == 0 {
+		return paths
+	}
+
+	for index := range paths {
+		paths[index].Preferred = false
+		paths[index].PreferredReason = ""
+	}
+
+	paths[0].Preferred = true
+	paths[0].PreferredReason = privescPreferredReason(paths[0], paths[1:])
+	return paths
+}
+
+func privescPreferredReason(path models.PrivescPathSummary, alternatives []models.PrivescPathSummary) string {
+	identity := privescPreferredIdentityLabel(path)
+	themeReason := privescThemeTieBreakReason(path, alternatives)
+	switch strings.TrimSpace(path.PathType) {
+	case privescCurrentFootholdDirectControl:
+		return fmt.Sprintf("Preferred foothold: %s. It already has direct high-impact RBAC on visible scope.", identity)
+	case privescVisiblePrivilegedLead:
+		if themeReason != "" {
+			return fmt.Sprintf("Preferred foothold: %s. It edges out otherwise similar alternatives because %s.", identity, themeReason)
+		}
+		return fmt.Sprintf("Preferred foothold: %s. It is the strongest same-scope privileged identity currently visible.", identity)
+	case privescIngressBackedWorkloadID:
+		return fmt.Sprintf("Preferred foothold: %s. It is the strongest remaining workload-backed identity path in scope.", identity)
+	default:
+		if themeReason != "" {
+			return fmt.Sprintf("Preferred foothold: %s. It ranks highest among the visible privilege-escalation paths in scope, and %s.", identity, themeReason)
+		}
+		return fmt.Sprintf("Preferred foothold: %s. It ranks highest among the visible privilege-escalation paths in scope.", identity)
+	}
+}
+
+func privescPreferredIdentityLabel(path models.PrivescPathSummary) string {
+	if path.CurrentIdentity {
+		return fmt.Sprintf("current foothold %s (%s)", path.Principal, privescDisplayPrincipalType(path.PrincipalType))
+	}
+	return fmt.Sprintf("%s %s", privescOperatorPrincipalType(path.PrincipalType), path.Principal)
+}
+
+func privescDisplayPrincipalType(principalType string) string {
+	switch strings.TrimSpace(principalType) {
+	case "ManagedIdentity":
+		return "ManagedIdentity"
+	case "ServicePrincipal":
+		return "ServicePrincipal"
+	case "User":
+		return "User"
+	default:
+		normalized := strings.TrimSpace(principalType)
+		if normalized == "" {
+			return "unknown"
+		}
+		return normalized
+	}
+}
+
+func privescOperatorPrincipalType(principalType string) string {
+	switch strings.TrimSpace(principalType) {
+	case "ManagedIdentity":
+		return "managed identity"
+	case "ServicePrincipal":
+		return "service principal"
+	case "User":
+		return "user"
+	default:
+		normalized := strings.TrimSpace(principalType)
+		if normalized == "" {
+			return "unknown"
+		}
+		return strings.ToLower(normalized)
+	}
+}
+
+func privescThemeTieBreakReason(path models.PrivescPathSummary, alternatives []models.PrivescPathSummary) string {
+	theme := privescThemeLabel(path)
+	if theme == "" {
+		return ""
+	}
+	for _, alternative := range alternatives {
+		if privescPriorityRank(path.Priority) != privescPriorityRank(alternative.Priority) {
+			continue
+		}
+		if privescCurrentIdentityRank(path.CurrentIdentity) != privescCurrentIdentityRank(alternative.CurrentIdentity) {
+			continue
+		}
+		if privescPathSortRank(path.PathType) != privescPathSortRank(alternative.PathType) {
+			continue
+		}
+		if privescPrincipalTypeRank(path.PrincipalType) != privescPrincipalTypeRank(alternative.PrincipalType) {
+			continue
+		}
+		if privescThemeLabel(alternative) == "" {
+			return fmt.Sprintf("its naming/context looks %s-themed", theme)
+		}
+	}
+	return ""
+}
+
+func privescThemeLabel(path models.PrivescPathSummary) string {
+	nameParts := strings.ToLower(strings.Join([]string{
+		path.Principal,
+		valueOrEmptyString(path.Asset),
+	}, " "))
+	switch {
+	case strings.Contains(nameParts, "pipeline"),
+		strings.Contains(nameParts, "build"),
+		strings.Contains(nameParts, "release"),
+		strings.Contains(nameParts, "runner"),
+		strings.Contains(nameParts, "agent"),
+		strings.Contains(nameParts, "deploy"),
+		strings.Contains(nameParts, "ci"),
+		strings.Contains(nameParts, "cd"):
+		return "pipeline"
+	case strings.Contains(nameParts, "automation"),
+		strings.Contains(nameParts, "runbook"),
+		strings.Contains(nameParts, "schedule"),
+		strings.Contains(nameParts, "worker"),
+		strings.Contains(nameParts, "job"),
+		strings.Contains(nameParts, "webhook"):
+		return "automation"
+	case strings.Contains(nameParts, "maintenance"),
+		strings.Contains(nameParts, "patch"),
+		strings.Contains(nameParts, "backup"),
+		strings.Contains(nameParts, "rotate"),
+		strings.Contains(nameParts, "sync"),
+		strings.Contains(nameParts, "ops"):
+		return "maintenance"
+	default:
+		return ""
+	}
 }

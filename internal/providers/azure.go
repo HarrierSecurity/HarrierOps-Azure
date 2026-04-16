@@ -48,16 +48,7 @@ func (provider AzureProvider) WhoAmI(ctx context.Context, tenant string, subscri
 		return WhoAmIFacts{}, err
 	}
 
-	principalID := firstNonEmpty(
-		session.claims["oid"],
-		session.claims["appid"],
-		session.claims["sub"],
-	)
-	displayName := firstNonEmpty(
-		session.claims["name"],
-		session.claims["preferred_username"],
-		session.claims["upn"],
-	)
+	principalID, displayName := currentPrincipalFromClaims(session.claims)
 
 	return WhoAmIFacts{
 		TenantID:     session.tenantID,
@@ -1131,8 +1122,10 @@ func decodeJWTPayload(token string) map[string]string {
 }
 
 func principalTypeFromClaims(claims map[string]string) string {
+	// Keep whoami classification claim-backed. Auth mode alone is not proof of a
+	// managed identity, but xms_mirid on the access token is.
 	if claims["xms_mirid"] != "" {
-		return "ServicePrincipal"
+		return "ManagedIdentity"
 	}
 	if looksLikeUserClaims(claims) {
 		return "User"
@@ -1144,6 +1137,22 @@ func principalTypeFromClaims(claims map[string]string) string {
 		return "User"
 	}
 	return "Unknown"
+}
+
+func currentPrincipalFromClaims(claims map[string]string) (string, string) {
+	// `appid` is the client/application ID, not the principal object ID. Keep it
+	// available as a name fallback, but do not treat it as the identity key for
+	// joins against RBAC or Graph object records.
+	principalID := firstNonEmpty(claims["oid"], claims["sub"])
+	displayName := firstNonEmpty(
+		claims["name"],
+		claims["preferred_username"],
+		claims["upn"],
+		claims["unique_name"],
+		claims["appid"],
+		principalID,
+	)
+	return principalID, displayName
 }
 
 func looksLikeUserClaims(claims map[string]string) bool {

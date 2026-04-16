@@ -9,6 +9,9 @@ type PrivescPathSummary struct {
 	NextReview       string   `json:"next_review"`
 	OperatorSignal   string   `json:"operator_signal"`
 	PathType         string   `json:"path_type"`
+	Target           string   `json:"target"`
+	Preferred        bool     `json:"preferred"`
+	PreferredReason  string   `json:"preferred_reason"`
 	Priority         string   `json:"priority"`
 	Principal        string   `json:"principal"`
 	PrincipalID      string   `json:"principal_id"`

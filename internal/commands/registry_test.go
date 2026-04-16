@@ -35,3 +35,15 @@ func TestChainsFamilyBuildersCoverImplementedFamilies(t *testing.T) {
 		}
 	}
 }
+
+func TestPersistenceSurfaceBuildersCoverImplementedSurfaces(t *testing.T) {
+	for _, surfaceName := range contracts.PersistenceSurfaceNames() {
+		surface, ok := contracts.PersistenceSurface(surfaceName)
+		if !ok || surface.Status != contracts.StatusImplemented {
+			continue
+		}
+		if persistenceSurfaceBuilders[surfaceName] == nil {
+			t.Fatalf("expected implemented persistence surface %q to have a builder", surfaceName)
+		}
+	}
+}

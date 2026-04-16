@@ -57,7 +57,7 @@ func enrichPermissionRows(permissions []providers.PermissionFact, principals []p
 			!permission.IsCurrentIdentity &&
 			!hasWorkloadPivot &&
 			!workloadVisibilityBlocked &&
-			(strings.EqualFold(permission.PrincipalType, "ServicePrincipal") || contains(principal.Sources, "managed-identities"))
+			(isServicePrincipalLike(permission.PrincipalType) || contains(principal.Sources, "managed-identities"))
 
 		nextReview := permissionsNextReviewHint(
 			permission.Privileged,
@@ -144,6 +144,10 @@ func enrichPermissionRows(permissions []providers.PermissionFact, principals []p
 		rows = append(rows, item.row)
 	}
 	return rows
+}
+
+func isServicePrincipalLike(principalType string) bool {
+	return strings.EqualFold(principalType, "ServicePrincipal") || strings.EqualFold(principalType, "ManagedIdentity")
 }
 
 func permissionsOperatorSignal(privileged bool, isCurrentIdentity bool, hasWorkloadPivot bool, workloadVisibilityBlocked bool, trustExpansionFollowOn bool) string {

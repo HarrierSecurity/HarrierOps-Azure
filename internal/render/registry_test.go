@@ -40,3 +40,16 @@ func TestChainsFamilyRenderersCoverImplementedFamilies(t *testing.T) {
 		}
 	}
 }
+
+func TestPersistenceCommandRendererExists(t *testing.T) {
+	entry, err := renderRegistryEntry("persistence")
+	if err != nil {
+		t.Fatalf("expected persistence renderer entry: %v", err)
+	}
+	if entry.table == nil {
+		t.Fatalf("expected table renderer for persistence")
+	}
+	if entry.csv == nil {
+		t.Fatalf("expected csv renderer for persistence")
+	}
+}

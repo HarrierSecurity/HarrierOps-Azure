@@ -11,10 +11,11 @@ import (
 )
 
 var chainsFamilyCSVRenderers = map[string]func(models.ChainsOutput) (string, error){
-	"compute-control": chainsComputeControlCSV,
-	"credential-path": chainsCredentialPathCSV,
-	"deployment-path": chainsDeploymentPathCSV,
-	"escalation-path": chainsEscalationPathCSV,
+	"compute-control":  chainsComputeControlCSV,
+	"credential-path":  chainsCredentialPathCSV,
+	"deployment-path":  chainsDeploymentPathCSV,
+	"escalation-path":  chainsEscalationPathCSV,
+	"persistence-path": chainsPersistencePathCSV,
 }
 
 func CSV(command string, payload any) (string, error) {
@@ -36,6 +37,17 @@ func chainsCSVRenderer(payload any) (string, error) {
 		return chainsFamilyCSV(out)
 	default:
 		return "", fmt.Errorf("unexpected payload type for chains: %T", payload)
+	}
+}
+
+func persistenceCSVRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.PersistenceOverviewOutput:
+		return persistenceOverviewCSV(out)
+	case models.PersistenceAutomationOutput:
+		return persistenceAutomationCSV(out)
+	default:
+		return "", fmt.Errorf("unexpected payload type for persistence: %T", payload)
 	}
 }
 
@@ -162,6 +174,277 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 		"consequence_types",
 		"missing_execution_path",
 		"missing_target_mapping",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func eventGridCSV(payload models.EventGridOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Routes))
+	for _, route := range payload.Routes {
+		rows = append(rows, []string{
+			route.ID,
+			route.Name,
+			valueOrEmpty(route.Source),
+			valueOrEmpty(route.Destination),
+			route.DestinationType,
+			route.Classification,
+			route.SourceID,
+			route.SourceType,
+			valueOrEmpty(route.DestinationTargetID),
+			boolString(route.ExternalDelivery),
+			valueOrEmpty(route.ProvisioningState),
+			valueOrEmpty(route.IdentityType),
+			valueOrEmpty(route.IdentityID),
+			valueOrEmpty(route.EventDeliverySchema),
+			jsonStringSlice(route.IncludedEventTypes),
+			route.Summary,
+			jsonStringSlice(route.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"route",
+		"source",
+		"destination",
+		"destination_type",
+		"classification",
+		"source_id",
+		"source_type",
+		"destination_target_id",
+		"external_delivery",
+		"provisioning_state",
+		"identity_type",
+		"identity_id",
+		"event_delivery_schema",
+		"included_event_types",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func azureMLCSV(payload models.AzureMLOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Workspaces))
+	for _, workspace := range payload.Workspaces {
+		rows = append(rows, []string{
+			workspace.ID,
+			workspace.Name,
+			valueOrEmpty(workspace.Runtime),
+			valueOrEmpty(workspace.Serving),
+			valueOrEmpty(workspace.Identity),
+			valueOrEmpty(workspace.Storage),
+			workspace.Classification,
+			workspace.ResourceGroup,
+			valueOrEmpty(workspace.Location),
+			valueOrEmpty(workspace.WorkspaceKind),
+			valueOrEmpty(workspace.State),
+			valueOrEmpty(workspace.PublicNetworkAccess),
+			valueOrEmpty(workspace.IdentityType),
+			valueOrEmpty(workspace.PrincipalID),
+			jsonStringSlice(workspace.IdentityIDs),
+			intString(workspace.ComputeCount),
+			jsonStringSlice(workspace.ComputeTypes),
+			intString(workspace.JobCount),
+			jsonStringSlice(workspace.JobTypes),
+			intString(workspace.ScheduleCount),
+			jsonStringSlice(workspace.ScheduleTriggerTypes),
+			intString(workspace.EndpointCount),
+			jsonStringSlice(workspace.EndpointAuthModes),
+			jsonStringSlice(workspace.EndpointPublicAccess),
+			intString(workspace.DatastoreCount),
+			jsonStringSlice(workspace.DatastoreTypes),
+			valueOrEmpty(workspace.StorageAccountID),
+			valueOrEmpty(workspace.KeyVaultID),
+			valueOrEmpty(workspace.ContainerRegistryID),
+			valueOrEmpty(workspace.ApplicationInsightsID),
+			workspace.Summary,
+			jsonStringSlice(workspace.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"workspace",
+		"runtime",
+		"serving",
+		"identity",
+		"storage",
+		"classification",
+		"resource_group",
+		"location",
+		"workspace_kind",
+		"state",
+		"public_network_access",
+		"identity_type",
+		"principal_id",
+		"identity_ids",
+		"compute_count",
+		"compute_types",
+		"job_count",
+		"job_types",
+		"schedule_count",
+		"schedule_trigger_types",
+		"endpoint_count",
+		"endpoint_auth_modes",
+		"endpoint_public_access",
+		"datastore_count",
+		"datastore_types",
+		"storage_account_id",
+		"key_vault_id",
+		"container_registry_id",
+		"application_insights_id",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func logicAppsCSV(payload models.LogicAppsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Workflows))
+	for _, workflow := range payload.Workflows {
+		rows = append(rows, []string{
+			workflow.ID,
+			workflow.Name,
+			valueOrEmpty(workflow.Trigger),
+			valueOrEmpty(workflow.Identity),
+			valueOrEmpty(workflow.Downstream),
+			workflow.Classification,
+			workflow.ResourceGroup,
+			valueOrEmpty(workflow.Location),
+			valueOrEmpty(workflow.Platform),
+			valueOrEmpty(workflow.WorkflowKind),
+			valueOrEmpty(workflow.State),
+			valueOrEmpty(workflow.IdentityType),
+			valueOrEmpty(workflow.PrincipalID),
+			valueOrEmpty(workflow.ClientID),
+			jsonStringSlice(workflow.IdentityIDs),
+			jsonStringSlice(workflow.TriggerTypes),
+			boolString(workflow.ExternallyCallableRequestTrigger),
+			valueOrEmpty(workflow.RecurrenceSummary),
+			jsonStringSlice(workflow.DownstreamActionKinds),
+			workflow.Summary,
+			jsonStringSlice(workflow.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"logic_app",
+		"trigger",
+		"identity",
+		"downstream",
+		"classification",
+		"resource_group",
+		"location",
+		"platform",
+		"workflow_kind",
+		"state",
+		"identity_type",
+		"principal_id",
+		"client_id",
+		"identity_ids",
+		"trigger_types",
+		"externally_callable_request_trigger",
+		"recurrence_summary",
+		"downstream_action_kinds",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func persistenceOverviewCSV(payload models.PersistenceOverviewOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Surfaces))
+	for _, surface := range payload.Surfaces {
+		rows = append(rows, []string{
+			surface.Surface,
+			surface.State,
+			surface.Summary,
+			surface.OperatorQuestion,
+			jsonStringSlice(surface.BackingCommands),
+		})
+	}
+	return encodeCSV(
+		[]string{"surface", "state", "summary", "operator_question", "backing_commands"},
+		rows,
+	)
+}
+
+func persistenceAutomationCSV(payload models.PersistenceAutomationOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.AutomationAccounts))
+	for _, account := range payload.AutomationAccounts {
+		rows = append(rows, []string{
+			account.ID,
+			account.Name,
+			account.ResourceGroup,
+			valueOrEmpty(account.Location),
+			persistenceCSVStepStatus(account.CapabilitySteps, "create or modify account"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "add or edit runbook"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "upload or replace code"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "publish runbook"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "attach or reuse exec ctx"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "create schedule"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "link schedule to runbook"),
+			persistenceCSVStepStatus(account.CapabilitySteps, "create webhook"),
+			persistenceCSVRoleSummary(account.CurrentIdentityContext),
+			jsonStringSlice(account.ExecutionContextOptions),
+			persistenceCSVRoleSummary(account.CurrentState.StrongestVisibleExecutionContext),
+			intPtrString(account.CurrentState.RunbookCount),
+			intPtrString(account.CurrentState.PublishedRunbookCount),
+			jsonStringSlice(account.CurrentState.PublishedRunbookNames),
+			intPtrString(account.CurrentState.ScheduleCount),
+			intPtrString(account.CurrentState.JobScheduleCount),
+			intPtrString(account.CurrentState.WebhookCount),
+			intPtrString(account.CurrentState.HybridWorkerGroupCount),
+			intPtrString(account.CurrentState.CredentialCount),
+			intPtrString(account.CurrentState.CertificateCount),
+			intPtrString(account.CurrentState.ConnectionCount),
+			intPtrString(account.CurrentState.VariableCount),
+			intPtrString(account.CurrentState.EncryptedVariableCount),
+			valueOrEmpty(account.CurrentState.PrimaryStartMode),
+			valueOrEmpty(account.CurrentState.PrimaryRunbookName),
+			valueOrEmpty(account.CurrentState.IdentityType),
+			jsonStringSlice(account.CurrentState.NearbyThematicNames),
+			boolString(account.CurrentState.MissingTargetMapping),
+			jsonStringSlice(account.StillUnmapped),
+			account.Summary,
+			jsonStringSlice(account.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"automation_account",
+		"resource_group",
+		"location",
+		"create_or_modify_account",
+		"add_or_edit_runbook",
+		"upload_or_replace_code",
+		"publish_runbook",
+		"attach_or_reuse_exec_ctx",
+		"create_schedule",
+		"link_schedule_to_runbook",
+		"create_webhook",
+		"current_identity_context",
+		"execution_context_options",
+		"strongest_visible_execution_context",
+		"runbook_count",
+		"published_runbook_count",
+		"published_runbook_names",
+		"schedule_count",
+		"job_schedule_count",
+		"webhook_count",
+		"hybrid_worker_group_count",
+		"credential_count",
+		"certificate_count",
+		"connection_count",
+		"variable_count",
+		"encrypted_variable_count",
+		"primary_start_mode",
+		"primary_runbook_name",
+		"identity_type",
+		"nearby_thematic_names",
+		"missing_target_mapping",
+		"still_unmapped",
 		"summary",
 		"related_ids",
 	}, rows)
@@ -560,6 +843,76 @@ func chainsDeploymentPathCSV(payload models.ChainsOutput) (string, error) {
 	}, rows)
 }
 
+func chainsPersistencePathCSV(payload models.ChainsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Paths))
+	for _, path := range payload.Paths {
+		rows = append(rows, []string{
+			path.AssetID,
+			path.AssetKind,
+			path.AssetName,
+			path.ChainID,
+			valueOrEmpty(path.Surface),
+			valueOrEmpty(path.PersistenceType),
+			valueOrEmpty(path.PathType),
+			valueOrEmpty(path.Classification),
+			valueOrEmpty(path.Durability),
+			valueOrEmpty(path.WhatPersists),
+			valueOrEmpty(path.FootholdAnchor),
+			boolPtrString(path.SurvivesHostRebuild),
+			boolPtrString(path.SurvivesOriginalAccountCleanup),
+			valueOrEmpty(path.CurrentEvidence),
+			valueOrEmpty(path.MissingProof),
+			valueOrEmpty(path.OperatorActionability),
+			valueOrEmpty(path.RecommendedFixFocus),
+			path.Priority,
+			valueOrEmpty(path.Urgency),
+			valueOrEmpty(path.SourceCommand),
+			valueOrEmpty(path.SourceContext),
+			jsonStringSlice(path.EvidenceCommands),
+			jsonStringSlice(path.JoinedSurfaceTypes),
+			path.Summary,
+			intString(path.TargetCount),
+			jsonStringSlice(path.TargetIDs),
+			jsonStringSlice(path.TargetNames),
+			jsonStringSlice(path.RelatedIDs),
+			path.TargetResolution,
+			path.VisiblePath,
+		})
+	}
+	return encodeCSV([]string{
+		"asset_id",
+		"asset_kind",
+		"asset_name",
+		"chain_id",
+		"surface",
+		"persistence_type",
+		"row_class",
+		"classification",
+		"durability",
+		"what_persists",
+		"foothold_anchor",
+		"survives_host_rebuild",
+		"survives_original_account_cleanup",
+		"current_evidence",
+		"missing_proof",
+		"operator_actionability",
+		"recommended_fix_focus",
+		"priority",
+		"urgency",
+		"source_command",
+		"source_context",
+		"evidence_commands",
+		"joined_surface_types",
+		"summary",
+		"target_count",
+		"target_ids",
+		"target_names",
+		"related_ids",
+		"target_resolution",
+		"visible_path",
+	}, rows)
+}
+
 func chainsCredentialPathCSV(payload models.ChainsOutput) (string, error) {
 	rows := make([][]string, 0, len(payload.Paths))
 	for _, path := range payload.Paths {
@@ -683,10 +1036,12 @@ func functionsCSV(payload models.FunctionsOutput) (string, error) {
 			valueOrEmpty(app.AzureWebJobsStorageValueType),
 			fmt.Sprintf("%t", app.ClientCertEnabled),
 			valueOrEmpty(app.DefaultHostname),
+			valueOrEmpty(app.Deployment),
 			valueOrEmpty(app.FTPSState),
 			valueOrEmpty(app.FunctionsExtensionVersion),
 			fmt.Sprintf("%t", app.HTTPSOnly),
 			app.ID,
+			valueOrEmpty(app.Identity),
 			intPtrString(app.KeyVaultReferenceCount),
 			app.Location,
 			valueOrEmpty(app.MinTLSVersion),
@@ -695,6 +1050,7 @@ func functionsCSV(payload models.FunctionsOutput) (string, error) {
 			join(app.RelatedIDs, ";"),
 			app.ResourceGroup,
 			boolPtrString(app.RunFromPackage),
+			valueOrEmpty(app.Runtime),
 			valueOrEmpty(app.RuntimeStack),
 			valueOrEmpty(app.State),
 			app.Summary,
@@ -710,19 +1066,22 @@ func functionsCSV(payload models.FunctionsOutput) (string, error) {
 		"azure_webjobs_storage_reference_target",
 		"azure_webjobs_storage_value_type",
 		"client_cert_enabled",
-		"default_hostname",
+		"hostname",
+		"deployment",
 		"ftps_state",
 		"functions_extension_version",
 		"https_only",
 		"id",
+		"identity",
 		"key_vault_reference_count",
 		"location",
 		"min_tls_version",
-		"name",
+		"function_app",
 		"public_network_access",
 		"related_ids",
 		"resource_group",
 		"run_from_package",
+		"runtime",
 		"runtime_stack",
 		"state",
 		"summary",
@@ -1193,6 +1552,9 @@ func privescCSV(payload models.PrivescOutput) (string, error) {
 		"next_review",
 		"operator_signal",
 		"path_type",
+		"target",
+		"preferred",
+		"preferred_reason",
 		"priority",
 		"principal",
 		"principal_id",
@@ -1212,6 +1574,9 @@ func privescCSV(payload models.PrivescOutput) (string, error) {
 			path.NextReview,
 			path.OperatorSignal,
 			path.PathType,
+			path.Target,
+			fmt.Sprintf("%t", path.Preferred),
+			path.PreferredReason,
 			path.Priority,
 			path.Principal,
 			path.PrincipalID,
@@ -1556,15 +1921,15 @@ func tokensCredentialsCSV(payload models.TokensCredentialsOutput) (string, error
 	headers := []string{
 		"access_path",
 		"asset_id",
-		"asset_kind",
-		"asset_name",
+		"kind",
+		"asset",
 		"location",
 		"operator_signal",
 		"priority",
 		"related_ids",
 		"resource_group",
 		"summary",
-		"surface_type",
+		"surface",
 	}
 	rows := make([][]string, 0, len(payload.Surfaces))
 	for _, surface := range payload.Surfaces {
@@ -1705,6 +2070,22 @@ func boolString(value bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func persistenceCSVStepStatus(steps []models.PersistenceCapabilityStep, action string) string {
+	for _, step := range steps {
+		if step.Action == action {
+			return step.Status
+		}
+	}
+	return ""
+}
+
+func persistenceCSVRoleSummary(context *models.PersistenceRoleContext) string {
+	if context == nil {
+		return ""
+	}
+	return context.Summary
 }
 
 func intJoin(values []int, separator string) string {

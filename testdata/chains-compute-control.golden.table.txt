@@ -4,86 +4,86 @@ context :: tenant=auto subscription=auto output=table
 [chains] Correlating grouped chain evidence with conservative cross-command joins.
 ho-azure chains
 
-╭────────┬───────┬────────────────────────────────────────────────┬────────────────┬─────────────────────┬──────────────────────────┬──────────────────────────────────────────┬────────────╮
-│priority│when   │reach from here                                 │compute foothold│token path           │identity                  │Azure access                              │proof status│
-├────────┼───────┼────────────────────────────────────────────────┼────────────────┼─────────────────────┼──────────────────────────┼──────────────────────────────────────────┼────────────┤
-│high    │act now│public exposure visible; exploitation not proved│aca-orders      │service token request│aca-orders system identity│Contributor across subscription-wide scope│confirmed   │
-╰────────┴───────┴────────────────────────────────────────────────┴────────────────┴─────────────────────┴──────────────────────────┴──────────────────────────────────────────┴────────────╯
-╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                                 │
-├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ContainerApp 'aca-orders' can request tokens as aca-orders system identity; that identity already maps to Contributor across subscription-wide scope.│
-│To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.              │
-│HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.                  │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────┬─────────┬──────────────────────────────────────────────────┬──────────────────┬───────────────────────┬────────────────────────────┬────────────────────────────────────────────┬──────────────╮
+│ priority │ when    │ reach from here                                  │ compute foothold │ token path            │ identity                   │ Azure access                               │ proof status │
+├──────────┼─────────┼──────────────────────────────────────────────────┼──────────────────┼───────────────────────┼────────────────────────────┼────────────────────────────────────────────┼──────────────┤
+│ high     │ act now │ public exposure visible; exploitation not proved │ aca-orders       │ service token request │ aca-orders system identity │ Contributor across subscription-wide scope │ confirmed    │
+╰──────────┴─────────┴──────────────────────────────────────────────────┴──────────────────┴───────────────────────┴────────────────────────────┴────────────────────────────────────────────┴──────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                                  │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ContainerApp 'aca-orders' can request tokens as aca-orders system identity; that identity already maps to Contributor across subscription-wide scope. │
+│ To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.               │
+│ HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.                   │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-╭────────┬───────┬────────────────────────────────────────────────┬────────────────┬─────────────────────┬──────────────────────────────┬──────────────────────────────────────────┬────────────╮
-│priority│when   │reach from here                                 │compute foothold│token path           │identity                      │Azure access                              │proof status│
-├────────┼───────┼────────────────────────────────────────────────┼────────────────┼─────────────────────┼──────────────────────────────┼──────────────────────────────────────────┼────────────┤
-│high    │act now│public exposure visible; exploitation not proved│aci-public-api  │service token request│aci-public-api system identity│Contributor across subscription-wide scope│confirmed   │
-╰────────┴───────┴────────────────────────────────────────────────┴────────────────┴─────────────────────┴──────────────────────────────┴──────────────────────────────────────────┴────────────╯
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                                              │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ContainerInstance 'aci-public-api' can request tokens as aci-public-api system identity; that identity already maps to Contributor across subscription-wide scope.│
-│To turn this into downstream Azure access, an operator would need a way to make this public-facing container group ask Azure for its own token.                   │
-│HO-Azure shows that this public-facing container group is public and token-capable, but public reachability alone does not prove that path.                       │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────┬─────────┬──────────────────────────────────────────────────┬──────────────────┬───────────────────────┬────────────────────────────────┬────────────────────────────────────────────┬──────────────╮
+│ priority │ when    │ reach from here                                  │ compute foothold │ token path            │ identity                       │ Azure access                               │ proof status │
+├──────────┼─────────┼──────────────────────────────────────────────────┼──────────────────┼───────────────────────┼────────────────────────────────┼────────────────────────────────────────────┼──────────────┤
+│ high     │ act now │ public exposure visible; exploitation not proved │ aci-public-api   │ service token request │ aci-public-api system identity │ Contributor across subscription-wide scope │ confirmed    │
+╰──────────┴─────────┴──────────────────────────────────────────────────┴──────────────────┴───────────────────────┴────────────────────────────────┴────────────────────────────────────────────┴──────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                                               │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ContainerInstance 'aci-public-api' can request tokens as aci-public-api system identity; that identity already maps to Contributor across subscription-wide scope. │
+│ To turn this into downstream Azure access, an operator would need a way to make this public-facing container group ask Azure for its own token.                    │
+│ HO-Azure shows that this public-facing container group is public and token-capable, but public reachability alone does not prove that path.                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-╭────────┬───────┬────────────────────────────────────────────────┬────────────────┬─────────────────────┬───────────────────┬──────────────────────────────────────────┬────────────╮
-│priority│when   │reach from here                                 │compute foothold│token path           │identity           │Azure access                              │proof status│
-├────────┼───────┼────────────────────────────────────────────────┼────────────────┼─────────────────────┼───────────────────┼──────────────────────────────────────────┼────────────┤
-│high    │act now│public exposure visible; exploitation not proved│app-empty-mi    │service token request│app-empty-mi-system│Contributor across subscription-wide scope│confirmed   │
-╰────────┴───────┴────────────────────────────────────────────────┴────────────────┴─────────────────────┴───────────────────┴──────────────────────────────────────────┴────────────╯
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                          │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│AppService 'app-empty-mi' can request tokens as app-empty-mi-system; that identity already maps to Contributor across subscription-wide scope.│
-│To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.       │
-│HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.           │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
-╭────────┬───────┬────────────────────────────────────────────────┬────────────────┬─────────────────────┬──────────────────┬──────────────────────────────────────────┬──────────────────╮
-│priority│when   │reach from here                                 │compute foothold│token path           │identity          │Azure access                              │proof status      │
-├────────┼───────┼────────────────────────────────────────────────┼────────────────┼─────────────────────┼──────────────────┼──────────────────────────────────────────┼──────────────────┤
-│high    │act now│public exposure visible; exploitation not proved│func-orders     │service token request│func-orders-system│Contributor across subscription-wide scope│best current match│
-╰────────┴───────┴────────────────────────────────────────────────┴────────────────┴─────────────────────┴──────────────────┴──────────────────────────────────────────┴──────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                                                    │
-├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│FunctionApp 'func-orders' carries mixed identities.                                                                                                                     │
-│Current collected workload behavior points to func-orders-system as the best current lead, and that identity already maps to Contributor across subscription-wide scope.│
-│To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.                                 │
-│HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.                                     │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│what is still missing                                                                                             │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Current foothold does not directly verify which attached identity the raw token path will choose on every request.│
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
-╭────────┬───────┬────────────────────────────────────────────────┬────────────────┬────────────────────────┬────────┬────────────────────────────────────┬────────────╮
-│priority│when   │reach from here                                 │compute foothold│token path              │identity│Azure access                        │proof status│
-├────────┼───────┼────────────────────────────────────────────────┼────────────────┼────────────────────────┼────────┼────────────────────────────────────┼────────────┤
-│high    │act now│public exposure visible; exploitation not proved│vm-web-01       │public VM metadata token│ua-app  │Owner across subscription-wide scope│confirmed   │
-╰────────┴───────┴────────────────────────────────────────────────┴────────────────┴────────────────────────┴────────┴────────────────────────────────────┴────────────╯
+╭──────────┬─────────┬──────────────────────────────────────────────────┬──────────────────┬───────────────────────┬─────────────────────┬────────────────────────────────────────────┬──────────────╮
+│ priority │ when    │ reach from here                                  │ compute foothold │ token path            │ identity            │ Azure access                               │ proof status │
+├──────────┼─────────┼──────────────────────────────────────────────────┼──────────────────┼───────────────────────┼─────────────────────┼────────────────────────────────────────────┼──────────────┤
+│ high     │ act now │ public exposure visible; exploitation not proved │ app-empty-mi     │ service token request │ app-empty-mi-system │ Contributor across subscription-wide scope │ confirmed    │
+╰──────────┴─────────┴──────────────────────────────────────────────────┴──────────────────┴───────────────────────┴─────────────────────┴────────────────────────────────────────────┴──────────────╯
 ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                            │
+│ note                                                                                                                                           │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│VM 'vm-web-01' can request tokens as ua-app; that identity already maps to Owner across subscription-wide scope.                                │
-│To turn this into downstream Azure access, an operator would need a way to make this public-facing workload reach the Azure VM metadata service.│
-│HO-Azure shows that the workload is public and IMDS-backed, but public reachability alone does not prove that path.                             │
+│ AppService 'app-empty-mi' can request tokens as app-empty-mi-system; that identity already maps to Contributor across subscription-wide scope. │
+│ To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.        │
+│ HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.            │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-╭────────┬───────────┬──────────────────────────────────────┬────────────────┬─────────────────┬───────────────────┬──────────────────────────────────────────┬────────────╮
-│priority│when       │reach from here                       │compute foothold│token path       │identity           │Azure access                              │proof status│
-├────────┼───────────┼──────────────────────────────────────┼────────────────┼─────────────────┼───────────────────┼──────────────────────────────────────────┼────────────┤
-│medium  │review soon│current access does not show the start│vmss-edge-01    │VM metadata token│vmss-edge-01-system│Contributor across subscription-wide scope│confirmed   │
-╰────────┴───────────┴──────────────────────────────────────┴────────────────┴─────────────────┴───────────────────┴──────────────────────────────────────────┴────────────╯
-╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                                                                                 │
-├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│VMSS 'vmss-edge-01' can request tokens as vmss-edge-01-system; that identity already maps to Contributor across subscription-wide scope.                             │
-│To turn this into downstream Azure access, an operator would need host-level execution or admin access on this VMSS so the Azure VM metadata token path is reachable.│
-│HO-Azure does not yet show that start from the current foothold.                                                                                                     │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────┬─────────┬──────────────────────────────────────────────────┬──────────────────┬───────────────────────┬────────────────────┬────────────────────────────────────────────┬────────────────────╮
+│ priority │ when    │ reach from here                                  │ compute foothold │ token path            │ identity           │ Azure access                               │ proof status       │
+├──────────┼─────────┼──────────────────────────────────────────────────┼──────────────────┼───────────────────────┼────────────────────┼────────────────────────────────────────────┼────────────────────┤
+│ high     │ act now │ public exposure visible; exploitation not proved │ func-orders      │ service token request │ func-orders-system │ Contributor across subscription-wide scope │ best current match │
+╰──────────┴─────────┴──────────────────────────────────────────────────┴──────────────────┴───────────────────────┴────────────────────┴────────────────────────────────────────────┴────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ FunctionApp 'func-orders' carries mixed identities.                                                                                                                      │
+│ Current collected workload behavior points to func-orders-system as the best current lead, and that identity already maps to Contributor across subscription-wide scope. │
+│ To turn this into downstream Azure access, an operator would need a way to make this public-facing service ask Azure for its own token.                                  │
+│ HO-Azure shows that this public-facing service is public and token-capable, but public reachability alone does not prove that path.                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ what is still missing                                                                                              │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Current foothold does not directly verify which attached identity the raw token path will choose on every request. │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────┬─────────┬──────────────────────────────────────────────────┬──────────────────┬──────────────────────────┬──────────┬──────────────────────────────────────┬──────────────╮
+│ priority │ when    │ reach from here                                  │ compute foothold │ token path               │ identity │ Azure access                         │ proof status │
+├──────────┼─────────┼──────────────────────────────────────────────────┼──────────────────┼──────────────────────────┼──────────┼──────────────────────────────────────┼──────────────┤
+│ high     │ act now │ public exposure visible; exploitation not proved │ vm-web-01        │ public VM metadata token │ ua-app   │ Owner across subscription-wide scope │ confirmed    │
+╰──────────┴─────────┴──────────────────────────────────────────────────┴──────────────────┴──────────────────────────┴──────────┴──────────────────────────────────────┴──────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ VM 'vm-web-01' can request tokens as ua-app; that identity already maps to Owner across subscription-wide scope.                                 │
+│ To turn this into downstream Azure access, an operator would need a way to make this public-facing workload reach the Azure VM metadata service. │
+│ HO-Azure shows that the workload is public and IMDS-backed, but public reachability alone does not prove that path.                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────┬─────────────┬────────────────────────────────────────┬──────────────────┬───────────────────┬─────────────────────┬────────────────────────────────────────────┬──────────────╮
+│ priority │ when        │ reach from here                        │ compute foothold │ token path        │ identity            │ Azure access                               │ proof status │
+├──────────┼─────────────┼────────────────────────────────────────┼──────────────────┼───────────────────┼─────────────────────┼────────────────────────────────────────────┼──────────────┤
+│ medium   │ review soon │ current access does not show the start │ vmss-edge-01     │ VM metadata token │ vmss-edge-01-system │ Contributor across subscription-wide scope │ confirmed    │
+╰──────────┴─────────────┴────────────────────────────────────────┴──────────────────┴───────────────────┴─────────────────────┴────────────────────────────────────────────┴──────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                                                                  │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ VMSS 'vmss-edge-01' can request tokens as vmss-edge-01-system; that identity already maps to Contributor across subscription-wide scope.                              │
+│ To turn this into downstream Azure access, an operator would need host-level execution or admin access on this VMSS so the Azure VM metadata token path is reachable. │
+│ HO-Azure does not yet show that start from the current foothold.                                                                                                      │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

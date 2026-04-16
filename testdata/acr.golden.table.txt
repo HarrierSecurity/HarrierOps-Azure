@@ -3,41 +3,40 @@ context :: tenant=auto subscription=auto output=table
 
 [acr] Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.
 table view is compact by design; the JSON artifact keeps the fuller visible field set
-╭─────────────────┬────────────────────────────┬────────┬────────────────────────┬───────────────────────────────────╮
-│registry         │login server                │identity│auth                    │exposure                           │
-├─────────────────┼────────────────────────────┼────────┼────────────────────────┼───────────────────────────────────┤
-│acr-public-legacy│acr-public-legacy.azurecr.io│-       │admin=yes; anon-pull=yes│public=Enabled; default=Allow; pe=0│
-╰─────────────────┴────────────────────────────┴────────┴────────────────────────┴───────────────────────────────────╯
-╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│operator signal                                                                                                │
-├───────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│sku=Standard; bypass=AzureServices; data-endpoint=yes; quarantine=disabled; retention=disabled; trust=disabled;│
-│webhooks=2; enabled=1; wide-scopes=1; actions=delete,push; replications=0                                      │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                   │
-├───────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│This registry is the broadest visible ACR surface in the current set: public network access, admin-user│
-│authentication, anonymous pull are all enabled.                                                        │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────┬──────────────────────────────┬──────────┬──────────────────────────┬─────────────────────────────────────╮
+│ registry          │ login server                 │ identity │ auth                     │ exposure                            │
+├───────────────────┼──────────────────────────────┼──────────┼──────────────────────────┼─────────────────────────────────────┤
+│ acr-public-legacy │ acr-public-legacy.azurecr.io │ -        │ admin=yes; anon-pull=yes │ public=Enabled; default=Allow; pe=0 │
+╰───────────────────┴──────────────────────────────┴──────────┴──────────────────────────┴─────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ operator signal                                                                                                             │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sku=Standard; bypass=AzureServices; data-endpoint=yes; quarantine=disabled; retention=disabled; trust=disabled; webhooks=2; │
+│ enabled=1; wide-scopes=1; actions=delete,push; replications=0                                                               │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                                    │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ This registry is the broadest visible ACR surface in the current set: public network access, admin-user authentication, │
+│ anonymous pull are all enabled.                                                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-╭──────────┬─────────────────────┬──────────────┬──────────────────────┬───────────────────────────────────╮
-│registry  │login server         │identity      │auth                  │exposure                           │
-├──────────┼─────────────────────┼──────────────┼──────────────────────┼───────────────────────────────────┤
-│acr-ops-01│acr-ops-01.azurecr.io│SystemAssigned│admin=no; anon-pull=no│public=Disabled; default=Deny; pe=1│
-╰──────────┴─────────────────────┴──────────────┴──────────────────────┴───────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│operator signal                                                                                         │
-├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│sku=Premium; bypass=None; data-endpoint=no; quarantine=enabled; retention=30d; trust=notary; webhooks=1;│
-│enabled=1; actions=push; replications=2; regions=northeurope,westus2                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│note                                                                                                    │
-├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│This registry is less exposed at the edge, but it still shows public network access is disabled, private│
-│endpoint coverage is visible, managed identity is visible, replication is visible, content trust is     │
-│enabled.                                                                                                │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────┬───────────────────────┬────────────────┬────────────────────────┬─────────────────────────────────────╮
+│ registry   │ login server          │ identity       │ auth                   │ exposure                            │
+├────────────┼───────────────────────┼────────────────┼────────────────────────┼─────────────────────────────────────┤
+│ acr-ops-01 │ acr-ops-01.azurecr.io │ SystemAssigned │ admin=no; anon-pull=no │ public=Disabled; default=Deny; pe=1 │
+╰────────────┴───────────────────────┴────────────────┴────────────────────────┴─────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ operator signal                                                                                                     │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sku=Premium; bypass=None; data-endpoint=no; quarantine=enabled; retention=30d; trust=notary; webhooks=1; enabled=1; │
+│ actions=push; replications=2; regions=northeurope,westus2                                                           │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                              │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ This registry is less exposed at the edge, but it still shows public network access is disabled, private endpoint │
+│ coverage is visible, managed identity is visible, replication is visible, content trust is enabled.               │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 Takeaway: 2 registries visible; 1 keep public network access enabled, 1 allow admin-user auth, 3 webhooks are visible, and 1 registry replicates content into additional regions.

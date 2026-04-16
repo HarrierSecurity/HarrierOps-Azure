@@ -4,13 +4,13 @@ context :: tenant=auto subscription=auto output=table
 [arm-deployments] Reviewing ARM deployment history for config exposure and linked content.
 ho-azure arm-deployments
 
-╭──────────────┬────────────────────────────────────────┬─────────┬───────┬──────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────╮
-│deployment    │scope                                   │state    │outputs│linked refs                                                                   │why it matters                                                                         │
-├──────────────┼────────────────────────────────────────┼─────────┼───────┼──────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-│app-failed    │rg:rg-app                               │Failed   │0      │-                                                                             │resource group deployment 'app-failed' is Failed with no outputs recorded; 1 providers.│
-│sub-foundation│sub:22222222-2222-2222-2222-222222222222│Succeeded│2      │template=example.blob.core.windows.net/templates/sub-foundation.json          │subscription deployment 'sub-foundation' is Succeeded with 2 outputs; 2 providers.     │
-│kv-secrets    │rg:rg-secrets                           │Succeeded│1      │parameters=example.blob.core.windows.net/parameters/kv-secrets.parameters.json│resource group deployment 'kv-secrets' is Succeeded with 1 outputs; 1 providers.       │
-╰──────────────┴────────────────────────────────────────┴─────────┴───────┴──────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────┬──────────────────────────────────────────┬───────────┬─────────┬────────────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────╮
+│ deployment     │ scope                                    │ state     │ outputs │ linked refs                                                                    │ why it matters                                                                          │
+├────────────────┼──────────────────────────────────────────┼───────────┼─────────┼────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+│ app-failed     │ rg:rg-app                                │ Failed    │ 0       │ -                                                                              │ resource group deployment 'app-failed' is Failed with no outputs recorded; 1 providers. │
+│ sub-foundation │ sub:22222222-2222-2222-2222-222222222222 │ Succeeded │ 2       │ template=example.blob.core.windows.net/templates/sub-foundation.json           │ subscription deployment 'sub-foundation' is Succeeded with 2 outputs; 2 providers.      │
+│ kv-secrets     │ rg:rg-secrets                            │ Succeeded │ 1       │ parameters=example.blob.core.windows.net/parameters/kv-secrets.parameters.json │ resource group deployment 'kv-secrets' is Succeeded with 1 outputs; 1 providers.        │
+╰────────────────┴──────────────────────────────────────────┴───────────┴─────────┴────────────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────╯
 
 Findings:
 - MEDIUM: Deployment did not complete successfully

@@ -1,0 +1,101 @@
+{
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "logic-apps",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  },
+  "workflows": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
+      "logic_app": "la-inbound-redeploy",
+      "trigger": "request(external)",
+      "identity": "SystemAssigned",
+      "downstream": "automation; external-http",
+      "classification": "persistence-capable",
+      "resource_group": "rg-workflow",
+      "location": "centralus",
+      "platform": "Consumption",
+      "state": "Enabled",
+      "identity_type": "SystemAssigned",
+      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "client_id": "78787878-7878-7878-7878-787878787878",
+      "identity_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
+      ],
+      "trigger_types": [
+        "request"
+      ],
+      "externally_callable_request_trigger": true,
+      "downstream_action_kinds": [
+        "automation",
+        "external-http"
+      ],
+      "summary": "Request trigger is visible from workflow definition, so this Logic App already looks like a callable re-entry path. Workflow uses managed identity (SystemAssigned), and visible actions touch Azure Automation and external HTTP destinations.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-nightly-sync",
+      "logic_app": "la-nightly-sync",
+      "trigger": "recurrence",
+      "downstream": "storage; connector",
+      "classification": "persistence-capable",
+      "resource_group": "rg-workflow",
+      "location": "centralus",
+      "platform": "Consumption",
+      "state": "Enabled",
+      "identity_ids": null,
+      "trigger_types": [
+        "recurrence"
+      ],
+      "externally_callable_request_trigger": false,
+      "recurrence_summary": "Day/1",
+      "downstream_action_kinds": [
+        "storage",
+        "connector"
+      ],
+      "summary": "Recurrence is visible from workflow definition (Day/1), so Azure already has a durable schedule for this workflow. Visible downstream actions touch storage and connector-backed service paths, but no workflow identity is exposed from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-nightly-sync"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
+      "logic_app": "la-event-router",
+      "trigger": "api-connection",
+      "identity": "UserAssigned; user-assigned=1",
+      "downstream": "function; messaging",
+      "classification": "execution-capable-only",
+      "resource_group": "rg-workflow",
+      "location": "eastus",
+      "platform": "Consumption",
+      "state": "Enabled",
+      "identity_type": "UserAssigned",
+      "principal_id": "90909090-9090-9090-9090-909090909090",
+      "client_id": "abababab-abab-abab-abab-abababababab",
+      "identity_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+      ],
+      "trigger_types": [
+        "api-connection"
+      ],
+      "externally_callable_request_trigger": false,
+      "downstream_action_kinds": [
+        "function",
+        "messaging"
+      ],
+      "summary": "Visible trigger and action posture suggest workflow-driven execution, but the current definition does not yet show a durable request or recurrence trigger. Workflow uses a user-assigned managed identity and visibly reaches Azure Functions and messaging paths.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+      ]
+    }
+  ]
+}

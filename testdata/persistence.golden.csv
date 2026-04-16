@@ -1,0 +1,2 @@
+surface,state,summary,operator_question,backing_commands
+automation,implemented,Walk the current identity through the end-to-end Azure Automation steps that can store runnable code and make Azure invoke it again later.,"Given the current identity, how far can I go in Azure Automation to create, modify, publish, and trigger automation that Azure will run again later?","[""automation"",""permissions"",""rbac""]"

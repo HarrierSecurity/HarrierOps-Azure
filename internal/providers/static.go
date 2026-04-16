@@ -21,9 +21,12 @@ type Provider interface {
 	Databases(context.Context, string, string) (DatabasesFacts, error)
 	Endpoints(context.Context, string, string) (EndpointsFacts, error)
 	EnvVars(context.Context, string, string) (EnvVarsFacts, error)
+	AzureML(context.Context, string, string) (AzureMLFacts, error)
+	EventGrid(context.Context, string, string) (EventGridFacts, error)
 	Functions(context.Context, string, string) (FunctionsFacts, error)
 	Inventory(context.Context, string, string) (InventoryFacts, error)
 	KeyVault(context.Context, string, string) (KeyVaultFacts, error)
+	LogicApps(context.Context, string, string) (LogicAppsFacts, error)
 	ManagedIdentities(context.Context, string, string) (ManagedIdentitiesFacts, error)
 	DNS(context.Context, string, string) (DNSFacts, error)
 	NetworkEffective(context.Context, string, string) (NetworkEffectiveFacts, error)
@@ -186,6 +189,27 @@ type FunctionsFacts struct {
 	TenantID       string
 	SubscriptionID string
 	FunctionApps   []models.FunctionAppAsset
+	Issues         []models.Issue
+}
+
+type AzureMLFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Workspaces     []models.AzureMLWorkspaceAsset
+	Issues         []models.Issue
+}
+
+type EventGridFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Routes         []models.EventGridRouteAsset
+	Issues         []models.Issue
+}
+
+type LogicAppsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Workflows      []models.LogicAppWorkflowAsset
 	Issues         []models.Issue
 }
 

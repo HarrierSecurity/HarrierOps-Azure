@@ -131,7 +131,7 @@ func (provider AzureProvider) Permissions(ctx context.Context, tenant string, su
 			continue
 		}
 		record := ensureRecord(*identity.PrincipalID)
-		record.principalType = normalizePrincipalType(record.principalType, "ServicePrincipal")
+		record.principalType = normalizePrincipalType(record.principalType, "ManagedIdentity")
 		if record.displayName == "" {
 			record.displayName = identity.Name
 		}
@@ -256,8 +256,7 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 
 	roleDefinitionsClient := clientFactory.NewRoleDefinitionsClient()
 
-	currentPrincipalID := firstNonEmpty(session.claims["oid"], session.claims["appid"], session.claims["sub"])
-	currentDisplayName := firstNonEmpty(session.claims["name"], session.claims["preferred_username"], session.claims["upn"])
+	currentPrincipalID, currentDisplayName := currentPrincipalFromClaims(session.claims)
 	currentPrincipalType := principalTypeFromClaims(session.claims)
 
 	scopes := map[string]models.ScopeRef{
@@ -930,14 +929,26 @@ func authorizedJSONGetWithToken(ctx context.Context, bearerToken string, rawURL 
 }
 
 func normalizePrincipalType(current string, candidate string) string {
-	if strings.TrimSpace(candidate) == "" {
-		if strings.TrimSpace(current) == "" {
+	current = strings.TrimSpace(current)
+	candidate = strings.TrimSpace(candidate)
+
+	if candidate == "" {
+		if current == "" {
 			return "unknown"
 		}
 		return current
 	}
-	if strings.EqualFold(current, "unknown") || strings.TrimSpace(current) == "" {
+	if strings.EqualFold(current, "unknown") || current == "" {
 		return candidate
+	}
+	if strings.EqualFold(current, candidate) {
+		return current
+	}
+	if strings.EqualFold(current, "ServicePrincipal") && strings.EqualFold(candidate, "ManagedIdentity") {
+		return candidate
+	}
+	if strings.EqualFold(current, "ManagedIdentity") && strings.EqualFold(candidate, "ServicePrincipal") {
+		return current
 	}
 	return current
 }

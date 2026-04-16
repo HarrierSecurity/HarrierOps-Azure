@@ -53,7 +53,7 @@ func TestCommandSpecificFlagsStayAttachedToTheirContracts(t *testing.T) {
 }
 
 func TestChainFamilyContractsHaveMigrationHome(t *testing.T) {
-	for _, familyName := range []string{"credential-path", "deployment-path", "escalation-path", "compute-control"} {
+	for _, familyName := range []string{"credential-path", "deployment-path", "escalation-path", "compute-control", "persistence-path"} {
 		family, ok := Family(familyName)
 		if !ok {
 			t.Fatalf("expected family contract %q to exist", familyName)

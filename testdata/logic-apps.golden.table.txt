@@ -1,0 +1,49 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[logic-apps] Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure logic-apps
+
+╭─────────────────────┬───────────────────┬────────────────┬───────────────────────────┬─────────────────────╮
+│ logic app           │ trigger           │ identity       │ downstream                │ classification      │
+├─────────────────────┼───────────────────┼────────────────┼───────────────────────────┼─────────────────────┤
+│ la-inbound-redeploy │ request(external) │ SystemAssigned │ automation; external-http │ persistence-capable │
+╰─────────────────────┴───────────────────┴────────────────┴───────────────────────────┴─────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Request trigger is visible from workflow definition, so this Logic App already looks like a callable     │
+│ re-entry path.                                                                                           │
+│ Workflow uses managed identity (SystemAssigned), and visible actions touch Azure Automation and external │
+│ HTTP destinations.                                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────┬────────────┬──────────┬────────────────────┬─────────────────────╮
+│ logic app       │ trigger    │ identity │ downstream         │ classification      │
+├─────────────────┼────────────┼──────────┼────────────────────┼─────────────────────┤
+│ la-nightly-sync │ recurrence │ -        │ storage; connector │ persistence-capable │
+╰─────────────────┴────────────┴──────────┴────────────────────┴─────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Recurrence is visible from workflow definition (Day/1), so Azure already has a      │
+│ durable schedule for this workflow.                                                 │
+│ Visible downstream actions touch storage and connector-backed service paths, but no │
+│ workflow identity is exposed from the current read path.                            │
+╰─────────────────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────┬────────────────┬───────────────────────────────┬─────────────────────┬────────────────────────╮
+│ logic app       │ trigger        │ identity                      │ downstream          │ classification         │
+├─────────────────┼────────────────┼───────────────────────────────┼─────────────────────┼────────────────────────┤
+│ la-event-router │ api-connection │ UserAssigned; user-assigned=1 │ function; messaging │ execution-capable-only │
+╰─────────────────┴────────────────┴───────────────────────────────┴─────────────────────┴────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                                          │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Visible trigger and action posture suggest workflow-driven execution, but the current definition does not yet │
+│ show a durable request or recurrence trigger.                                                                 │
+│ Workflow uses a user-assigned managed identity and visibly reaches Azure Functions and messaging paths.       │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 workflows surfaced; 2 persistence-capable and 1 execution-capable-only from the current control-plane read path.

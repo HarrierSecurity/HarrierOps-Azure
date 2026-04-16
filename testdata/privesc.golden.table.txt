@@ -2,17 +2,34 @@ HO-Azure :: attack-path-focused Azure recon
 context :: tenant=auto subscription=auto output=table
 
 [privesc] Triage likely privilege-escalation and workload identity abuse paths.
-ho-azure privesc
+╭──────────┬────────────────────────────────────┬─────────────────────────────────┬──────────────────────────────────────╮
+│ priority │ starting foothold                  │ path type                       │ target                               │
+├──────────┼────────────────────────────────────┼─────────────────────────────────┼──────────────────────────────────────┤
+│ high     │ azurefox-lab-sp (current foothold) │ current foothold direct control │ current foothold (service principal) │
+╰──────────┴────────────────────────────────────┴─────────────────────────────────┴──────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                        │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Preferred foothold: current foothold azurefox-lab-sp (ServicePrincipal).                    │
+│ It already has direct high-impact RBAC on visible scope.                                    │
+│ Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope. │
+│                                                                                             │
+│ HO-Azure does not prove which exact abuse action is the best next step from this row alone. │
+│ Next review: rbac assignment evidence and scope.                                            │
+╰─────────────────────────────────────────────────────────────────────────────────────────────╯
 
-╭────────┬──────────────────────────────────┬────────────────────────────────┬────────────────────┬────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│priority│starting foothold                 │path type                       │target              │operator signal                                                 │note                                                                                       │next review                                                                                         │
-├────────┼──────────────────────────────────┼────────────────────────────────┼────────────────────┼────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│high    │azurefox-lab-sp (current foothold)│current foothold direct control │current foothold    │Current foothold already has direct control.                    │Current foothold 'azurefox-lab-sp' already holds high-impact RBAC (Owner) on visible scope.│Check rbac for the exact assignment evidence and scope behind this current-identity escalation lead.│
-│        │                                  │                                │                    │                                                                │                                                                                           │                                                                                                    │
-│        │                                  │                                │                    │                                                                │HO-Azure does not prove which exact abuse action is the best next step from this row alone.│                                                                                                    │
-│medium  │azurefox-lab-sp (current foothold)│ingress-backed workload identity│ua-app via vm-web-01│Visible ingress-backed lead; not yet rooted in current foothold.│Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner).       │Check managed-identities for the workload-to-identity anchor behind this ingress-backed lead.       │
-│        │                                  │                                │                    │                                                                │                                                                                           │                                                                                                    │
-│        │                                  │                                │                    │                                                                │HO-Azure does not prove control of the workload or successful token use from it.           │                                                                                                    │
-╰────────┴──────────────────────────────────┴────────────────────────────────┴────────────────────┴────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────┬────────────────────────────────────┬──────────────────────────────────┬───────────────────────────────────────╮
+│ priority │ starting foothold                  │ path type                        │ target                                │
+├──────────┼────────────────────────────────────┼──────────────────────────────────┼───────────────────────────────────────┤
+│ medium   │ azurefox-lab-sp (current foothold) │ ingress-backed workload identity │ managed identity ua-app via vm-web-01 │
+╰──────────┴────────────────────────────────────┴──────────────────────────────────┴───────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────╮
+│ note                                                                                 │
+├──────────────────────────────────────────────────────────────────────────────────────┤
+│ Public workload 'vm-web-01' carries identity 'ua-app' with high-impact RBAC (Owner). │
+│                                                                                      │
+│ HO-Azure does not prove control of the workload or successful token use from it.     │
+│ Next review: managed-identities workload-to-identity anchor.                         │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
 
 Takeaway: 2 privilege-escalation paths surfaced; 1 current-identity-rooted, 1 visible-only lead, 1 high, 1 medium.

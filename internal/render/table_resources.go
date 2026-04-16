@@ -1,6 +1,11 @@
 package render
 
-import "harrierops-azure/internal/models"
+import (
+	"fmt"
+	"strings"
+
+	"harrierops-azure/internal/models"
+)
 
 func aksTable(payload models.AksOutput) string {
 	if len(payload.AksClusters) == 0 {
@@ -99,6 +104,212 @@ func automationTable(payload models.AutomationOutput) string {
 		rows,
 		[]string{"No visible Automation accounts were confirmed from current scope.", "", "", "", "", "", ""},
 		automationTakeaway(payload),
+	)
+}
+
+func azureMLTable(payload models.AzureMLOutput) string {
+	if len(payload.Workspaces) == 0 {
+		return renderListTable(
+			"ho-azure azure-ml",
+			[]string{"workspace", "runtime", "serving", "identity", "classification"},
+			nil,
+			[]string{"No visible Azure ML workspaces were confirmed from current scope.", "", "", "", ""},
+			azureMLTakeaway(payload),
+		)
+	}
+
+	sections := make([]string, 0, len(payload.Workspaces))
+	for index, workspace := range payload.Workspaces {
+		row := renderStructuredTableWithTitle(
+			"ho-azure azure-ml",
+			[]string{"workspace", "runtime", "serving", "identity", "classification"},
+			[][]string{{
+				workspace.Name,
+				valueOrFallback(workspace.Runtime, "-"),
+				valueOrFallback(workspace.Serving, "-"),
+				valueOrFallback(workspace.Identity, "-"),
+				workspace.Classification,
+			}},
+			index == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		note := workspace.Summary
+		if storage := azureMLStorageContext(workspace); storage != "" {
+			note += " Storage context: " + storage + "."
+		}
+		if note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + azureMLTakeaway(payload) + "\n"
+}
+
+func azureMLTakeaway(payload models.AzureMLOutput) string {
+	if len(payload.Workspaces) == 0 {
+		return "No visible Azure ML workspaces were confirmed from current scope."
+	}
+
+	executionCapable := 0
+	persistenceContext := 0
+	for _, workspace := range payload.Workspaces {
+		switch workspace.Classification {
+		case "execution-capable":
+			executionCapable++
+		case "supporting-persistence-context":
+			persistenceContext++
+		}
+	}
+
+	return fmt.Sprintf(
+		"%d workspaces surfaced; %d execution-capable and %d persistence-adjacent from the current control-plane read path.",
+		len(payload.Workspaces),
+		executionCapable,
+		persistenceContext,
+	)
+}
+
+func azureMLStorageContext(workspace models.AzureMLWorkspaceAsset) string {
+	parts := []string{}
+	if workspace.DatastoreCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d visible datastore relationships", workspace.DatastoreCount))
+	}
+	if workspace.StorageAccountID != nil && *workspace.StorageAccountID != "" {
+		parts = append(parts, "linked storage account")
+	}
+	if workspace.KeyVaultID != nil && *workspace.KeyVaultID != "" {
+		parts = append(parts, "linked key vault")
+	}
+	if workspace.ContainerRegistryID != nil && *workspace.ContainerRegistryID != "" {
+		parts = append(parts, "linked container registry")
+	}
+	if workspace.ApplicationInsightsID != nil && *workspace.ApplicationInsightsID != "" {
+		parts = append(parts, "linked app insights")
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, ", ")
+}
+
+func eventGridTable(payload models.EventGridOutput) string {
+	if len(payload.Routes) == 0 {
+		return renderListTable(
+			"ho-azure event-grid",
+			[]string{"source", "destination", "destination type", "classification"},
+			nil,
+			[]string{"No visible Event Grid routes were confirmed from current scope.", "", "", ""},
+			eventGridTakeaway(payload),
+		)
+	}
+
+	sections := make([]string, 0, len(payload.Routes))
+	for index, route := range payload.Routes {
+		row := renderStructuredTableWithTitle(
+			"ho-azure event-grid",
+			[]string{"source", "destination", "destination type", "classification"},
+			[][]string{{
+				valueOrFallback(route.Source, "-"),
+				valueOrFallback(route.Destination, "-"),
+				route.DestinationType,
+				route.Classification,
+			}},
+			index == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if route.Summary != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(route.Summary, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + eventGridTakeaway(payload) + "\n"
+}
+
+func eventGridTakeaway(payload models.EventGridOutput) string {
+	if len(payload.Routes) == 0 {
+		return "No visible Event Grid routes were confirmed from current scope."
+	}
+
+	executionCapable := 0
+	externalCallbacks := 0
+	for _, route := range payload.Routes {
+		switch route.Classification {
+		case "execution-capable":
+			executionCapable++
+		case "external-callback":
+			externalCallbacks++
+		}
+	}
+
+	return fmt.Sprintf(
+		"%d routes surfaced; %d execution-capable and %d external-callback from the current control-plane read path.",
+		len(payload.Routes),
+		executionCapable,
+		externalCallbacks,
+	)
+}
+
+func logicAppsTable(payload models.LogicAppsOutput) string {
+	if len(payload.Workflows) == 0 {
+		return renderListTable(
+			"ho-azure logic-apps",
+			[]string{"logic app", "trigger", "identity", "downstream", "classification"},
+			nil,
+			[]string{"No visible Logic Apps workflows were confirmed from current scope.", "", "", "", ""},
+			logicAppsTakeaway(payload),
+		)
+	}
+
+	sections := make([]string, 0, len(payload.Workflows))
+	for index, workflow := range payload.Workflows {
+		row := renderStructuredTableWithTitle(
+			"ho-azure logic-apps",
+			[]string{"logic app", "trigger", "identity", "downstream", "classification"},
+			[][]string{{
+				workflow.Name,
+				valueOrFallback(workflow.Trigger, "-"),
+				valueOrFallback(workflow.Identity, "-"),
+				valueOrFallback(workflow.Downstream, "-"),
+				workflow.Classification,
+			}},
+			index == 0,
+		)
+		rowWidth := renderedTableCellWidth(row)
+		parts := []string{row}
+		if note := workflow.Summary; note != "" {
+			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
+		}
+		sections = append(sections, joinRenderedSections(parts...))
+	}
+
+	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + logicAppsTakeaway(payload) + "\n"
+}
+
+func logicAppsTakeaway(payload models.LogicAppsOutput) string {
+	if len(payload.Workflows) == 0 {
+		return "No visible Logic Apps workflows were confirmed from current scope."
+	}
+
+	persistenceCapable := 0
+	executionOnly := 0
+	for _, workflow := range payload.Workflows {
+		switch workflow.Classification {
+		case "persistence-capable":
+			persistenceCapable++
+		case "execution-capable-only":
+			executionOnly++
+		}
+	}
+
+	return fmt.Sprintf(
+		"%d workflows surfaced; %d persistence-capable and %d execution-capable-only from the current control-plane read path.",
+		len(payload.Workflows),
+		persistenceCapable,
+		executionOnly,
 	)
 }
 
