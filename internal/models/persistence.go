@@ -82,3 +82,43 @@ type PersistenceAutomationOutput struct {
 	AutomationAccounts []PersistenceAutomationAccount `json:"automation_accounts"`
 	Issues             []Issue                        `json:"issues"`
 }
+
+type PersistenceLogicAppState struct {
+	Classification                   string                  `json:"classification"`
+	Platform                         *string                 `json:"platform,omitempty"`
+	WorkflowKind                     *string                 `json:"workflow_kind,omitempty"`
+	State                            *string                 `json:"state,omitempty"`
+	TriggerTypes                     []string                `json:"trigger_types"`
+	ExternallyCallableRequestTrigger bool                    `json:"externally_callable_request_trigger"`
+	RecurrenceSummary                *string                 `json:"recurrence_summary,omitempty"`
+	IdentityType                     *string                 `json:"identity_type,omitempty"`
+	StrongestVisibleExecutionContext *PersistenceRoleContext `json:"strongest_visible_execution_context,omitempty"`
+	NearbyThematicNames              []string                `json:"nearby_thematic_names,omitempty"`
+	DownstreamActionKinds            []string                `json:"downstream_action_kinds"`
+}
+
+type PersistenceLogicAppWorkflow struct {
+	ID                      string                      `json:"id"`
+	Name                    string                      `json:"logic_app"`
+	ResourceGroup           string                      `json:"resource_group"`
+	Location                *string                     `json:"location,omitempty"`
+	CapabilitySteps         []PersistenceCapabilityStep `json:"capability_steps"`
+	CurrentIdentityContext  *PersistenceRoleContext     `json:"current_identity_context,omitempty"`
+	ExecutionContextOptions []string                    `json:"execution_context_options"`
+	CurrentState            PersistenceLogicAppState    `json:"current_state"`
+	StillUnmapped           []string                    `json:"still_unmapped"`
+	Summary                 string                      `json:"summary"`
+	RelatedIDs              []string                    `json:"related_ids"`
+}
+
+type PersistenceLogicAppsOutput struct {
+	Metadata           ScopedCommandMetadata          `json:"metadata"`
+	GroupedCommandName string                         `json:"grouped_command_name"`
+	Surface            string                         `json:"surface"`
+	InputMode          string                         `json:"input_mode"`
+	CommandState       string                         `json:"command_state"`
+	Summary            string                         `json:"summary"`
+	BackingCommands    []string                       `json:"backing_commands"`
+	Workflows          []PersistenceLogicAppWorkflow  `json:"workflows"`
+	Issues             []Issue                        `json:"issues"`
+}

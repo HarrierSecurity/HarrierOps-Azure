@@ -4,14 +4,16 @@ context :: tenant=auto subscription=auto output=table
 [principals] Mapping visible principals, identity footholds, and follow-on candidates.
 ho-azure principals
 
-╭─────────────────────┬──────────────────┬─────────────┬─────────────┬─────────────────────────────────────────────────────────────┬────────────────────────────────┬─────────╮
-│ principal           │ type             │ roles       │ assignments │ identity context                                            │ sources                        │ current │
-├─────────────────────┼──────────────────┼─────────────┼─────────────┼─────────────────────────────────────────────────────────────┼────────────────────────────────┼─────────┤
-│ azurefox-lab-sp     │ ServicePrincipal │ Owner       │ 1           │ names=ua-app; types=userAssigned; attached=1                │ rbac;whoami;managed-identities │ yes     │
-│ operator@lab.local  │ User             │ Reader      │ 1           │ none                                                        │ rbac                           │ no      │
-│ func-orders-system  │ ServicePrincipal │ Contributor │ 1           │ names=func-orders-system; types=systemAssigned; attached=1  │ managed-identities             │ no      │
-│ app-empty-mi-system │ ServicePrincipal │ Contributor │ 1           │ names=app-empty-mi-system; types=systemAssigned; attached=1 │ managed-identities             │ no      │
-│ vmss-edge-01-system │ ServicePrincipal │ Contributor │ 1           │ names=vmss-edge-01-system; types=systemAssigned; attached=1 │ managed-identities             │ no      │
-╰─────────────────────┴──────────────────┴─────────────┴─────────────┴─────────────────────────────────────────────────────────────┴────────────────────────────────┴─────────╯
+╭──────────────────────────────┬──────────────────┬─────────────┬─────────────┬──────────────────────────────────────────────────────────────────────┬────────────────────────────────┬─────────╮
+│ principal                    │ type             │ roles       │ assignments │ identity context                                                     │ sources                        │ current │
+├──────────────────────────────┼──────────────────┼─────────────┼─────────────┼──────────────────────────────────────────────────────────────────────┼────────────────────────────────┼─────────┤
+│ azurefox-lab-sp              │ ServicePrincipal │ Owner       │ 1           │ names=ua-app; types=userAssigned; attached=1                         │ rbac;whoami;managed-identities │ yes     │
+│ operator@lab.local           │ User             │ Reader      │ 1           │ none                                                                 │ rbac                           │ no      │
+│ func-orders-system           │ ServicePrincipal │ Contributor │ 1           │ names=func-orders-system; types=systemAssigned; attached=1           │ managed-identities             │ no      │
+│ app-empty-mi-system          │ ServicePrincipal │ Contributor │ 1           │ names=app-empty-mi-system; types=systemAssigned; attached=1          │ managed-identities             │ no      │
+│ vmss-edge-01-system          │ ServicePrincipal │ Contributor │ 1           │ names=vmss-edge-01-system; types=systemAssigned; attached=1          │ managed-identities             │ no      │
+│ la-inbound-redeploy-identity │ ServicePrincipal │ Contributor │ 1           │ names=la-inbound-redeploy-identity; types=systemAssigned; attached=1 │ managed-identities             │ no      │
+│ ua-workflow-router           │ ServicePrincipal │ Contributor │ 1           │ names=ua-workflow-router; types=userAssigned; attached=1             │ managed-identities             │ no      │
+╰──────────────────────────────┴──────────────────┴─────────────┴─────────────┴──────────────────────────────────────────────────────────────────────┴────────────────────────────────┴─────────╯
 
-Takeaway: 5 principals visible; 1 hold Owner and 1 match the current identity.
+Takeaway: 7 principals visible; 1 hold Owner and 1 match the current identity.

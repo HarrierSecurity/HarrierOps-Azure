@@ -8,6 +8,7 @@ ho-azure persistence
 │ surface    │ state       │ operator question                                                                                                                                    │ backing commands              │
 ├────────────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
 │ automation │ implemented │ Given the current identity, how far can I go in Azure Automation to create, modify, publish, and trigger automation that Azure will run again later? │ automation, permissions, rbac │
+│ logic-apps │ implemented │ Given the current identity, how far can I go in Azure Logic Apps to create, modify, trigger, and repurpose workflows that Azure can run again later? │ logic-apps, permissions, rbac │
 ╰────────────┴─────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────╯
 
-Takeaway: 1 persistence surface is implemented; start with automation.
+Takeaway: 2 persistence surfaces are implemented; start with the service that best matches your current question.

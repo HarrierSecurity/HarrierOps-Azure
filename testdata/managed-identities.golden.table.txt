@@ -4,19 +4,25 @@ context :: tenant=auto subscription=auto output=table
 [managed-identities] Mapping workload-linked managed identities and their visible privilege cues.
 ho-azure managed-identities
 
-╭───────────────────────┬────────────────┬────────────────┬───────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ identity              │ type           │ attached to    │ operator signal                                                   │ next review                                                                                                       │
-├───────────────────────┼────────────────┼────────────────┼───────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ua-app                │ userAssigned   │ vm-web-01      │ Public VM workload pivot; direct control visible.                 │ Check permissions for direct control on this identity, then vms for the host context behind the workload pivot.   │
-│ vmss-edge-01-system   │ systemAssigned │ vmss-edge-01   │ Exposed VMSS workload pivot; direct control not confirmed.        │ Check vmss for the fleet context behind this workload pivot, then permissions to confirm direct control.          │
-│ func-orders-system    │ systemAssigned │ func-orders    │ Public Function App workload pivot; direct control not confirmed. │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.            │
-│ ua-orders             │ userAssigned   │ func-orders    │ Public Function App workload pivot; visibility blocked.           │ Check env-vars for the backing workload context; current scope does not yet show direct control on this identity. │
-│ app-empty-mi-system   │ systemAssigned │ app-empty-mi   │ Public App Service workload pivot; direct control not confirmed.  │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.            │
-│ app-public-api-system │ systemAssigned │ app-public-api │ Public App Service workload pivot; direct control not confirmed.  │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.            │
-╰───────────────────────┴────────────────┴────────────────┴───────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────┬────────────────┬─────────────────────┬───────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ identity                     │ type           │ attached to         │ operator signal                                                   │ next review                                                                                                                 │
+├──────────────────────────────┼────────────────┼─────────────────────┼───────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ua-app                       │ userAssigned   │ vm-web-01           │ Public VM workload pivot; direct control visible.                 │ Check permissions for direct control on this identity, then vms for the host context behind the workload pivot.             │
+│ vmss-edge-01-system          │ systemAssigned │ vmss-edge-01        │ Exposed VMSS workload pivot; direct control not confirmed.        │ Check vmss for the fleet context behind this workload pivot, then permissions to confirm direct control.                    │
+│ func-orders-system           │ systemAssigned │ func-orders         │ Public Function App workload pivot; direct control not confirmed. │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.                      │
+│ ua-orders                    │ userAssigned   │ func-orders         │ Public Function App workload pivot; visibility blocked.           │ Check env-vars for the backing workload context; current scope does not yet show direct control on this identity.           │
+│ app-empty-mi-system          │ systemAssigned │ app-empty-mi        │ Public App Service workload pivot; direct control not confirmed.  │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.                      │
+│ app-public-api-system        │ systemAssigned │ app-public-api      │ Public App Service workload pivot; direct control not confirmed.  │ Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.                      │
+│ la-inbound-redeploy-identity │ systemAssigned │ la-inbound-redeploy │ Internal Logic App workload pivot; direct control visible.        │ Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot. │
+│ ua-workflow-router           │ userAssigned   │ la-event-router     │ Internal Logic App workload pivot; direct control visible.        │ Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot. │
+╰──────────────────────────────┴────────────────┴─────────────────────┴───────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 Findings:
 - HIGH: Managed identity has elevated role assignment
   Identity 'ua-app' is assigned one or more high-impact roles (Owner).
+- HIGH: Managed identity has elevated role assignment
+  Identity 'la-inbound-redeploy-identity' is assigned one or more high-impact roles (Contributor).
+- HIGH: Managed identity has elevated role assignment
+  Identity 'ua-workflow-router' is assigned one or more high-impact roles (Contributor).
 
-Takeaway: 6 managed identities visible; 6 exposed workload pivots and 1 direct-control cues from current scope.
+Takeaway: 8 managed identities visible; 6 exposed workload pivots and 3 direct-control cues from current scope.

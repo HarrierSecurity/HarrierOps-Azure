@@ -1,0 +1,288 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "logic-apps",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Walk the current identity through the Logic Apps workflow steps that can leave Azure waiting for the next request, schedule, or event to run the workflow again.",
+  "backing_commands": [
+    "logic-apps",
+    "permissions",
+    "rbac"
+  ],
+  "workflows": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
+      "logic_app": "la-inbound-redeploy",
+      "resource_group": "rg-workflow",
+      "location": "centralus",
+      "capability_steps": [
+        {
+          "action": "create or modify workflow",
+          "api_surface": "Microsoft.Logic/workflows",
+          "status": "yes"
+        },
+        {
+          "action": "edit workflow definition",
+          "api_surface": "workflow definition",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workflow identity / connections",
+          "status": "yes"
+        },
+        {
+          "action": "define or modify trigger",
+          "api_surface": "request, recurrence, or event trigger",
+          "status": "yes"
+        },
+        {
+          "action": "enable workflow",
+          "api_surface": "workflow state",
+          "status": "yes"
+        },
+        {
+          "action": "add or repurpose downstream actions",
+          "api_surface": "workflow actions / connectors",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity"
+      ],
+      "current_state": {
+        "classification": "persistence-capable",
+        "platform": "Consumption",
+        "state": "Enabled",
+        "trigger_types": [
+          "request"
+        ],
+        "externally_callable_request_trigger": true,
+        "identity_type": "SystemAssigned",
+        "strongest_visible_execution_context": {
+          "name": "la-inbound-redeploy-identity",
+          "kind": "logic-app-execution-context",
+          "principal_id": "56565656-5656-5656-5656-565656565656",
+          "identity_type": "SystemAssigned",
+          "role_names": [
+            "Contributor"
+          ],
+          "scope_ids": [
+            "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+          ],
+          "summary": "The strongest visible execution context here is the Logic App identity `la-inbound-redeploy-identity`, which already holds Contributor at resource group rg-workflow."
+        },
+        "nearby_thematic_names": [
+          "la-nightly-sync"
+        ],
+        "downstream_action_kinds": [
+          "automation",
+          "external-http"
+        ]
+      },
+      "still_unmapped": [
+        "the exact workflow definition, connector secret material, or operator intent behind this Logic App",
+        "the exact callback URL, access signature, or upstream caller identity behind the visible trigger posture",
+        "the exact downstream payloads, connection credentials, or whether each visible action category reaches a high-value target"
+      ],
+      "summary": "Current identity can set up Logic App 'la-inbound-redeploy' as durable workflow persistence, and the strongest visible execution context already carries Azure control.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-nightly-sync",
+      "logic_app": "la-nightly-sync",
+      "resource_group": "rg-workflow",
+      "location": "centralus",
+      "capability_steps": [
+        {
+          "action": "create or modify workflow",
+          "api_surface": "Microsoft.Logic/workflows",
+          "status": "yes"
+        },
+        {
+          "action": "edit workflow definition",
+          "api_surface": "workflow definition",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workflow identity / connections",
+          "status": "yes"
+        },
+        {
+          "action": "define or modify trigger",
+          "api_surface": "request, recurrence, or event trigger",
+          "status": "yes"
+        },
+        {
+          "action": "enable workflow",
+          "api_surface": "workflow state",
+          "status": "yes"
+        },
+        {
+          "action": "add or repurpose downstream actions",
+          "api_surface": "workflow actions / connectors",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "connector-backed actions"
+      ],
+      "current_state": {
+        "classification": "persistence-capable",
+        "platform": "Consumption",
+        "state": "Enabled",
+        "trigger_types": [
+          "recurrence"
+        ],
+        "externally_callable_request_trigger": false,
+        "recurrence_summary": "Day/1",
+        "downstream_action_kinds": [
+          "storage",
+          "connector"
+        ]
+      },
+      "still_unmapped": [
+        "the exact workflow definition, connector secret material, or operator intent behind this Logic App",
+        "the exact callback URL, access signature, or upstream caller identity behind the visible trigger posture",
+        "the exact downstream payloads, connection credentials, or whether each visible action category reaches a high-value target"
+      ],
+      "summary": "Current identity can set up Logic App 'la-nightly-sync' as durable workflow persistence from current RBAC evidence.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-nightly-sync"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
+      "logic_app": "la-event-router",
+      "resource_group": "rg-workflow",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or modify workflow",
+          "api_surface": "Microsoft.Logic/workflows",
+          "status": "yes"
+        },
+        {
+          "action": "edit workflow definition",
+          "api_surface": "workflow definition",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workflow identity / connections",
+          "status": "yes"
+        },
+        {
+          "action": "define or modify trigger",
+          "api_surface": "request, recurrence, or event trigger",
+          "status": "yes"
+        },
+        {
+          "action": "enable workflow",
+          "api_surface": "workflow state",
+          "status": "yes"
+        },
+        {
+          "action": "add or repurpose downstream actions",
+          "api_surface": "workflow actions / connectors",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity"
+      ],
+      "current_state": {
+        "classification": "execution-capable-only",
+        "platform": "Consumption",
+        "state": "Enabled",
+        "trigger_types": [
+          "api-connection"
+        ],
+        "externally_callable_request_trigger": false,
+        "identity_type": "UserAssigned",
+        "strongest_visible_execution_context": {
+          "name": "ua-workflow-router",
+          "kind": "logic-app-execution-context",
+          "principal_id": "90909090-9090-9090-9090-909090909090",
+          "identity_type": "UserAssigned",
+          "role_names": [
+            "Contributor"
+          ],
+          "scope_ids": [
+            "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+          ],
+          "summary": "The strongest visible execution context here is the Logic App identity `ua-workflow-router`, which already holds Contributor at resource group rg-workflow."
+        },
+        "nearby_thematic_names": [
+          "la-nightly-sync"
+        ],
+        "downstream_action_kinds": [
+          "function",
+          "messaging"
+        ]
+      },
+      "still_unmapped": [
+        "the exact workflow definition, connector secret material, or operator intent behind this Logic App",
+        "the exact callback URL, access signature, or upstream caller identity behind the visible trigger posture",
+        "the exact downstream payloads, connection credentials, or whether each visible action category reaches a high-value target",
+        "whether a later definition change would turn this workflow into durable request or recurrence-backed re-entry"
+      ],
+      "summary": "Current identity can build or repurpose Logic App 'la-event-router', but the current workflow definition does not yet show a durable request or recurrence trigger.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+      ]
+    }
+  ],
+  "issues": []
+}

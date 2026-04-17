@@ -26,6 +26,7 @@ type persistenceSurfaceBuilder func(context.Context, providers.Provider, func() 
 
 var persistenceSurfaceBuilders = map[string]persistenceSurfaceBuilder{
 	"automation": buildPersistenceAutomationOutput,
+	"logic-apps": buildPersistenceLogicAppsOutput,
 }
 
 func persistenceHandler(provider providers.Provider, now func() time.Time) Handler {
