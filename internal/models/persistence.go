@@ -112,13 +112,13 @@ type PersistenceLogicAppWorkflow struct {
 }
 
 type PersistenceLogicAppsOutput struct {
-	Metadata           ScopedCommandMetadata          `json:"metadata"`
-	GroupedCommandName string                         `json:"grouped_command_name"`
-	Surface            string                         `json:"surface"`
-	InputMode          string                         `json:"input_mode"`
-	CommandState       string                         `json:"command_state"`
-	Summary            string                         `json:"summary"`
-	BackingCommands    []string                       `json:"backing_commands"`
-	Workflows          []PersistenceLogicAppWorkflow  `json:"workflows"`
-	Issues             []Issue                        `json:"issues"`
+	Metadata           ScopedCommandMetadata         `json:"metadata"`
+	GroupedCommandName string                        `json:"grouped_command_name"`
+	Surface            string                        `json:"surface"`
+	InputMode          string                        `json:"input_mode"`
+	CommandState       string                        `json:"command_state"`
+	Summary            string                        `json:"summary"`
+	BackingCommands    []string                      `json:"backing_commands"`
+	Workflows          []PersistenceLogicAppWorkflow `json:"workflows"`
+	Issues             []Issue                       `json:"issues"`
 }
