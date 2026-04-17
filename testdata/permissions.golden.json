@@ -77,6 +77,50 @@
       "summary": "ServicePrincipal 'func-orders-system' already has direct control visible through Contributor across subscription-wide, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
     },
     {
+      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "display_name": "la-inbound-redeploy-identity",
+      "principal_type": "ServicePrincipal",
+      "priority": "high",
+      "high_impact_roles": [
+        "Contributor"
+      ],
+      "all_role_names": [
+        "Contributor"
+      ],
+      "role_assignment_count": 1,
+      "scope_count": 1,
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+      ],
+      "privileged": true,
+      "is_current_identity": false,
+      "operator_signal": "Direct control visible; workload pivot visible.",
+      "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
+      "summary": "ServicePrincipal 'la-inbound-redeploy-identity' already has direct control visible through Contributor across subscription-wide, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
+    },
+    {
+      "principal_id": "90909090-9090-9090-9090-909090909090",
+      "display_name": "ua-workflow-router",
+      "principal_type": "ServicePrincipal",
+      "priority": "high",
+      "high_impact_roles": [
+        "Contributor"
+      ],
+      "all_role_names": [
+        "Contributor"
+      ],
+      "role_assignment_count": 1,
+      "scope_count": 1,
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+      ],
+      "privileged": true,
+      "is_current_identity": false,
+      "operator_signal": "Direct control visible; workload pivot visible.",
+      "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
+      "summary": "ServicePrincipal 'ua-workflow-router' already has direct control visible through Contributor across subscription-wide, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
+    },
+    {
       "principal_id": "77770000-0000-0000-0000-000000000001",
       "display_name": "vmss-edge-01-system",
       "principal_type": "ServicePrincipal",

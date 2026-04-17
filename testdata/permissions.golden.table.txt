@@ -4,18 +4,20 @@ context :: tenant=auto subscription=auto output=table
 [permissions] Ranking principals by high-impact RBAC exposure and the next likely follow-on.
 ho-azure permissions
 
-╭──────────┬───────────────────────┬──────────────────┬───────────────────┬────────┬────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────╮
-│ priority │ principal             │ type             │ high-impact roles │ scopes │ operator signal                                    │ next review                                                                         │
-├──────────┼───────────────────────┼──────────────────┼───────────────────┼────────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
-│ high     │ azurefox-lab-sp       │ ServicePrincipal │ Owner             │ 1      │ Direct control visible; current foothold.          │ Check privesc for the direct abuse or escalation path behind this current identity. │
-│ high     │ app-empty-mi-system   │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
-│ high     │ func-orders-system    │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
-│ high     │ vmss-edge-01-system   │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
-│ medium   │ build-sp              │ ServicePrincipal │ Owner             │ 2      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
-│ medium   │ aa-hybrid-prod-mi     │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
-│ medium   │ aca-orders-system     │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
-│ medium   │ aci-public-api-system │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
-│ low      │ operator@lab.local    │ User             │                   │ 1      │ Direct control not confirmed.                      │ Check rbac for the exact assignment evidence behind this lower-signal row.          │
-╰──────────┴───────────────────────┴──────────────────┴───────────────────┴────────┴────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────┬──────────────────────────────┬──────────────────┬───────────────────┬────────┬────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────╮
+│ priority │ principal                    │ type             │ high-impact roles │ scopes │ operator signal                                    │ next review                                                                         │
+├──────────┼──────────────────────────────┼──────────────────┼───────────────────┼────────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ high     │ azurefox-lab-sp              │ ServicePrincipal │ Owner             │ 1      │ Direct control visible; current foothold.          │ Check privesc for the direct abuse or escalation path behind this current identity. │
+│ high     │ app-empty-mi-system          │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
+│ high     │ func-orders-system           │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
+│ high     │ la-inbound-redeploy-identity │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
+│ high     │ ua-workflow-router           │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
+│ high     │ vmss-edge-01-system          │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; workload pivot visible.    │ Check managed-identities for the workload pivot behind this direct control row.     │
+│ medium   │ build-sp                     │ ServicePrincipal │ Owner             │ 2      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
+│ medium   │ aa-hybrid-prod-mi            │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
+│ medium   │ aca-orders-system            │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
+│ medium   │ aci-public-api-system        │ ServicePrincipal │ Contributor       │ 1      │ Direct control visible; trust expansion follow-on. │ Check role-trusts for trust expansion around who can influence this principal.      │
+│ low      │ operator@lab.local           │ User             │                   │ 1      │ Direct control not confirmed.                      │ Check rbac for the exact assignment evidence behind this lower-signal row.          │
+╰──────────┴──────────────────────────────┴──────────────────┴───────────────────┴────────┴────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────╯
 
-Takeaway: 8 of 9 principals hold high-impact RBAC roles; 3 workload-pivot follow-ons and 4 trust-expansion follow-ons.
+Takeaway: 10 of 11 principals hold high-impact RBAC roles; 5 workload-pivot follow-ons and 4 trust-expansion follow-ons.

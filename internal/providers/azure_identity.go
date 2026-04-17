@@ -366,6 +366,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	vmssFacts, vmssErr := provider.VMSS(ctx, tenant, subscription)
 	appServiceFacts, appErr := provider.AppServices(ctx, tenant, subscription)
 	functionFacts, functionErr := provider.Functions(ctx, tenant, subscription)
+	logicAppsFacts, logicAppsErr := provider.LogicApps(ctx, tenant, subscription)
 	userAssignedClient, userAssignedErr := armmsi.NewUserAssignedIdentitiesClient(session.subscription.ID, session.credential, nil)
 
 	issues := append([]models.Issue{}, rbacFacts.Issues...)
@@ -380,6 +381,9 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	}
 	if functionErr != nil {
 		issues = append(issues, issueFromError("managed-identities.functions", functionErr))
+	}
+	if logicAppsErr != nil {
+		issues = append(issues, issueFromError("managed-identities.logic-apps", logicAppsErr))
 	}
 	if userAssignedErr != nil {
 		issues = append(issues, issueFromError("managed-identities.user_assigned_client", userAssignedErr))
@@ -556,6 +560,46 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		}
 	}
 
+	for _, workflow := range logicAppsFacts.Workflows {
+		exposure := models.WorkloadExposureNone
+		if identityIncludesType(workflow.IdentityType, "SystemAssigned") {
+			systemID := workflow.ID + "/identities/system"
+			identityMap[systemID] = managedIdentityFromAttachment(
+				systemID,
+				workflow.Name+"-identity",
+				"systemAssigned",
+				workflow.PrincipalID,
+				workflow.ClientID,
+				workflow.ID,
+				"LogicApp",
+				workflow.Name,
+				exposure,
+				subscriptionScope,
+				assignmentsByPrincipal[stringPtrValue(workflow.PrincipalID)],
+			)
+		}
+		for _, identityID := range workflow.IdentityIDs {
+			if strings.HasSuffix(identityID, "/identities/system") {
+				continue
+			}
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
+			issues = append(issues, detailIssues...)
+			identityMap[identityID] = managedIdentityFromAttachment(
+				identityID,
+				resourceNameFromID(identityID),
+				"userAssigned",
+				details.principalID,
+				details.clientID,
+				workflow.ID,
+				"LogicApp",
+				workflow.Name,
+				exposure,
+				subscriptionScope,
+				assignmentsByPrincipal[stringPtrValue(details.principalID)],
+			)
+		}
+	}
+
 	identities := make([]models.ManagedIdentity, 0, len(identityMap))
 	principalIDs := map[string]struct{}{}
 	for _, identity := range identityMap {
@@ -701,6 +745,18 @@ func managedIdentityNarrative(attachedKind string, attachedName string, identity
 			nextReview := "Check vmss for the fleet context behind this workload pivot, then permissions to confirm direct control."
 			return exposureLabel + "; direct control not confirmed.", nextReview, "VMSS '" + attachedName + "' gives an " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope does not confirm direct control. " + nextReview
 		}
+	case "LogicApp":
+		switch {
+		case directControlVisible:
+			nextReview := "Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot."
+			return exposureLabel + "; direct control visible.", nextReview, "Logic App '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope already shows direct control through high-impact roles (" + strings.Join(highImpactRoles, ", ") + "). " + nextReview
+		case visibilityBlocked:
+			nextReview := "Check logic-apps for the backing workflow context; current scope does not yet show direct control on this identity."
+			return exposureLabel + "; visibility blocked.", nextReview, "Logic App '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "', but current scope does not show the backing principal cleanly. " + nextReview
+		default:
+			nextReview := "Check logic-apps for the workflow context behind this workload pivot, then permissions to confirm direct control."
+			return exposureLabel + "; direct control not confirmed.", nextReview, "Logic App '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope does not confirm direct control. " + nextReview
+		}
 	default:
 		workloadLabel := "App Service"
 		if attachedKind == "FunctionApp" {
@@ -737,6 +793,8 @@ func managedIdentityWorkloadLabel(attachedKind string) string {
 		return "Function App"
 	case "AppService":
 		return "App Service"
+	case "LogicApp":
+		return "Logic App"
 	default:
 		return attachedKind
 	}

@@ -105,6 +105,38 @@
       "operator_signal": "Public App Service workload pivot; direct control not confirmed.",
       "next_review": "Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control.",
       "summary": "App Service 'app-public-api' gives a public workload pivot into managed identity 'app-public-api-system'. Current scope does not confirm direct control. Check env-vars for secret-bearing config on this workload, then permissions to confirm direct control."
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system",
+      "name": "la-inbound-redeploy-identity",
+      "identity_type": "systemAssigned",
+      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "client_id": "78787878-7878-7878-7878-787878787878",
+      "attached_to": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy"
+      ],
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+      ],
+      "operator_signal": "Internal Logic App workload pivot; direct control visible.",
+      "next_review": "Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot.",
+      "summary": "Logic App 'la-inbound-redeploy' exposes managed identity 'la-inbound-redeploy-identity'. Current scope already shows direct control through high-impact roles (Contributor). Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot."
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router",
+      "name": "ua-workflow-router",
+      "identity_type": "userAssigned",
+      "principal_id": "90909090-9090-9090-9090-909090909090",
+      "client_id": "abababab-abab-abab-abab-abababababab",
+      "attached_to": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router"
+      ],
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow"
+      ],
+      "operator_signal": "Internal Logic App workload pivot; direct control visible.",
+      "next_review": "Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot.",
+      "summary": "Logic App 'la-event-router' exposes managed identity 'ua-workflow-router'. Current scope already shows direct control through high-impact roles (Contributor). Check permissions for direct control on this identity, then logic-apps for the workflow context behind this workload pivot."
     }
   ],
   "role_assignments": [
@@ -115,6 +147,22 @@
       "principal_type": "ServicePrincipal",
       "role_definition_id": "rd-owner",
       "role_name": "Owner"
+    },
+    {
+      "id": "ra-3",
+      "scope_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow",
+      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "principal_type": "ServicePrincipal",
+      "role_definition_id": "rd-contributor",
+      "role_name": "Contributor"
+    },
+    {
+      "id": "ra-4",
+      "scope_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow",
+      "principal_id": "90909090-9090-9090-9090-909090909090",
+      "principal_type": "ServicePrincipal",
+      "role_definition_id": "rd-contributor",
+      "role_name": "Contributor"
     }
   ],
   "findings": [
@@ -126,6 +174,26 @@
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
         "ra-1"
+      ]
+    },
+    {
+      "id": "identity-privileged-/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system",
+      "severity": "high",
+      "title": "Managed identity has elevated role assignment",
+      "description": "Identity 'la-inbound-redeploy-identity' is assigned one or more high-impact roles (Contributor).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system",
+        "ra-3"
+      ]
+    },
+    {
+      "id": "identity-privileged-/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router",
+      "severity": "high",
+      "title": "Managed identity has elevated role assignment",
+      "description": "Identity 'ua-workflow-router' is assigned one or more high-impact roles (Contributor).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router",
+        "ra-4"
       ]
     }
   ],

@@ -46,6 +46,8 @@ func persistenceCSVRenderer(payload any) (string, error) {
 		return persistenceOverviewCSV(out)
 	case models.PersistenceAutomationOutput:
 		return persistenceAutomationCSV(out)
+	case models.PersistenceLogicAppsOutput:
+		return persistenceLogicAppsCSV(out)
 	default:
 		return "", fmt.Errorf("unexpected payload type for persistence: %T", payload)
 	}
@@ -444,6 +446,67 @@ func persistenceAutomationCSV(payload models.PersistenceAutomationOutput) (strin
 		"identity_type",
 		"nearby_thematic_names",
 		"missing_target_mapping",
+		"still_unmapped",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func persistenceLogicAppsCSV(payload models.PersistenceLogicAppsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Workflows))
+	for _, workflow := range payload.Workflows {
+		rows = append(rows, []string{
+			workflow.ID,
+			workflow.Name,
+			workflow.ResourceGroup,
+			valueOrEmpty(workflow.Location),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "create or modify workflow"),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "edit workflow definition"),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "attach or reuse exec ctx"),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "define or modify trigger"),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "enable workflow"),
+			persistenceCSVStepStatus(workflow.CapabilitySteps, "add or repurpose downstream actions"),
+			persistenceCSVRoleSummary(workflow.CurrentIdentityContext),
+			jsonStringSlice(workflow.ExecutionContextOptions),
+			workflow.CurrentState.Classification,
+			valueOrEmpty(workflow.CurrentState.Platform),
+			valueOrEmpty(workflow.CurrentState.WorkflowKind),
+			valueOrEmpty(workflow.CurrentState.State),
+			jsonStringSlice(workflow.CurrentState.TriggerTypes),
+			boolString(workflow.CurrentState.ExternallyCallableRequestTrigger),
+			valueOrEmpty(workflow.CurrentState.RecurrenceSummary),
+			valueOrEmpty(workflow.CurrentState.IdentityType),
+			persistenceCSVRoleSummary(workflow.CurrentState.StrongestVisibleExecutionContext),
+			jsonStringSlice(workflow.CurrentState.DownstreamActionKinds),
+			jsonStringSlice(workflow.StillUnmapped),
+			workflow.Summary,
+			jsonStringSlice(workflow.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"logic_app",
+		"resource_group",
+		"location",
+		"create_or_modify_workflow",
+		"edit_workflow_definition",
+		"attach_or_reuse_exec_ctx",
+		"define_or_modify_trigger",
+		"enable_workflow",
+		"add_or_repurpose_downstream_actions",
+		"current_identity_context",
+		"execution_context_options",
+		"classification",
+		"platform",
+		"workflow_kind",
+		"state",
+		"trigger_types",
+		"externally_callable_request_trigger",
+		"recurrence_summary",
+		"identity_type",
+		"strongest_visible_execution_context",
+		"downstream_action_kinds",
 		"still_unmapped",
 		"summary",
 		"related_ids",

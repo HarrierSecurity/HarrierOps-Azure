@@ -142,6 +142,15 @@ func implementedArtifactCases() []artifactCase {
 		csvGolden:    "persistence-automation.golden.csv",
 		tableGolden:  "persistence-automation.golden.table.txt",
 	})
+	cases = append(cases, artifactCase{
+		name:         "persistence-logic-apps",
+		args:         []string{"persistence", "logic-apps", "--output", "json"},
+		artifactBase: "persistence",
+		jsonGolden:   "persistence-logic-apps.golden.json",
+		lootGolden:   "persistence-logic-apps.golden.json",
+		csvGolden:    "persistence-logic-apps.golden.csv",
+		tableGolden:  "persistence-logic-apps.golden.table.txt",
+	})
 
 	return cases
 }

@@ -1396,7 +1396,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 	session := staticFixtureSession(tenant, subscription)
 	return RBACFacts{
 		TenantID: session.TenantID,
-		Principals: []models.Principal{
+		Principals: append([]models.Principal{
 			session.Principal,
 			{
 				DisplayName:   "operator@lab.local",
@@ -1404,7 +1404,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 				PrincipalType: "User",
 				TenantID:      session.TenantID,
 			},
-		},
+		}, staticLogicAppRBACPrincipals(session.TenantID)...),
 		Scopes: []models.ScopeRef{
 			{
 				DisplayName: session.Subscription.DisplayName,
@@ -1412,7 +1412,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 				ScopeType:   "subscription",
 			},
 		},
-		RoleAssignments: []models.RoleAssignment{
+		RoleAssignments: append([]models.RoleAssignment{
 			{
 				ID:               "ra-1",
 				PrincipalID:      session.Principal.ID,
@@ -1429,7 +1429,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 				RoleName:         "Reader",
 				ScopeID:          "/subscriptions/" + session.Subscription.ID,
 			},
-		},
+		}, staticLogicAppRBACRoleAssignments(session.Subscription.ID)...),
 		Issues: []models.Issue{},
 	}, nil
 }
@@ -1439,7 +1439,7 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 	return PermissionsFacts{
 		TenantID:       session.TenantID,
 		SubscriptionID: session.Subscription.ID,
-		Permissions: []PermissionFact{
+		Permissions: append([]PermissionFact{
 			{
 				PrincipalID:         session.Principal.ID,
 				DisplayName:         session.Principal.DisplayName,
@@ -1551,8 +1551,8 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 				Privileged:          true,
 				IsCurrentIdentity:   false,
 			},
-		},
-		Principals: []PermissionPrincipalFact{
+		}, staticLogicAppPermissionFacts(session.Subscription.ID)...),
+		Principals: append([]PermissionPrincipalFact{
 			{
 				ID:            session.Principal.ID,
 				Sources:       []string{"rbac", "whoami", "managed-identities"},
@@ -1585,7 +1585,7 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 					"/subscriptions/" + session.Subscription.ID + "/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01",
 				},
 			},
-		},
+		}, staticLogicAppPermissionPrincipals(session.Subscription.ID)...),
 		Issues: []models.Issue{},
 	}, nil
 }
@@ -1821,7 +1821,7 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 	return ManagedIdentitiesFacts{
 		TenantID:       session.TenantID,
 		SubscriptionID: subscriptionID,
-		Identities: []models.ManagedIdentity{
+		Identities: append([]models.ManagedIdentity{
 			{
 				ID:           "/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
 				Name:         "ua-app",
@@ -1918,8 +1918,8 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 				WorkloadExposure:     models.WorkloadExposurePublic,
 				DirectControlVisible: false,
 			},
-		},
-		RoleAssignments: []models.ManagedIdentityRoleAssignment{
+		}, staticLogicAppManagedIdentities(subscriptionID)...),
+		RoleAssignments: append([]models.ManagedIdentityRoleAssignment{
 			{
 				ID:               "ra-1",
 				ScopeID:          "/subscriptions/" + subscriptionID,
@@ -1928,8 +1928,8 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 				RoleDefinitionID: "rd-owner",
 				RoleName:         "Owner",
 			},
-		},
-		Findings: []models.ManagedIdentityFinding{
+		}, staticLogicAppManagedIdentityRoleAssignments(subscriptionID)...),
+		Findings: append([]models.ManagedIdentityFinding{
 			{
 				ID:          "identity-privileged-/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
 				Severity:    "high",
@@ -1940,7 +1940,7 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 					"ra-1",
 				},
 			},
-		},
+		}, staticLogicAppManagedIdentityFindings(subscriptionID)...),
 		Issues: []models.Issue{},
 	}, nil
 }
