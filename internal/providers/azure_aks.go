@@ -8,7 +8,9 @@ import (
 	"harrierops-azure/internal/models"
 )
 
-const armManagedClustersAPIVersion = "2024-10-01"
+// The older 2024-10-01 managedClusters surface omits apiServerAccessProfile
+// for the live lab cluster, which drops private/public endpoint booleans.
+const armManagedClustersAPIVersion = "2026-01-01"
 
 func (provider AzureProvider) AKS(ctx context.Context, tenant string, subscription string) (AksFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
@@ -77,6 +79,7 @@ func aksClusterNeedsHydration(cluster map[string]any) bool {
 	webAppRouting := mapValue(ingressProfile, "webAppRouting", "web_app_routing")
 
 	return optionalBoolPtr(apiServerAccessProfile, "enablePrivateCluster", "enable_private_cluster") == nil ||
+		aksPublicFQDNEnabled(apiServerAccessProfile) == nil ||
 		optionalBoolPtr(workloadIdentity, "enabled") == nil ||
 		optionalBoolPtr(webAppRouting, "enabled") == nil
 }
@@ -110,7 +113,7 @@ func aksClusterSummary(cluster map[string]any) models.AksClusterAsset {
 	}
 
 	privateClusterEnabled := optionalBoolPtr(apiServerAccessProfile, "enablePrivateCluster", "enable_private_cluster")
-	publicFQDNEnabled := optionalBoolPtr(apiServerAccessProfile, "enablePrivateClusterPublicFQDN", "enable_private_cluster_public_fqdn")
+	publicFQDNEnabled := aksPublicFQDNEnabled(apiServerAccessProfile)
 	aadManaged := optionalBoolPtr(aadProfile, "managed")
 	azureRBACEnabled := optionalBoolPtr(aadProfile, "enableAzureRBAC", "enable_azure_rbac")
 	localAccountsDisabled := optionalBoolPtr(properties, "disableLocalAccounts", "disable_local_accounts")
@@ -184,6 +187,15 @@ func aksClusterSummary(cluster map[string]any) models.AksClusterAsset {
 		),
 		RelatedIDs: dedupeStrings(append([]string{clusterID, stringPtrValue(clusterPrincipalID)}, clusterIdentityIDs...)),
 	}
+}
+
+func aksPublicFQDNEnabled(apiServerAccessProfile map[string]any) *bool {
+	return optionalBoolPtr(
+		apiServerAccessProfile,
+		"enablePrivateClusterPublicFQDN",
+		"enablePrivateClusterPublicFqdn",
+		"enable_private_cluster_public_fqdn",
+	)
 }
 
 func aksCollectionCount(input map[string]any, keys ...string) *int {

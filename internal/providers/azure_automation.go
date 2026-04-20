@@ -106,7 +106,7 @@ func automationAccountSummary(
 		),
 		automationObjectJoinIDs(hybridWorkerGroups, "automation-hybrid-worker")...,
 	))
-	identityJoinIDs := dedupeStrings(append(append([]string{}, identityIDs...), stringPtrValue(principalID), stringPtrValue(clientID)))
+	identityJoinIDs := automationIdentityJoinIDs(identityIDs, principalID, clientID)
 	secretSupportTypes := automationSecretSupportTypes(
 		automationCount(credentials),
 		automationCount(certificates),
@@ -131,7 +131,7 @@ func automationAccountSummary(
 		ResourceGroup:          resourceGroup,
 		Location:               stringPtr(mapStringValue(hydrated, "location")),
 		State:                  stringPtr(firstNonEmpty(mapStringValue(hydrated, "state"), mapStringValue(properties, "state"))),
-		SKUName:                stringPtr(mapStringValue(mapValue(hydrated, "sku"), "name")),
+		SKUName:                automationSKUName(hydrated, properties),
 		IdentityType:           identityType,
 		PrincipalID:            principalID,
 		ClientID:               clientID,
@@ -176,7 +176,7 @@ func automationAccountSummary(
 			automationCount(variables),
 			encryptedVariableCount,
 		),
-		RelatedIDs: dedupeStrings(append([]string{accountID}, identityIDs...)),
+		RelatedIDs: automationRelatedIDs(accountID, identityIDs),
 	}
 }
 
@@ -202,12 +202,27 @@ func automationListByAccount(
 }
 
 func automationIdentityIDs(accountID string, identity map[string]any) []string {
-	ids := sortedKeys(identity, "userAssignedIdentities", "user_assigned_identities")
+	ids := sortedKeys(mapValue(identity, "userAssignedIdentities", "user_assigned_identities"))
 	if identityIncludesType(stringPtr(mapStringValue(identity, "type")), "SystemAssigned") && accountID != "" {
 		ids = append(ids, accountID+"/identities/system")
 	}
 	sort.Strings(ids)
 	return dedupeStrings(ids)
+}
+
+func automationIdentityJoinIDs(identityIDs []string, principalID *string, clientID *string) []string {
+	return dedupeStrings(append(append([]string{}, identityIDs...), stringPtrValue(principalID), stringPtrValue(clientID)))
+}
+
+func automationRelatedIDs(accountID string, identityIDs []string) []string {
+	return dedupeStrings(append([]string{accountID}, identityIDs...))
+}
+
+func automationSKUName(account map[string]any, properties map[string]any) *string {
+	return stringPtr(firstNonEmpty(
+		mapStringValue(mapValue(account, "sku"), "name"),
+		mapStringValue(mapValue(properties, "sku"), "name"),
+	))
 }
 
 func automationPublishedRunbookCount(runbooks []map[string]any) *int {

@@ -11,6 +11,8 @@ import (
 	"harrierops-azure/internal/models"
 )
 
+const armAcrRegistriesAPIVersion = "2025-04-01"
+
 func (provider AzureProvider) Acr(ctx context.Context, tenant string, subscription string) (AcrFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
 	if err != nil {
@@ -48,13 +50,12 @@ func (provider AzureProvider) Acr(ctx context.Context, tenant string, subscripti
 				registryName = stringValue(registry.Name)
 			}
 			hydrated := registryMap
-			if resourceGroup != "" && registryName != "" && acrRegistryNeedsHydration(registryMap) {
-				fullRegistry, getErr := registriesClient.Get(ctx, resourceGroup, registryName, nil)
+			if registryID != "" && acrRegistryNeedsHydration(registryMap) {
+				fullRegistry, getErr := armGetObject(ctx, session.credential, registryID, armAcrRegistriesAPIVersion)
 				if getErr != nil {
 					issues = append(issues, issueFromError(acrScope(resourceGroup, registryName, "registry"), getErr))
 				} else {
-					hydrated = map[string]any{}
-					decodeJSONInto(fullRegistry.Registry, &hydrated)
+					hydrated = fullRegistry
 				}
 			}
 
@@ -130,6 +131,7 @@ func acrRegistryNeedsHydration(registry map[string]any) bool {
 	properties := mapValue(registry, "properties")
 	identity := mapValue(registry, "identity")
 	return mapStringValue(properties, "publicNetworkAccess", "public_network_access") == "" ||
+		optionalBoolPtr(properties, "anonymousPullEnabled", "anonymous_pull_enabled") == nil ||
 		mapStringValue(identity, "type") == ""
 }
 
@@ -152,7 +154,10 @@ func acrRegistrySummary(
 	networkRuleDefaultAction := stringPtr(mapStringValue(networkRuleSet, "defaultAction", "default_action"))
 	networkRuleBypassOptions := stringPtr(mapStringValue(properties, "networkRuleBypassOptions", "network_rule_bypass_options"))
 	adminUserEnabled := optionalBoolPtr(properties, "adminUserEnabled", "admin_user_enabled")
-	anonymousPullEnabled := optionalBoolPtr(properties, "anonymousPullEnabled", "anonymous_pull_enabled")
+	anonymousPullEnabled := optionalBoolPtr(registry, "anonymousPullEnabled", "anonymous_pull_enabled")
+	if anonymousPullEnabled == nil {
+		anonymousPullEnabled = optionalBoolPtr(properties, "anonymousPullEnabled", "anonymous_pull_enabled")
+	}
 	dataEndpointEnabled := optionalBoolPtr(properties, "dataEndpointEnabled", "data_endpoint_enabled")
 	privateEndpointConnectionCount := acrCountPtr(privateEndpoints)
 	webhookCount := acrCountPtrMaps(webhooks)
