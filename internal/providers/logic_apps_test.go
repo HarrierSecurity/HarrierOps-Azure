@@ -61,3 +61,48 @@ func TestLogicAppWorkflowAssetCollectsNestedActionCategories(t *testing.T) {
 		t.Fatalf("unexpected downstream categories: %#v", got)
 	}
 }
+
+func TestLogicAppWorkflowAssetPreservesOnlySystemIdentityPath(t *testing.T) {
+	workflowID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Logic/workflows/la-inbound"
+	asset := logicAppWorkflowAsset(map[string]any{
+		"id":   workflowID,
+		"name": "la-inbound",
+		"identity": map[string]any{
+			"type":        "SystemAssigned",
+			"principalId": "principal-value",
+			"tenantId":    "tenant-value",
+		},
+		"properties": map[string]any{
+			"definition": map[string]any{},
+		},
+	})
+
+	wantIdentityID := workflowID + "/identities/system"
+	if len(asset.IdentityIDs) != 1 || asset.IdentityIDs[0] != wantIdentityID {
+		t.Fatalf("logicAppWorkflowAsset().IdentityIDs = %#v, want only system identity path", asset.IdentityIDs)
+	}
+	if len(asset.RelatedIDs) != 2 || asset.RelatedIDs[0] != workflowID || asset.RelatedIDs[1] != wantIdentityID {
+		t.Fatalf("logicAppWorkflowAsset().RelatedIDs = %#v, want workflow ID plus system identity path", asset.RelatedIDs)
+	}
+}
+
+func TestLogicAppWorkflowAssetPreservesUserAssignedIdentityIDs(t *testing.T) {
+	userAssignedID := "/subscriptions/sub/resourceGroups/rg-id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+	asset := logicAppWorkflowAsset(map[string]any{
+		"id":   "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Logic/workflows/la-router",
+		"name": "la-router",
+		"identity": map[string]any{
+			"type": "UserAssigned",
+			"userAssignedIdentities": map[string]any{
+				userAssignedID: map[string]any{},
+			},
+		},
+		"properties": map[string]any{
+			"definition": map[string]any{},
+		},
+	})
+
+	if len(asset.IdentityIDs) != 1 || asset.IdentityIDs[0] != userAssignedID {
+		t.Fatalf("logicAppWorkflowAsset().IdentityIDs = %#v, want user-assigned identity ID", asset.IdentityIDs)
+	}
+}

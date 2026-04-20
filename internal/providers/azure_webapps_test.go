@@ -22,18 +22,18 @@ func TestWebAppDefaultHostnameFallsBackToProperties(t *testing.T) {
 	}
 }
 
-func TestAppServiceSummaryPreservesDefaultHostnameFromProperties(t *testing.T) {
+func TestAppServiceSummaryPreservesListResponseWebAppFields(t *testing.T) {
 	app := map[string]any{
-		"id":       "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
-		"name":     "app-public-api",
-		"location": "eastus",
+		"id":                  "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+		"name":                "app-public-api",
+		"location":            "eastus",
+		"publicNetworkAccess": "Enabled",
 		"properties": map[string]any{
-			"clientCertEnabled":   true,
-			"defaultHostName":     "app-public-api.azurewebsites.net",
-			"httpsOnly":           true,
-			"publicNetworkAccess": "Enabled",
-			"serverFarmId":        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-public-api",
-			"state":               "Running",
+			"clientCertEnabled": true,
+			"defaultHostName":   "app-public-api.azurewebsites.net",
+			"httpsOnly":         true,
+			"serverFarmId":      "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-public-api",
+			"state":             "Running",
 		},
 	}
 
@@ -73,18 +73,18 @@ func TestAppServiceSummaryPreservesDefaultHostnameFromProperties(t *testing.T) {
 	}
 }
 
-func TestFunctionAppSummaryPreservesPropertiesOnlyWebAppFields(t *testing.T) {
+func TestFunctionAppSummaryPreservesListResponseWebAppFields(t *testing.T) {
 	app := map[string]any{
-		"id":       "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
-		"name":     "func-orders",
-		"location": "eastus",
+		"id":                  "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+		"name":                "func-orders",
+		"location":            "eastus",
+		"publicNetworkAccess": "Enabled",
 		"properties": map[string]any{
-			"clientCertEnabled":   true,
-			"defaultHostName":     "func-orders.azurewebsites.net",
-			"httpsOnly":           true,
-			"publicNetworkAccess": "Enabled",
-			"serverFarmId":        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-functions",
-			"state":               "Running",
+			"clientCertEnabled": true,
+			"defaultHostName":   "func-orders.azurewebsites.net",
+			"httpsOnly":         true,
+			"serverFarmId":      "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-functions",
+			"state":             "Running",
 		},
 	}
 

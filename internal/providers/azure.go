@@ -762,7 +762,7 @@ func containerInstanceSummary(resource map[string]any) models.ContainerInstanceA
 		postureParts = append(postureParts, "subnets "+strconv.Itoa(len(subnetIDs)))
 	}
 	if len(containers) > 0 {
-		postureParts = append(postureParts, strconv.Itoa(len(containers))+" container(s)")
+		postureParts = append(postureParts, "containers "+strconv.Itoa(len(containers)))
 	}
 	identityPhrase := "has no managed identity visible from the current read path"
 	if workloadIdentityType != nil && *workloadIdentityType != "" {
@@ -787,13 +787,14 @@ func containerInstanceSummary(resource map[string]any) models.ContainerInstanceA
 		RelatedIDs: dedupeStrings(
 			append([]string{
 				resourceID,
+				stringPtrValue(publicIPAddress),
 				stringPtrValue(workloadPrincipalID),
 			}, append(workloadIdentityIDs, subnetIDs...)...),
 		),
 		ResourceGroup:        resourceGroupFromID(resourceID),
 		RestartPolicy:        restartPolicy,
 		SubnetIDs:            subnetIDs,
-		Summary:              "Container Instance '" + name + "' " + strings.Join(endpointParts, " and ") + " and " + identityPhrase + "." + posturePhrase,
+		Summary:              "Container group '" + name + "' " + strings.Join(endpointParts, " and ") + " and " + identityPhrase + "." + posturePhrase,
 		WorkloadClientID:     workloadClientID,
 		WorkloadIdentityIDs:  workloadIdentityIDs,
 		WorkloadIdentityType: workloadIdentityType,

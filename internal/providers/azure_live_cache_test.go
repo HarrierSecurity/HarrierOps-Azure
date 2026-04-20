@@ -57,3 +57,26 @@ func TestOnceValueCachesSuccessfulResult(t *testing.T) {
 		t.Fatalf("onceValue.get() loadCalls = %d, want 1", loadCalls)
 	}
 }
+
+func TestNewLiveWebAppResourcePreservesRawListMap(t *testing.T) {
+	appMap := map[string]any{
+		"id":                  "/subscriptions/sub/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+		"kind":                "app,linux",
+		"name":                "app-public-api",
+		"publicNetworkAccess": "Enabled",
+	}
+
+	resource := newLiveWebAppResource(appMap)
+	if resource.assetKind != "AppService" {
+		t.Fatalf("newLiveWebAppResource().assetKind = %q, want AppService", resource.assetKind)
+	}
+	if resource.resourceGroup != "rg-apps" {
+		t.Fatalf("newLiveWebAppResource().resourceGroup = %q, want rg-apps", resource.resourceGroup)
+	}
+	if resource.name != "app-public-api" {
+		t.Fatalf("newLiveWebAppResource().name = %q, want app-public-api", resource.name)
+	}
+	if got := mapStringValue(resource.appMap, "publicNetworkAccess"); got != "Enabled" {
+		t.Fatalf("newLiveWebAppResource().appMap publicNetworkAccess = %q, want Enabled", got)
+	}
+}

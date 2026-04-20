@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -164,14 +165,19 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 }
 
 func devopsListValues(ctx context.Context, bearerToken string, requestURL string) ([]map[string]any, error) {
+	return devopsListValuesWithClient(ctx, bearerToken, requestURL, http.DefaultClient)
+}
+
+func devopsListValuesWithClient(ctx context.Context, bearerToken string, requestURL string, client *http.Client) ([]map[string]any, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("Authorization", "Bearer "+bearerToken)
-	request.Header.Set("Accept", "application/json")
+	for key, value := range devopsRequestHeaders(bearerToken) {
+		request.Header.Set(key, value)
+	}
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +207,15 @@ func devopsListValues(ctx context.Context, bearerToken string, requestURL string
 		return nil, fmt.Errorf("decode Azure DevOps JSON response: %w", err)
 	}
 	return payload.Value, nil
+}
+
+func devopsRequestHeaders(bearerToken string) map[string]string {
+	return map[string]string{
+		"Authorization":             "Basic " + base64.StdEncoding.EncodeToString([]byte(":"+bearerToken)),
+		"Accept":                    "application/json",
+		"X-TFS-FedAuthRedirect":     "Suppress",
+		"X-VSS-ForceMsaPassThrough": "true",
+	}
 }
 
 func devopsBodySnippet(body string) string {

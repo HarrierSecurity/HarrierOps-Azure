@@ -102,7 +102,7 @@ func logicAppWorkflowAsset(workflow map[string]any) models.LogicAppWorkflowAsset
 }
 
 func logicAppIdentityIDs(workflowID string, identity map[string]any) []string {
-	ids := sortedKeys(identity, "userAssignedIdentities", "user_assigned_identities")
+	ids := sortedKeys(mapValue(identity, "userAssignedIdentities", "user_assigned_identities"))
 	if identityIncludesType(stringPtr(mapStringValue(identity, "type")), "SystemAssigned") && workflowID != "" {
 		ids = append(ids, workflowID+"/identities/system")
 	}

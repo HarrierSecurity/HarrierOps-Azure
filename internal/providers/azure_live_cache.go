@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appservice/armappservice"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
@@ -139,9 +140,13 @@ type liveWebAppResource struct {
 	settings      *onceValue[map[string]any]
 }
 
+const armWebAppsAPIVersion = "2021-03-01"
+
 type liveWebAppsState struct {
-	client *armappservice.WebAppsClient
-	apps   *onceValue[[]*liveWebAppResource]
+	client         *armappservice.WebAppsClient
+	credential     azcore.TokenCredential
+	subscriptionID string
+	apps           *onceValue[[]*liveWebAppResource]
 }
 
 func (provider AzureProvider) webAppsState(session azureSession) (*liveWebAppsState, error) {
@@ -150,7 +155,12 @@ func (provider AzureProvider) webAppsState(session azureSession) (*liveWebAppsSt
 		if err != nil {
 			return nil, fmt.Errorf("build web apps client: %w", err)
 		}
-		return &liveWebAppsState{client: client, apps: &onceValue[[]*liveWebAppResource]{}}, nil
+		return &liveWebAppsState{
+			client:         client,
+			credential:     session.credential,
+			subscriptionID: session.subscription.ID,
+			apps:           &onceValue[[]*liveWebAppResource]{},
+		}, nil
 	}
 
 	cacheKey := sessionStateKey(session)
@@ -164,8 +174,10 @@ func (provider AzureProvider) webAppsState(session azureSession) (*liveWebAppsSt
 			return nil, fmt.Errorf("build web apps client: %w", err)
 		}
 		state = &liveWebAppsState{
-			client: client,
-			apps:   &onceValue[[]*liveWebAppResource]{},
+			client:         client,
+			credential:     session.credential,
+			subscriptionID: session.subscription.ID,
+			apps:           &onceValue[[]*liveWebAppResource]{},
 		}
 		provider.cache.webAppsStates[cacheKey] = state
 	}
@@ -177,27 +189,35 @@ func (provider AzureProvider) webAppsState(session azureSession) (*liveWebAppsSt
 func (state *liveWebAppsState) list(ctx context.Context) ([]*liveWebAppResource, error) {
 	return state.apps.get(func() ([]*liveWebAppResource, error) {
 		apps := []*liveWebAppResource{}
-		pager := state.client.NewListPager(nil)
-		for pager.More() {
-			page, err := pager.NextPage(ctx)
-			if err != nil {
-				return apps, err
-			}
-			for _, app := range page.Value {
-				appMap := map[string]any{}
-				decodeJSONInto(app, &appMap)
-				apps = append(apps, &liveWebAppResource{
-					appMap:        appMap,
-					assetKind:     webAssetKind(mapStringValue(appMap, "kind")),
-					resourceGroup: resourceGroupFromID(mapStringValue(appMap, "id")),
-					name:          mapStringValue(appMap, "name"),
-					config:        &onceValue[map[string]any]{},
-					settings:      &onceValue[map[string]any]{},
-				})
-			}
+		if state.subscriptionID == "" {
+			return apps, nil
+		}
+
+		appMaps, err := armListObjects(
+			ctx,
+			state.credential,
+			"/subscriptions/"+state.subscriptionID+"/providers/Microsoft.Web/sites",
+			armWebAppsAPIVersion,
+		)
+		if err != nil {
+			return apps, err
+		}
+		for _, appMap := range appMaps {
+			apps = append(apps, newLiveWebAppResource(appMap))
 		}
 		return apps, nil
 	})
+}
+
+func newLiveWebAppResource(appMap map[string]any) *liveWebAppResource {
+	return &liveWebAppResource{
+		appMap:        appMap,
+		assetKind:     webAssetKind(mapStringValue(appMap, "kind")),
+		resourceGroup: resourceGroupFromID(mapStringValue(appMap, "id")),
+		name:          mapStringValue(appMap, "name"),
+		config:        &onceValue[map[string]any]{},
+		settings:      &onceValue[map[string]any]{},
+	}
 }
 
 func (state *liveWebAppsState) configMap(ctx context.Context, app *liveWebAppResource) (map[string]any, error) {
