@@ -809,7 +809,7 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 	}
 
 	identity := mapValue(app, "identity")
-	publicNetworkAccess := stringPtr(mapStringValue(app, "publicNetworkAccess", "public_network_access"))
+	publicNetworkAccess := webAppStringField(app, "publicNetworkAccess", "public_network_access")
 	runtimeStack := appServiceRuntimeStack(config)
 	minTLSVersion := stringPtr(mapStringValue(config, "minTlsVersion", "min_tls_version"))
 	ftpsState := stringPtr(mapStringValue(config, "ftpsState", "ftps_state"))
@@ -820,7 +820,7 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 
 	postureParts := []string{
 		"public network access " + valueOrUnknown(stringPtrValue(publicNetworkAccess)),
-		"HTTPS-only " + disabledEnabled(mapBoolValue(app, "httpsOnly", "https_only")),
+		"HTTPS-only " + disabledEnabled(webAppBoolField(app, "httpsOnly", "https_only")),
 	}
 	if minTLSVersion != nil && *minTLSVersion != "" {
 		postureParts = append(postureParts, "TLS "+*minTLSVersion)
@@ -829,8 +829,9 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 		postureParts = append(postureParts, "FTPS "+*ftpsState)
 	}
 
+	defaultHostname := webAppDefaultHostname(app)
 	hostnamePhrase := "has no default hostname visible from the current read path"
-	if hostname := stringPtr(mapStringValue(app, "defaultHostName", "default_host_name")); hostname != nil {
+	if hostname := defaultHostname; hostname != nil {
 		hostnamePhrase = "publishes hostname '" + *hostname + "'"
 	}
 	runtimePhrase := "does not expose a readable runtime summary from the current read path"
@@ -843,11 +844,11 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 	}
 
 	return models.AppServiceAsset{
-		AppServicePlanID:    stringPtr(mapStringValue(app, "serverFarmId", "server_farm_id")),
-		ClientCertEnabled:   mapBoolValue(app, "clientCertEnabled", "client_cert_enabled"),
-		DefaultHostname:     stringPtr(mapStringValue(app, "defaultHostName", "default_host_name")),
+		AppServicePlanID:    webAppStringField(app, "serverFarmId", "server_farm_id"),
+		ClientCertEnabled:   webAppBoolField(app, "clientCertEnabled", "client_cert_enabled"),
+		DefaultHostname:     defaultHostname,
 		FTPSState:           ftpsState,
-		HTTPSOnly:           mapBoolValue(app, "httpsOnly", "https_only"),
+		HTTPSOnly:           webAppBoolField(app, "httpsOnly", "https_only"),
 		ID:                  firstNonEmpty(appID, "/unknown/"+appName),
 		Location:            mapStringValue(app, "location"),
 		MinTLSVersion:       minTLSVersion,
@@ -857,12 +858,12 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 			append([]string{
 				appID,
 				stringPtrValue(workloadPrincipalID),
-				mapStringValue(app, "serverFarmId", "server_farm_id"),
+				stringPtrValue(webAppStringField(app, "serverFarmId", "server_farm_id")),
 			}, workloadIdentityIDs...),
 		),
 		ResourceGroup:        resourceGroupFromID(appID),
 		RuntimeStack:         runtimeStack,
-		State:                stringPtr(mapStringValue(app, "state")),
+		State:                webAppStringField(app, "state"),
 		Summary:              "App Service '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", and " + identityPhrase + ". Visible posture: " + strings.Join(postureParts, ", ") + ".",
 		WorkloadClientID:     workloadClientID,
 		WorkloadIdentityIDs:  workloadIdentityIDs,
@@ -879,7 +880,7 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 	}
 
 	identity := mapValue(app, "identity")
-	publicNetworkAccess := stringPtr(mapStringValue(app, "publicNetworkAccess", "public_network_access"))
+	publicNetworkAccess := webAppStringField(app, "publicNetworkAccess", "public_network_access")
 	runtimeStack := appServiceRuntimeStack(config)
 	minTLSVersion := stringPtr(mapStringValue(config, "minTlsVersion", "min_tls_version"))
 	ftpsState := stringPtr(mapStringValue(config, "ftpsState", "ftps_state"))
@@ -895,8 +896,9 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 	runFromPackage := runFromPackageSignal(settings)
 	keyVaultReferenceCount := keyVaultReferenceCount(settings)
 
+	defaultHostname := webAppDefaultHostname(app)
 	hostnamePhrase := "has no default hostname visible from the current read path"
-	if hostname := stringPtr(mapStringValue(app, "defaultHostName", "default_host_name")); hostname != nil {
+	if hostname := defaultHostname; hostname != nil {
 		hostnamePhrase = "publishes hostname '" + *hostname + "'"
 	}
 	runtimePhrase := "does not expose a readable runtime summary from the current read path"
@@ -940,7 +942,7 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 
 	postureParts := []string{
 		"public network access " + valueOrUnknown(stringPtrValue(publicNetworkAccess)),
-		"HTTPS-only " + disabledEnabled(mapBoolValue(app, "httpsOnly", "https_only")),
+		"HTTPS-only " + disabledEnabled(webAppBoolField(app, "httpsOnly", "https_only")),
 	}
 	if minTLSVersion != nil && *minTLSVersion != "" {
 		postureParts = append(postureParts, "TLS "+*minTLSVersion)
@@ -958,14 +960,14 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 
 	return models.FunctionAppAsset{
 		AlwaysOn:                           alwaysOn,
-		AppServicePlanID:                   stringPtr(mapStringValue(app, "serverFarmId", "server_farm_id")),
+		AppServicePlanID:                   webAppStringField(app, "serverFarmId", "server_farm_id"),
 		AzureWebJobsStorageReferenceTarget: azureWebJobsStorageReferenceTarget,
 		AzureWebJobsStorageValueType:       azureWebJobsStorageValueType,
-		ClientCertEnabled:                  mapBoolValue(app, "clientCertEnabled", "client_cert_enabled"),
-		DefaultHostname:                    stringPtr(mapStringValue(app, "defaultHostName", "default_host_name")),
+		ClientCertEnabled:                  webAppBoolField(app, "clientCertEnabled", "client_cert_enabled"),
+		DefaultHostname:                    defaultHostname,
 		FTPSState:                          ftpsState,
 		FunctionsExtensionVersion:          functionsExtensionVersion,
-		HTTPSOnly:                          mapBoolValue(app, "httpsOnly", "https_only"),
+		HTTPSOnly:                          webAppBoolField(app, "httpsOnly", "https_only"),
 		ID:                                 firstNonEmpty(appID, "/unknown/"+appName),
 		KeyVaultReferenceCount:             keyVaultReferenceCount,
 		Location:                           mapStringValue(app, "location"),
@@ -976,13 +978,13 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 			append([]string{
 				appID,
 				stringPtrValue(workloadPrincipalID),
-				mapStringValue(app, "serverFarmId", "server_farm_id"),
+				stringPtrValue(webAppStringField(app, "serverFarmId", "server_farm_id")),
 			}, workloadIdentityIDs...),
 		),
 		ResourceGroup:        resourceGroupFromID(appID),
 		RunFromPackage:       runFromPackage,
 		RuntimeStack:         runtimeStack,
-		State:                stringPtr(mapStringValue(app, "state")),
+		State:                webAppStringField(app, "state"),
 		Summary:              "Function App '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", " + functionsPhrase + ", and " + identityPhrase + ". " + deploymentPhrase + " Visible posture: " + strings.Join(postureParts, ", ") + ".",
 		WorkloadClientID:     workloadClientID,
 		WorkloadIdentityIDs:  workloadIdentityIDs,
@@ -1301,6 +1303,27 @@ func optionalBoolPtr(input any, keys ...string) *bool {
 		}
 	}
 	return nil
+}
+
+func webAppDefaultHostname(app map[string]any) *string {
+	return webAppStringField(app, "defaultHostName", "default_host_name")
+}
+
+func webAppStringField(app map[string]any, keys ...string) *string {
+	if value := stringPtr(mapStringValue(app, keys...)); value != nil {
+		return value
+	}
+	return stringPtr(mapStringValue(mapValue(app, "properties"), keys...))
+}
+
+func webAppBoolField(app map[string]any, keys ...string) bool {
+	if value := optionalBoolPtr(app, keys...); value != nil {
+		return *value
+	}
+	if value := optionalBoolPtr(mapValue(app, "properties"), keys...); value != nil {
+		return *value
+	}
+	return false
 }
 
 func mapValue(input any, keys ...string) map[string]any {
