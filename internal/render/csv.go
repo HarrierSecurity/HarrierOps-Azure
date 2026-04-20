@@ -15,7 +15,6 @@ var chainsFamilyCSVRenderers = map[string]func(models.ChainsOutput) (string, err
 	"credential-path":  chainsCredentialPathCSV,
 	"deployment-path":  chainsDeploymentPathCSV,
 	"escalation-path":  chainsEscalationPathCSV,
-	"persistence-path": chainsPersistencePathCSV,
 }
 
 func CSV(command string, payload any) (string, error) {
@@ -903,76 +902,6 @@ func chainsDeploymentPathCSV(payload models.ChainsOutput) (string, error) {
 		"visible_path",
 		"whats_missing",
 		"why_care",
-	}, rows)
-}
-
-func chainsPersistencePathCSV(payload models.ChainsOutput) (string, error) {
-	rows := make([][]string, 0, len(payload.Paths))
-	for _, path := range payload.Paths {
-		rows = append(rows, []string{
-			path.AssetID,
-			path.AssetKind,
-			path.AssetName,
-			path.ChainID,
-			valueOrEmpty(path.Surface),
-			valueOrEmpty(path.PersistenceType),
-			valueOrEmpty(path.PathType),
-			valueOrEmpty(path.Classification),
-			valueOrEmpty(path.Durability),
-			valueOrEmpty(path.WhatPersists),
-			valueOrEmpty(path.FootholdAnchor),
-			boolPtrString(path.SurvivesHostRebuild),
-			boolPtrString(path.SurvivesOriginalAccountCleanup),
-			valueOrEmpty(path.CurrentEvidence),
-			valueOrEmpty(path.MissingProof),
-			valueOrEmpty(path.OperatorActionability),
-			valueOrEmpty(path.RecommendedFixFocus),
-			path.Priority,
-			valueOrEmpty(path.Urgency),
-			valueOrEmpty(path.SourceCommand),
-			valueOrEmpty(path.SourceContext),
-			jsonStringSlice(path.EvidenceCommands),
-			jsonStringSlice(path.JoinedSurfaceTypes),
-			path.Summary,
-			intString(path.TargetCount),
-			jsonStringSlice(path.TargetIDs),
-			jsonStringSlice(path.TargetNames),
-			jsonStringSlice(path.RelatedIDs),
-			path.TargetResolution,
-			path.VisiblePath,
-		})
-	}
-	return encodeCSV([]string{
-		"asset_id",
-		"asset_kind",
-		"asset_name",
-		"chain_id",
-		"surface",
-		"persistence_type",
-		"row_class",
-		"classification",
-		"durability",
-		"what_persists",
-		"foothold_anchor",
-		"survives_host_rebuild",
-		"survives_original_account_cleanup",
-		"current_evidence",
-		"missing_proof",
-		"operator_actionability",
-		"recommended_fix_focus",
-		"priority",
-		"urgency",
-		"source_command",
-		"source_context",
-		"evidence_commands",
-		"joined_surface_types",
-		"summary",
-		"target_count",
-		"target_ids",
-		"target_names",
-		"related_ids",
-		"target_resolution",
-		"visible_path",
 	}, rows)
 }
 

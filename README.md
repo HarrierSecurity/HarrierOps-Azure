@@ -105,8 +105,8 @@ ho-azure permissions
 
 | Grouped Command | Live Families |
 | --- | --- |
-| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control.<br><br>`persistence-path`<br>Highlights the durable identity and Automation surfaces that can keep Azure access in place or recreate it later. |
-| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place. |
+| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control. |
+| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place.<br><br>`logic-apps`<br>Walks the current identity through Logic Apps workflow control, trigger posture, execution context, and durable workflow reuse paths. |
 
 ### Flat Commands
 
@@ -354,11 +354,11 @@ Current `chains` families:
 - `deployment-path`
 - `escalation-path`
 - `compute-control`
-- `persistence-path`
 
 Current `persistence` surfaces:
 
 - `automation`
+- `logic-apps`
 
 ## Help
 
