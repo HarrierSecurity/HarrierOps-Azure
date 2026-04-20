@@ -92,6 +92,7 @@ func enrichPermissionRows(permissions []providers.PermissionFact, principals []p
 					permission.DisplayName,
 					permission.PrincipalType,
 					permission.HighImpactRoles,
+					permission.ScopeIDs,
 					permission.ScopeCount,
 					permission.Privileged,
 					permission.IsCurrentIdentity,
@@ -202,6 +203,7 @@ func permissionsSummary(
 	principalName string,
 	principalType string,
 	highImpactRoles []string,
+	scopeIDs []string,
 	scopeCount int,
 	privileged bool,
 	isCurrentIdentity bool,
@@ -219,24 +221,57 @@ func permissionsSummary(
 		roleText = "high-impact roles"
 	}
 
-	scopeText := "subscription-wide"
-	if scopeCount > 1 {
-		scopeText = strconv.Itoa(scopeCount) + " visible scopes"
-	}
+	scopeText := permissionsScopeSummary(scopeIDs, scopeCount)
 
 	if isCurrentIdentity {
-		return "Current identity '" + principalName + "' already has direct control visible through " + roleText + " across " + scopeText + ". " + nextReview
+		return "Current identity '" + principalName + "' already has direct control visible through " + roleText + " " + scopeText + ". " + nextReview
 	}
 	if hasWorkloadPivot {
-		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " across " + scopeText + ", and current scope also shows a workload pivot. " + nextReview
+		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " " + scopeText + ", and current scope also shows a workload pivot. " + nextReview
 	}
 	if workloadVisibilityBlocked {
-		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " across " + scopeText + ", but the backing workload pivot stays visibility blocked from current scope. " + nextReview
+		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " " + scopeText + ", but the backing workload pivot stays visibility blocked from current scope. " + nextReview
 	}
 	if trustExpansionFollowOn {
-		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " across " + scopeText + ". The next useful question is trust expansion, not more privilege ranking. " + nextReview
+		return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " " + scopeText + ". The next useful question is trust expansion, not more privilege ranking. " + nextReview
 	}
-	return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " across " + scopeText + ". " + nextReview
+	return principalType + " '" + principalName + "' already has direct control visible through " + roleText + " " + scopeText + ". " + nextReview
+}
+
+func permissionsScopeSummary(scopeIDs []string, scopeCount int) string {
+	visibleScopes := 0
+	for _, scopeID := range scopeIDs {
+		if strings.TrimSpace(scopeID) != "" {
+			visibleScopes++
+		}
+	}
+
+	if visibleScopes > 1 {
+		return "across " + strconv.Itoa(visibleScopes) + " visible scopes"
+	}
+	if visibleScopes == 1 {
+		for _, scopeID := range scopeIDs {
+			if strings.TrimSpace(scopeID) == "" {
+				continue
+			}
+			return "at " + permissionsScopeLabel(scopeID)
+		}
+	}
+	if scopeCount > 1 {
+		return "across " + strconv.Itoa(scopeCount) + " visible scopes"
+	}
+	return "at visible scope"
+}
+
+func permissionsScopeLabel(scopeID string) string {
+	scopeLower := strings.ToLower(scopeID)
+	if strings.Contains(scopeLower, "/subscriptions/") && !strings.Contains(scopeLower, "/resourcegroups/") {
+		return "subscription scope"
+	}
+	if strings.Contains(scopeLower, "/resourcegroups/") {
+		return "resource group " + armScopeName(scopeID)
+	}
+	return "a parent scope of this assignment"
 }
 
 func permissionPriorityRank(priority string) int {

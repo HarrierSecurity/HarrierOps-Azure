@@ -125,15 +125,6 @@ func implementedArtifactCases() []artifactCase {
 		tableGolden:  "chains-compute-control.golden.table.txt",
 	})
 	cases = append(cases, artifactCase{
-		name:         "chains-persistence-path",
-		args:         []string{"chains", "persistence-path", "--output", "json"},
-		artifactBase: "chains",
-		jsonGolden:   "chains-persistence-path.golden.json",
-		lootGolden:   "chains-persistence-path.golden.json",
-		csvGolden:    "chains-persistence-path.golden.csv",
-		tableGolden:  "chains-persistence-path.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
 		name:         "persistence-automation",
 		args:         []string{"persistence", "automation", "--output", "json"},
 		artifactBase: "persistence",

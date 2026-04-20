@@ -55,7 +55,6 @@ var chainsFamilyBuilders = map[string]chainsFamilyBuilder{
 	"deployment-path":  buildDeploymentPathOutput,
 	"escalation-path":  buildEscalationPathOutput,
 	"compute-control":  buildComputeControlOutput,
-	"persistence-path": buildPersistencePathOutput,
 }
 
 func chainsHandler(provider providers.Provider, now func() time.Time) Handler {

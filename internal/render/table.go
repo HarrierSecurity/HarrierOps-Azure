@@ -73,7 +73,6 @@ var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
 	"credential-path":  chainsCredentialPathTable,
 	"deployment-path":  chainsDeploymentPathTable,
 	"escalation-path":  chainsEscalationPathTable,
-	"persistence-path": chainsPersistencePathTable,
 }
 
 func chainsTableRenderer(payload any) (string, error) {
@@ -3999,90 +3998,6 @@ func chainsEscalationPathTable(payload models.ChainsOutput) string {
 		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
 	}
 	return joinRenderedBlocks(sections) + "\n"
-}
-
-func chainsPersistencePathTable(payload models.ChainsOutput) string {
-	sections := []string{}
-
-	if len(payload.Paths) == 0 {
-		sections = append(sections, renderListTable(
-			"ho-azure chains",
-			[]string{"priority", "row", "surface", "persistence type", "durability", "anchor"},
-			nil,
-			[]string{"no visible persistence paths were confirmed from current scope", "", "", "", "", ""},
-			"",
-		))
-		if payload.ClaimBoundary != "" {
-			sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
-		}
-		return strings.Join(sections, "\n\n") + "\n"
-	}
-
-	for _, path := range payload.Paths {
-		row := renderStructuredTableWithTitle(
-			"ho-azure chains",
-			[]string{"priority", "row", "surface", "persistence type", "durability", "anchor"},
-			[][]string{{
-				path.Priority,
-				chainsPersistenceRowLabel(valueOrEmpty(path.PathType)),
-				valueOrEmpty(path.Surface),
-				valueOrEmpty(path.PersistenceType),
-				valueOrEmpty(path.Durability),
-				valueOrEmpty(path.FootholdAnchor),
-			}},
-			len(sections) == 0,
-		)
-		rowWidth := renderedTableCellWidth(row)
-		parts := []string{row}
-		if note := firstNonEmptyText(valueOrEmpty(path.Note), path.Summary); note != "" {
-			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
-		}
-		if missing := firstNonEmpty(path.MissingProof, models.StringPtr(path.MissingConfirmation)); missing != "" {
-			parts = append(parts, renderWrappedDetailTableWithWidth("what is still missing", missing, rowWidth))
-		}
-		if fixFocus := valueOrEmpty(path.RecommendedFixFocus); fixFocus != "" {
-			parts = append(parts, renderWrappedDetailTableWithWidth("fix focus", fixFocus, rowWidth))
-		}
-		sections = append(sections, joinRenderedSections(parts...))
-	}
-	sections = append(sections, "Takeaway: "+chainsPersistencePathTakeaway(payload.Paths))
-	if payload.ClaimBoundary != "" {
-		sections = append(sections, "Claim boundary: "+payload.ClaimBoundary)
-	}
-	return joinRenderedBlocks(sections) + "\n"
-}
-
-func chainsPersistenceRowLabel(rowClass string) string {
-	switch rowClass {
-	case "existing_persistence":
-		return "already present"
-	case "directly_establishable":
-		return "directly establishable"
-	case "near_complete_setup":
-		return "near-complete setup"
-	case "enabler_only":
-		return "enabler only"
-	default:
-		return firstNonEmptyText(rowClass, "-")
-	}
-}
-
-func chainsPersistencePathTakeaway(paths []models.ChainPathRecord) string {
-	counts := map[string]int{}
-	for _, path := range paths {
-		counts[valueOrEmpty(path.PathType)]++
-	}
-	if len(paths) == 0 {
-		return "0 persistence rows visible; no durable cloud-side persistence path was confirmed from the current identity."
-	}
-	parts := []string{}
-	for _, rowClass := range []string{"existing_persistence", "directly_establishable", "near_complete_setup", "enabler_only"} {
-		if counts[rowClass] == 0 {
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("%d %s", counts[rowClass], chainsPersistenceRowLabel(rowClass)))
-	}
-	return fmt.Sprintf("%d persistence row(s) visible; %s.", len(paths), strings.Join(parts, ", "))
 }
 
 func chainsTargetContext(path models.ChainPathRecord) string {
