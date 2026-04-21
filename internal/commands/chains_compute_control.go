@@ -84,7 +84,7 @@ func buildComputeControlOutput(
 	managedByPrincipal := map[string][]models.ManagedIdentity{}
 	for _, identity := range managedIdentities.Identities {
 		if identity.ID != "" {
-			managedByID[identity.ID] = identity
+			managedByID[computeControlARMIDKey(identity.ID)] = identity
 		}
 		if identity.PrincipalID != nil && strings.TrimSpace(*identity.PrincipalID) != "" {
 			managedByPrincipal[*identity.PrincipalID] = append(managedByPrincipal[*identity.PrincipalID], identity)
@@ -204,11 +204,12 @@ func computeControlResolveIdentityBinding(
 	managedMatches := make([]models.ManagedIdentity, 0)
 	seen := map[string]struct{}{}
 	for _, value := range append(append([]string{}, surface.RelatedIDs...), workload.IdentityIDs...) {
-		if _, ok := seen[value]; ok {
+		key := computeControlARMIDKey(value)
+		if _, ok := seen[key]; ok {
 			continue
 		}
-		seen[value] = struct{}{}
-		match, ok := managedByID[value]
+		seen[key] = struct{}{}
+		match, ok := managedByID[key]
 		if ok {
 			managedMatches = append(managedMatches, match)
 		}
@@ -266,9 +267,10 @@ func computeControlAttachedIdentityBinding(
 	managedByPrincipal map[string][]models.ManagedIdentity,
 ) *computeControlIdentityBinding {
 	matches := make([]models.ManagedIdentity, 0)
+	assetKey := computeControlARMIDKey(assetID)
 	for _, identity := range managedByPrincipal[principalID] {
 		for _, attached := range identity.AttachedTo {
-			if attached == assetID {
+			if computeControlARMIDKey(attached) == assetKey {
 				matches = append(matches, identity)
 				break
 			}
@@ -307,7 +309,7 @@ func computeControlResolveMixedIdentityBinding(
 	}
 
 	if corroboration.IdentityChoice == "userAssigned" {
-		identity, ok := managedByID[corroboration.IdentityID]
+		identity, ok := managedByID[computeControlARMIDKey(corroboration.IdentityID)]
 		if !ok {
 			return nil
 		}
@@ -326,7 +328,7 @@ func computeControlIdentityChoiceCorroboration(workload models.WorkloadSummary, 
 	identityNames := map[string][]string{}
 	identityIDs := map[string]struct{}{}
 	for _, identityID := range workload.IdentityIDs {
-		identityIDs[identityID] = struct{}{}
+		identityIDs[computeControlARMIDKey(identityID)] = struct{}{}
 		normalized := computeControlNormalizeIdentitySelector(identityID)
 		if normalized == "" {
 			continue
@@ -349,7 +351,7 @@ func computeControlIdentityChoiceCorroboration(workload models.WorkloadSummary, 
 			}
 			continue
 		}
-		if _, ok := identityIDs[explicitIdentity]; ok {
+		if _, ok := identityIDs[computeControlARMIDKey(explicitIdentity)]; ok {
 			corroborations["userAssigned::"+explicitIdentity] = computeControlCorroboration{
 				IdentityChoice: "userAssigned",
 				IdentityID:     explicitIdentity,
@@ -487,6 +489,10 @@ func computeControlDisplayIdentitySelector(value string) string {
 	}
 	parts := strings.Split(trimmed, "/")
 	return parts[len(parts)-1]
+}
+
+func computeControlARMIDKey(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func computeControlAssignmentSummary(
