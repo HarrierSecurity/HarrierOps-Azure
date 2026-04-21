@@ -121,6 +121,34 @@ func TestFunctionAppSummaryPreservesListResponseWebAppFields(t *testing.T) {
 	}
 }
 
+func TestEnvVarSummaryPreservesKeyVaultReferenceIdentityFromProperties(t *testing.T) {
+	app := map[string]any{
+		"id":       "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+		"name":     "func-orders",
+		"location": "eastus",
+		"identity": map[string]any{
+			"type": "SystemAssigned, UserAssigned",
+			"userAssignedIdentities": map[string]any{
+				"/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders": map[string]any{},
+			},
+		},
+		"properties": map[string]any{
+			"keyVaultReferenceIdentity": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
+		},
+	}
+
+	summary := envVarSummary(app, "FunctionApp", "PAYMENT_API_KEY", "@Microsoft.KeyVault(SecretUri=https://kvlabopen01.vault.azure.net/secrets/payment-api-key)")
+	if summary.KeyVaultReferenceIdentity == nil {
+		t.Fatal("envVarSummary().KeyVaultReferenceIdentity = nil, want identity")
+	}
+	if *summary.KeyVaultReferenceIdentity != "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders" {
+		t.Fatalf("envVarSummary().KeyVaultReferenceIdentity = %q, want user-assigned identity id", *summary.KeyVaultReferenceIdentity)
+	}
+	if !strings.Contains(summary.Summary, "via /subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders") {
+		t.Fatalf("envVarSummary().Summary = %q, want identity phrase", summary.Summary)
+	}
+}
+
 func containsStringValue(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {

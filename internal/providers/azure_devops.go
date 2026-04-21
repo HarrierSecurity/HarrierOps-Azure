@@ -8,7 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -16,7 +18,21 @@ import (
 	"harrierops-azure/internal/models"
 )
 
-const devopsScope = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+const (
+	devopsScope             = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+	devopsGitNamespaceID    = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87"
+	devopsBuildNamespaceID  = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
+	devopsGraphUsersVersion = "7.1-preview.1"
+)
+
+type devopsPermissionSnapshot struct {
+	resolved map[string]string
+}
+
+func (snapshot devopsPermissionSnapshot) allows(permissionName string) bool {
+	value := strings.TrimSpace(snapshot.resolved[permissionName])
+	return strings.HasPrefix(value, "Allow")
+}
 
 func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscription string, organization string) (DevopsFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
@@ -24,10 +40,14 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 		return DevopsFacts{}, err
 	}
 
-	if strings.TrimSpace(organization) == "" {
+	issues := []models.Issue{}
+	organization = strings.TrimSpace(organization)
+	if organization == "" {
 		return DevopsFacts{
 			TenantID:       session.tenantID,
 			SubscriptionID: session.subscription.ID,
+			TokenSource:    session.tokenSource,
+			AuthMode:       session.authMode,
 			Issues: []models.Issue{{
 				Kind:    "unknown",
 				Message: "devops: Azure DevOps organization not configured; rerun with --devops-organization or set AZUREFOX_DEVOPS_ORG.",
@@ -42,7 +62,12 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 		return DevopsFacts{}, fmt.Errorf("authenticate Azure DevOps scope: %w", err)
 	}
 
-	issues := []models.Issue{}
+	currentDescriptor := ""
+	currentDescriptor, err = devopsCurrentUserDescriptor(ctx, token.Token, organization, session.claims)
+	if err != nil {
+		issues = append(issues, issueFromError("devops.current_identity_descriptor", err))
+	}
+
 	projects, err := devopsListValues(ctx, token.Token, "https://dev.azure.com/"+url.PathEscape(organization)+"/_apis/projects?api-version=7.1&$top=200")
 	if err != nil {
 		return DevopsFacts{
@@ -107,8 +132,13 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 	}
 
 	pipelines := []models.DevopsPipelineAsset{}
+	repoPermissionsByToken := map[string]devopsPermissionSnapshot{}
+	buildPermissionsByToken := map[string]devopsPermissionSnapshot{}
 	for _, projectContext := range contexts {
 		project := projectContext.project
+		projectID := stringMapValue(project, "id")
+		projectName := stringMapValue(project, "name")
+		projectPath := url.PathEscape(projectName)
 		serviceEndpointsByID := map[string]map[string]any{}
 		serviceEndpointsByName := map[string]map[string]any{}
 		for _, endpoint := range projectContext.serviceEndpoints {
@@ -132,15 +162,81 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 		}
 
 		for _, definition := range projectContext.definitions {
+			definitionID := firstNonEmpty(stringMapValue(definition, "id"), mapStringValue(definition, "id"))
+			detailedDefinition := definition
+			if definitionID != "" {
+				definitionURL := "https://dev.azure.com/" + url.PathEscape(organization) + "/" + projectPath + "/_apis/build/definitions/" + url.PathEscape(definitionID) + "?api-version=7.1"
+				detailDefinition, detailErr := devopsGetObject(ctx, token.Token, definitionURL)
+				if detailErr != nil {
+					issues = append(issues, issueFromError("devops["+projectName+"].build_definition["+definitionID+"]", detailErr))
+				} else if len(detailDefinition) > 0 {
+					detailedDefinition = detailDefinition
+				}
+			}
+
+			repositoryID := stringPtrValueOrNil(mapValue(detailedDefinition, "repository")["id"])
+			var repositoryPermission *devopsPermissionSnapshot
+			if currentDescriptor != "" && projectID != "" && repositoryID != nil && *repositoryID != "" {
+				repositoryToken := "repoV2/" + projectID + "/" + *repositoryID
+				snapshot, ok := repoPermissionsByToken[repositoryToken]
+				if !ok {
+					snapshot, err = devopsPermissionSnapshotForToken(ctx, token.Token, organization, devopsGitNamespaceID, currentDescriptor, repositoryToken)
+					if err != nil {
+						issues = append(issues, issueFromError("devops["+projectName+"].repo_permissions["+*repositoryID+"]", err))
+					} else {
+						repoPermissionsByToken[repositoryToken] = snapshot
+					}
+				}
+				if len(snapshot.resolved) > 0 {
+					repositoryPermission = &snapshot
+				}
+			}
+
+			var buildPermission *devopsPermissionSnapshot
+			if currentDescriptor != "" && projectID != "" && definitionID != "" {
+				buildToken := projectID + "/" + definitionID
+				snapshot, ok := buildPermissionsByToken[buildToken]
+				if !ok {
+					snapshot, err = devopsPermissionSnapshotForToken(ctx, token.Token, organization, devopsBuildNamespaceID, currentDescriptor, buildToken)
+					if err != nil {
+						issues = append(issues, issueFromError("devops["+projectName+"].build_permissions["+definitionID+"]", err))
+					} else {
+						buildPermissionsByToken[buildToken] = snapshot
+					}
+				}
+				if len(snapshot.resolved) > 0 {
+					buildPermission = &snapshot
+				}
+			}
+
+			yamlContent := ""
+			yamlPath := mapStringValue(mapValue(detailedDefinition, "process"), "yamlFilename")
+			if projectName != "" && repositoryID != nil && *repositoryID != "" && yamlPath != "" {
+				repositoryRecord := repositoriesByID[strings.ToLower(*repositoryID)]
+				defaultBranch := firstNonEmpty(
+					mapStringValue(mapValue(detailedDefinition, "repository"), "defaultBranch"),
+					mapStringValue(repositoryRecord, "defaultBranch"),
+				)
+				content, contentErr := devopsRepositoryFileContent(ctx, token.Token, organization, projectName, *repositoryID, yamlPath, defaultBranch)
+				if contentErr != nil {
+					issues = append(issues, issueFromError("devops["+projectName+"].repository_file["+yamlPath+"]", contentErr))
+				} else {
+					yamlContent = content
+				}
+			}
+
 			pipeline, definitionIssues := buildDevopsPipelineAsset(
 				organization,
 				project,
-				definition,
+				detailedDefinition,
+				yamlContent,
 				repositoriesByID,
 				serviceEndpointsByID,
 				serviceEndpointsByName,
 				variableGroupsByID,
 				variableGroupsByName,
+				repositoryPermission,
+				buildPermission,
 			)
 			if pipeline.ID == "" {
 				continue
@@ -169,41 +265,15 @@ func devopsListValues(ctx context.Context, bearerToken string, requestURL string
 }
 
 func devopsListValuesWithClient(ctx context.Context, bearerToken string, requestURL string, client *http.Client) ([]map[string]any, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	body, _, err := devopsReadBodyWithClient(ctx, bearerToken, requestURL, client)
 	if err != nil {
 		return nil, err
-	}
-	for key, value := range devopsRequestHeaders(bearerToken) {
-		request.Header.Set(key, value)
-	}
-
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	bodyText := strings.TrimSpace(string(body))
-	contentType := strings.ToLower(strings.TrimSpace(response.Header.Get("Content-Type")))
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("%s (%s): %s", response.Status, firstNonEmpty(contentType, "unknown content-type"), bodyText)
 	}
 
 	var payload struct {
 		Value []map[string]any `json:"value"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		if !strings.Contains(contentType, "json") {
-			return nil, fmt.Errorf(
-				"received non-JSON Azure DevOps response (content-type %q): %s; confirm org access and interactive sign-in for this session",
-				firstNonEmpty(contentType, "unknown"),
-				devopsBodySnippet(bodyText),
-			)
-		}
 		return nil, fmt.Errorf("decode Azure DevOps JSON response: %w", err)
 	}
 	return payload.Value, nil
@@ -225,15 +295,252 @@ func devopsBodySnippet(body string) string {
 	return body[:160] + "..."
 }
 
+func devopsCurrentUserDescriptor(ctx context.Context, bearerToken string, organization string, claims map[string]string) (string, error) {
+	connectionDescriptor := ""
+	connectionData, err := devopsGetObject(
+		ctx,
+		bearerToken,
+		"https://dev.azure.com/"+url.PathEscape(organization)+"/_apis/connectionData?connectOptions=1&lastChangeId=-1&lastChangeId64=-1&api-version=7.1",
+	)
+	if err == nil {
+		if descriptor := mapStringValue(mapValue(connectionData, "authenticatedUser"), "descriptor"); descriptor != "" {
+			connectionDescriptor = descriptor
+		}
+	}
+
+	users, err := devopsListValues(ctx, bearerToken, "https://vssps.dev.azure.com/"+url.PathEscape(organization)+"/_apis/graph/users?api-version="+devopsGraphUsersVersion)
+	if err != nil {
+		return "", err
+	}
+
+	matchValues := []string{
+		strings.ToLower(strings.TrimSpace(claims["email"])),
+		strings.ToLower(strings.TrimSpace(claims["preferred_username"])),
+		strings.ToLower(strings.TrimSpace(claims["upn"])),
+		strings.ToLower(strings.TrimSpace(claims["unique_name"])),
+		strings.ToLower(strings.TrimSpace(claims["name"])),
+	}
+
+	for _, user := range users {
+		candidates := []string{
+			strings.ToLower(strings.TrimSpace(stringMapValue(user, "mailAddress"))),
+			strings.ToLower(strings.TrimSpace(stringMapValue(user, "principalName"))),
+			strings.ToLower(strings.TrimSpace(stringMapValue(user, "displayName"))),
+		}
+		for _, matchValue := range matchValues {
+			if matchValue == "" {
+				continue
+			}
+			if slices.Contains(candidates, matchValue) {
+				if descriptor := devopsPermissionSubject(user); descriptor != "" {
+					return descriptor, nil
+				}
+			}
+		}
+	}
+
+	if looksLikeUserClaims(claims) {
+		candidates := []map[string]any{}
+		for _, user := range users {
+			if stringMapValue(user, "descriptor") == "" {
+				continue
+			}
+			if strings.TrimSpace(stringMapValue(user, "mailAddress")) == "" && strings.TrimSpace(stringMapValue(user, "principalName")) == "" {
+				continue
+			}
+			candidates = append(candidates, user)
+		}
+		if len(candidates) == 1 {
+			if descriptor := devopsPermissionSubject(candidates[0]); descriptor != "" {
+				return descriptor, nil
+			}
+		}
+	}
+
+	if connectionDescriptor != "" {
+		return connectionDescriptor, nil
+	}
+
+	return "", fmt.Errorf("resolve Azure DevOps identity descriptor for current principal")
+}
+
+func devopsPermissionSubject(user map[string]any) string {
+	subjects := []string{}
+	if descriptor := stringMapValue(user, "descriptor"); descriptor != "" {
+		subjects = append(subjects, descriptor)
+	}
+	if strings.EqualFold(stringMapValue(user, "origin"), "msa") {
+		if originID := stringMapValue(user, "originId"); originID != "" {
+			subjects = append(subjects, "Microsoft.IdentityModel.Claims.ClaimsIdentity;"+originID+"@Live.com")
+		}
+	}
+	return strings.Join(sortedUniqueStrings(subjects), ",")
+}
+
+func devopsPermissionSnapshotForToken(ctx context.Context, bearerToken string, organization string, namespaceID string, descriptor string, token string) (devopsPermissionSnapshot, error) {
+	requestURL := "https://dev.azure.com/" + url.PathEscape(organization) + "/_apis/accesscontrollists/" + namespaceID
+	query := url.Values{}
+	query.Set("token", token)
+	query.Set("descriptors", descriptor)
+	query.Set("includeExtendedInfo", "true")
+	query.Set("recurse", "false")
+	query.Set("api-version", "7.1")
+
+	acls, err := devopsACLValues(ctx, bearerToken, requestURL+"?"+query.Encode())
+	if err != nil {
+		return devopsPermissionSnapshot{}, err
+	}
+
+	resolved := map[string]string{}
+	namespacePermissions := devopsPermissionBits(namespaceID)
+	for _, acl := range acls {
+		for _, ace := range mapValue(acl, "acesDictionary") {
+			effectiveAllow := mapIntValue(mapValue(ace, "extendedInfo"), "effectiveAllow")
+			if effectiveAllow == 0 {
+				effectiveAllow = mapIntValue(ace, "allow")
+			}
+			for bit, name := range namespacePermissions {
+				if effectiveAllow&bit != 0 {
+					resolved[name] = "Allow"
+				}
+			}
+		}
+	}
+	return devopsPermissionSnapshot{resolved: resolved}, nil
+}
+
+func devopsPermissionBits(namespaceID string) map[int]string {
+	switch namespaceID {
+	case devopsGitNamespaceID:
+		return map[int]string{
+			2: "GenericRead",
+			4: "GenericContribute",
+		}
+	case devopsBuildNamespaceID:
+		return map[int]string{
+			128:  "QueueBuilds",
+			1024: "ViewBuildDefinition",
+			2048: "EditBuildDefinition",
+		}
+	default:
+		return map[int]string{}
+	}
+}
+
+func devopsACLValues(ctx context.Context, bearerToken string, requestURL string) ([]map[string]any, error) {
+	body, contentType, err := devopsReadBody(ctx, bearerToken, requestURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapped struct {
+		Value []map[string]any `json:"value"`
+	}
+	if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.Value != nil {
+		return wrapped.Value, nil
+	}
+
+	var direct []map[string]any
+	if err := json.Unmarshal(body, &direct); err == nil {
+		return direct, nil
+	}
+
+	return nil, fmt.Errorf("decode Azure DevOps ACL response (%s)", firstNonEmpty(contentType, "unknown content-type"))
+}
+
+func devopsGetObject(ctx context.Context, bearerToken string, requestURL string) (map[string]any, error) {
+	body, _, err := devopsReadBody(ctx, bearerToken, requestURL)
+	if err != nil {
+		return nil, err
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode Azure DevOps object response: %w", err)
+	}
+	return payload, nil
+}
+
+func devopsRepositoryFileContent(ctx context.Context, bearerToken string, organization string, projectName string, repositoryID string, path string, defaultBranch string) (string, error) {
+	requestURL := "https://dev.azure.com/" + url.PathEscape(organization) + "/" + url.PathEscape(projectName) + "/_apis/git/repositories/" + url.PathEscape(repositoryID) + "/items"
+	query := url.Values{}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	query.Set("path", path)
+	query.Set("includeContent", "true")
+	query.Set("api-version", "7.1")
+	branch := devopsBranchName(defaultBranch)
+	if branch != "" {
+		query.Set("versionDescriptor.version", branch)
+		query.Set("versionDescriptor.versionType", "branch")
+	}
+
+	item, err := devopsGetObject(ctx, bearerToken, requestURL+"?"+query.Encode())
+	if err != nil {
+		return "", err
+	}
+	return mapStringValue(item, "content"), nil
+}
+
+func devopsBranchName(defaultBranch string) string {
+	branch := strings.TrimSpace(defaultBranch)
+	branch = strings.TrimPrefix(branch, "refs/heads/")
+	if branch == "" {
+		return "main"
+	}
+	return branch
+}
+
+func devopsReadBody(ctx context.Context, bearerToken string, requestURL string) ([]byte, string, error) {
+	return devopsReadBodyWithClient(ctx, bearerToken, requestURL, http.DefaultClient)
+}
+
+func devopsReadBodyWithClient(ctx context.Context, bearerToken string, requestURL string, client *http.Client) ([]byte, string, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	for key, value := range devopsRequestHeaders(bearerToken) {
+		request.Header.Set(key, value)
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return nil, "", err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, "", err
+	}
+	contentType := strings.ToLower(strings.TrimSpace(response.Header.Get("Content-Type")))
+	bodyText := strings.TrimSpace(string(body))
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, contentType, fmt.Errorf("%s (%s): %s", response.Status, firstNonEmpty(contentType, "unknown content-type"), bodyText)
+	}
+	if !strings.Contains(contentType, "json") && !strings.Contains(contentType, "text/plain") {
+		return nil, contentType, fmt.Errorf(
+			"received non-JSON Azure DevOps response (content-type %q): %s; confirm org access and interactive sign-in for this session",
+			firstNonEmpty(contentType, "unknown"),
+			devopsBodySnippet(bodyText),
+		)
+	}
+	return body, contentType, nil
+}
+
 func buildDevopsPipelineAsset(
 	organization string,
 	project map[string]any,
 	definition map[string]any,
+	yamlContent string,
 	repositoriesByID map[string]map[string]any,
 	serviceEndpointsByID map[string]map[string]any,
 	serviceEndpointsByName map[string]map[string]any,
 	variableGroupsByID map[string]map[string]any,
 	variableGroupsByName map[string]map[string]any,
+	repositoryPermission *devopsPermissionSnapshot,
+	buildPermission *devopsPermissionSnapshot,
 ) (models.DevopsPipelineAsset, []models.Issue) {
 	definitionID := firstNonEmpty(stringMapValue(definition, "id"), mapStringValue(definition, "id"))
 	name := stringMapValue(definition, "name")
@@ -245,28 +552,49 @@ func buildDevopsPipelineAsset(
 
 	repository := mapValue(definition, "repository")
 	repositoryID := stringPtrValueOrNil(repository["id"])
+	repositoryRecord := map[string]any{}
+	if repositoryID != nil && *repositoryID != "" {
+		repositoryRecord = repositoriesByID[strings.ToLower(*repositoryID)]
+	}
 	repositoryName := firstNonEmpty(stringMapValue(repository, "name"), mapStringValue(definition, "repository", "name"))
 	repositoryType := firstNonEmpty(stringMapValue(repository, "type"), mapStringValue(definition, "repository", "type"))
 	repositoryURL := firstNonEmpty(stringMapValue(repository, "url"), mapStringValue(definition, "repository", "url"))
-	defaultBranch := firstNonEmpty(stringMapValue(repository, "defaultBranch"), mapStringValue(definition, "repository", "defaultBranch"))
+	defaultBranch := firstNonEmpty(
+		stringMapValue(repositoryRecord, "defaultBranch"),
+		stringMapValue(repository, "defaultBranch"),
+		mapStringValue(definition, "repository", "defaultBranch"),
+	)
 	repositoryHostType := devopsRepositoryHostType(repositoryType, repositoryURL)
 	sourceVisibilityState := devopsSourceVisibilityState(repositoryHostType, repositoryID, repositoriesByID)
 
 	rawDefinition, _ := json.Marshal(definition)
-	scanText := strings.ToLower(string(rawDefinition))
+	combinedText := string(rawDefinition)
+	if strings.TrimSpace(yamlContent) != "" {
+		combinedText += "\n" + yamlContent
+	}
+	scanText := strings.ToLower(combinedText)
 
 	matchedServiceEndpoints := devopsMatchedServiceEndpoints(scanText, serviceEndpointsByID, serviceEndpointsByName)
 	matchedVariableGroups := devopsMatchedVariableGroups(definition, scanText, variableGroupsByID, variableGroupsByName)
 	triggerTypes := devopsTriggerTypes(definition)
 	executionModes := devopsExecutionModes(triggerTypes)
-	targetClues := devopsTargetClues(scanText, name)
+	targetClues := devopsTargetClues(combinedText, name)
 	azureNames, azureTypes, azureSchemes, azureIDs, principalIDs, clientIDs, tenantIDs, subscriptionIDs := devopsEndpointDetails(matchedServiceEndpoints)
 	secretVariableNames := devopsSecretVariableNames(definition, matchedVariableGroups)
 	keyVaultGroupNames, keyVaultNames := devopsKeyVaultGroups(matchedVariableGroups)
 	variableGroupNames := devopsGroupNames(matchedVariableGroups)
 	upstreamSources := devopsUpstreamSources(repositoryHostType, repositoryName, defaultBranch, executionModes)
 	sourceJoinIDs := devopsSourceJoinIDs(organization, projectID, repositoryID, repositoryName, repositoryURL, repositoryHostType)
-	trustedInputs := devopsTrustedInputs(repositoryHostType, repositoryName, defaultBranch, sourceVisibilityState, sourceJoinIDs)
+	trustedInputs := devopsTrustedInputs(
+		repositoryHostType,
+		repositoryName,
+		defaultBranch,
+		sourceVisibilityState,
+		sourceJoinIDs,
+		executionModes,
+		repositoryPermission,
+	)
+	trustedInputs = append(trustedInputs, devopsExternalURLTrustedInputs(combinedText)...)
 	trustedInputTypes := []string{}
 	trustedInputRefs := []string{}
 	trustedInputJoinIDs := []string{}
@@ -292,6 +620,23 @@ func buildDevopsPipelineAsset(
 	triggerJoinIDs := devopsTriggerJoinIDs(organization, projectName, definitionID, executionModes, upstreamSources)
 	identityJoinIDs := dedupeStrings(append(append([]string{}, azureIDs...), append(principalIDs, clientIDs...)...))
 	currentOperatorCanViewDefinition := boolPtr(true)
+	if buildPermission != nil {
+		currentOperatorCanViewDefinition = boolPtr(buildPermission.allows("ViewBuildDefinition"))
+	}
+	currentOperatorCanQueue := (*bool)(nil)
+	currentOperatorCanEdit := (*bool)(nil)
+	if buildPermission != nil {
+		currentOperatorCanQueue = boolPtr(buildPermission.allows("QueueBuilds"))
+		currentOperatorCanEdit = boolPtr(buildPermission.allows("EditBuildDefinition"))
+	}
+	currentOperatorCanViewSource := (*bool)(nil)
+	currentOperatorCanContributeSource := (*bool)(nil)
+	if repositoryPermission != nil {
+		canViewSource := repositoryPermission.allows("GenericRead") || repositoryPermission.allows("GenericContribute")
+		currentOperatorCanViewSource = boolPtr(canViewSource)
+		currentOperatorCanContributeSource = boolPtr(repositoryPermission.allows("GenericContribute"))
+	}
+	currentOperatorInjectionSurfaceTypes := devopsCurrentOperatorInjectionSurfaceTypes(currentOperatorCanContributeSource, currentOperatorCanEdit, executionModes)
 	summary := devopsSummary(
 		name,
 		projectName,
@@ -348,19 +693,19 @@ func buildDevopsPipelineAsset(
 		SecretSupportTypes:                    secretSupportTypes,
 		SecretDependencyIDs:                   secretDependencyIDs,
 		InjectionSurfaceTypes:                 devopsInjectionSurfaceTypes(trustedInputs),
-		CurrentOperatorInjectionSurfaceTypes:  []string{},
+		CurrentOperatorInjectionSurfaceTypes:  currentOperatorInjectionSurfaceTypes,
 		EditPathState:                         devopsEditPathState(repositoryName),
 		QueuePathState:                        "unknown",
 		RerunPathState:                        "unknown",
 		ApprovalPathState:                     "unknown",
 		CurrentOperatorCanViewDefinition:      currentOperatorCanViewDefinition,
-		CurrentOperatorCanQueue:               nil,
-		CurrentOperatorCanEdit:                nil,
-		CurrentOperatorCanViewSource:          nil,
-		CurrentOperatorCanContributeSource:    nil,
+		CurrentOperatorCanQueue:               currentOperatorCanQueue,
+		CurrentOperatorCanEdit:                currentOperatorCanEdit,
+		CurrentOperatorCanViewSource:          currentOperatorCanViewSource,
+		CurrentOperatorCanContributeSource:    currentOperatorCanContributeSource,
 		ConsequenceTypes:                      consequenceTypes,
 		MissingExecutionPath:                  len(executionModes) == 0,
-		MissingInjectionPoint:                 true,
+		MissingInjectionPoint:                 len(currentOperatorInjectionSurfaceTypes) == 0,
 		MissingTargetMapping:                  len(targetClues) == 0,
 		PartialRead:                           false,
 		Summary:                               summary,
@@ -485,11 +830,11 @@ func devopsExecutionModes(triggerTypes []string) []string {
 
 func devopsTargetClues(scanText string, name string) []string {
 	clues := []string{}
-	combined := strings.ToLower(name) + " " + scanText
+	combined := strings.ToLower(name) + " " + strings.ToLower(scanText)
 	if strings.Contains(combined, "aks") || strings.Contains(combined, "kubernetes") || strings.Contains(combined, "helm") || strings.Contains(combined, "kubectl") {
 		clues = appendUniqueString(clues, "AKS/Kubernetes")
 	}
-	if strings.Contains(combined, "appservice") || strings.Contains(combined, "app service") || strings.Contains(combined, "webapp") {
+	if strings.Contains(combined, "appservice") || strings.Contains(combined, "app service") || strings.Contains(combined, "webapp") || strings.Contains(combined, "azurewebapp@") {
 		clues = appendUniqueString(clues, "App Service")
 	}
 	if strings.Contains(combined, "functionapp") || strings.Contains(combined, "function app") || strings.Contains(combined, "functions") {
@@ -500,6 +845,12 @@ func devopsTargetClues(scanText string, name string) []string {
 	}
 	if strings.Contains(combined, "acr") || strings.Contains(combined, "container") || strings.Contains(combined, "docker") {
 		clues = appendUniqueString(clues, "ACR/Containers")
+	}
+	for _, match := range regexp.MustCompile(`(?im)appname\s*:\s*["']?([a-z0-9._-]+)["']?`).FindAllStringSubmatch(scanText, -1) {
+		if len(match) == 2 {
+			clues = appendUniqueString(clues, "App Service")
+			clues = appendUniqueString(clues, "App Service: "+strings.TrimSpace(match[1]))
+		}
 	}
 	return clues
 }
@@ -603,26 +954,107 @@ func devopsSourceJoinIDs(organization string, projectID string, repositoryID *st
 	return dedupeStrings(joinIDs)
 }
 
-func devopsTrustedInputs(repositoryHostType string, repositoryName string, defaultBranch string, sourceVisibilityState string, sourceJoinIDs []string) []models.DevopsTrustedInput {
+func devopsTrustedInputs(
+	repositoryHostType string,
+	repositoryName string,
+	defaultBranch string,
+	sourceVisibilityState string,
+	sourceJoinIDs []string,
+	executionModes []string,
+	repositoryPermission *devopsPermissionSnapshot,
+) []models.DevopsTrustedInput {
 	if repositoryName == "" || repositoryHostType == "" {
 		return []models.DevopsTrustedInput{}
 	}
+	accessState := "exists-only"
+	canPoison := false
 	permissionDetail := "definition reference only"
+	permissionSource := "pipeline-definition"
+	evidenceBasis := "definition-reference"
+	surfaceTypes := []string{"repo-content"}
+	if slices.Contains(executionModes, "pull-request") {
+		surfaceTypes = appendUniqueString(surfaceTypes, "pull-request")
+	}
 	if sourceVisibilityState == "external-reference" {
 		permissionDetail = "external reference only"
+	}
+	if repositoryPermission != nil {
+		if repositoryPermission.allows("GenericContribute") {
+			accessState = "write"
+			canPoison = true
+			permissionDetail = "GenericContribute allowed"
+			permissionSource = "azure-devops-git-permissions"
+			evidenceBasis = "repository-permission"
+		} else if repositoryPermission.allows("GenericRead") {
+			accessState = "read"
+			permissionDetail = "GenericRead allowed"
+			permissionSource = "azure-devops-git-permissions"
+			evidenceBasis = "repository-permission"
+		}
 	}
 	return []models.DevopsTrustedInput{{
 		InputType:                    "repository",
 		Ref:                          "repository:" + repositoryHostType + ":" + repositoryName + "@" + firstNonEmpty(defaultBranch, "unknown"),
 		VisibilityState:              sourceVisibilityState,
-		CurrentOperatorAccessState:   "exists-only",
-		CurrentOperatorCanPoison:     false,
-		TrustedInputEvidenceBasis:    "definition-reference",
-		TrustedInputPermissionSource: "pipeline-definition",
+		CurrentOperatorAccessState:   accessState,
+		CurrentOperatorCanPoison:     canPoison,
+		TrustedInputEvidenceBasis:    evidenceBasis,
+		TrustedInputPermissionSource: permissionSource,
 		TrustedInputPermissionDetail: permissionDetail,
-		SurfaceTypes:                 []string{"repo-content"},
+		SurfaceTypes:                 surfaceTypes,
 		JoinIDs:                      sourceJoinIDs,
 	}}
+}
+
+func devopsExternalURLTrustedInputs(scanText string) []models.DevopsTrustedInput {
+	matches := regexp.MustCompile(`https?://[^\s"'\\]+`).FindAllString(scanText, -1)
+	if len(matches) == 0 {
+		return []models.DevopsTrustedInput{}
+	}
+
+	urls := []string{}
+	for _, match := range matches {
+		candidate := strings.TrimRight(strings.TrimSpace(match), ",.)}]")
+		if candidate == "" {
+			continue
+		}
+		if !strings.Contains(candidate, "/_apis/") && !strings.Contains(candidate, ".visualstudio.com/") {
+			continue
+		}
+		urls = appendUniqueString(urls, candidate)
+	}
+	sort.Strings(urls)
+
+	inputs := make([]models.DevopsTrustedInput, 0, len(urls))
+	for _, value := range urls {
+		inputs = append(inputs, models.DevopsTrustedInput{
+			InputType:                    "external-url",
+			Ref:                          "external-url:" + value,
+			VisibilityState:              "external-reference",
+			CurrentOperatorAccessState:   "exists-only",
+			CurrentOperatorCanPoison:     false,
+			TrustedInputEvidenceBasis:    "definition-reference",
+			TrustedInputPermissionSource: "pipeline-definition",
+			TrustedInputPermissionDetail: "external reference only",
+			SurfaceTypes:                 []string{"external-download"},
+			JoinIDs:                      []string{"url://" + value},
+		})
+	}
+	return inputs
+}
+
+func devopsCurrentOperatorInjectionSurfaceTypes(currentOperatorCanContributeSource *bool, currentOperatorCanEdit *bool, executionModes []string) []string {
+	surfaces := []string{}
+	if currentOperatorCanContributeSource != nil && *currentOperatorCanContributeSource {
+		surfaces = appendUniqueString(surfaces, "repo-content")
+		if slices.Contains(executionModes, "pull-request") {
+			surfaces = appendUniqueString(surfaces, "pull-request")
+		}
+	}
+	if currentOperatorCanEdit != nil && *currentOperatorCanEdit {
+		surfaces = appendUniqueString(surfaces, "definition-edit")
+	}
+	return sortedUniqueStrings(surfaces)
 }
 
 func devopsSecretSupportTypes(variableGroupNames []string, secretVariableNames []string, keyVaultGroupNames []string, azureNames []string) []string {
@@ -753,6 +1185,9 @@ func devopsSummary(
 	}
 	if len(executionModes) > 0 {
 		parts = append(parts, "execution can start through "+strings.Join(executionModes, ", ")+".")
+	}
+	if len(trustedInputs) > 0 && trustedInputs[0].CurrentOperatorCanPoison {
+		parts = append(parts, "current credentials can poison "+strings.Join(trustedInputs[0].SurfaceTypes, ", ")+" through "+devopsTrustedInputLabel(trustedInputs[0])+".")
 	}
 	if len(azureNames) > 0 {
 		parts = append(parts, "uses Azure-facing service connection(s) "+strings.Join(azureNames, ", ")+".")

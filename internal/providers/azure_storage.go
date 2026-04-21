@@ -56,7 +56,7 @@ func storageSummary(ctx context.Context, session azureSession, account map[strin
 	accountName := firstNonEmpty(mapStringValue(account, "name"), resourceNameFromID(accountID), "unknown")
 	resourceGroup := resourceGroupFromID(accountID)
 	properties := mapValue(account, "properties")
-	networkRuleSet := mapValue(properties, "networkRuleSet", "network_rule_set")
+	networkRuleSet := mapValue(properties, "networkAcls", "network_acls", "networkRuleSet", "network_rule_set")
 	privateEndpoints := listValue(properties, "privateEndpointConnections", "private_endpoint_connections")
 
 	containerCount := storageChildCount(ctx, session, resourceGroup, accountName, accountID+"/blobServices/default/containers", "blob_containers", issues)

@@ -119,17 +119,15 @@ func eventGridTopicTypeItems(ctx context.Context, session azureSession) ([]map[s
 }
 
 func eventGridSubscriptionLocations(ctx context.Context, session azureSession) ([]string, []models.Issue) {
-	resourcesClient := session.clientFactory.NewClient()
 	locations := []string{}
-
-	resourcePager := resourcesClient.NewListPager(nil)
-	for resourcePager.More() {
-		page, err := resourcePager.NextPage(ctx)
+	resourceGroupPager := session.clientFactory.NewResourceGroupsClient().NewListPager(nil)
+	for resourceGroupPager.More() {
+		page, err := resourceGroupPager.NextPage(ctx)
 		if err != nil {
-			return dedupeStrings(locations), []models.Issue{issueFromError("event-grid.resources", err)}
+			return dedupeStrings(locations), []models.Issue{issueFromError("event-grid.resource-groups", err)}
 		}
-		for _, resource := range page.Value {
-			location := eventGridCanonicalLocation(stringValue(resource.Location))
+		for _, group := range page.Value {
+			location := eventGridCanonicalLocation(stringValue(group.Location))
 			if location == "" {
 				continue
 			}

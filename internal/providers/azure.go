@@ -1009,7 +1009,7 @@ func envVarSummary(app map[string]any, assetKind string, settingName string, set
 	workloadPrincipalID := stringPtr(mapStringValue(identity, "principalId", "principal_id"))
 	workloadClientID := stringPtr(mapStringValue(identity, "clientId", "client_id"))
 	workloadIdentityIDs := sortedKeys(mapValue(identity, "userAssignedIdentities"), "user_assigned_identities")
-	keyVaultReferenceIdentity := stringPtr(mapStringValue(app, "keyVaultReferenceIdentity", "key_vault_reference_identity"))
+	keyVaultReferenceIdentity := webAppStringField(app, "keyVaultReferenceIdentity", "key_vault_reference_identity")
 
 	summary := assetKind + " '" + appName + "' exposes setting '" + settingName + "' through management-plane app settings (" + valueType + ")."
 	if valueType == "keyvault-ref" {
