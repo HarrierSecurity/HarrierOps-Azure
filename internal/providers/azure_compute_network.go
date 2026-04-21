@@ -2314,7 +2314,7 @@ func tokenCredentialSurfacesFromEnvVars(envVars []models.EnvVarSummary) []models
 	for _, envVar := range envVars {
 		relatedIDs := dedupeStrings(append(append([]string{envVar.AssetID, stringPtrValue(envVar.WorkloadPrincipalID)}, envVar.WorkloadIdentityIDs...), stringPtrValue(envVar.WorkloadPrincipalID)))
 
-		if envVar.LooksSensitive && envVar.ValueType == "plain-text" {
+		if tokenCredentialPlainTextEnvVar(envVar) {
 			nextReviewKind := tokenCredentialNextReviewKind(models.TokenCredentialSurfacePlainTextSecret, "app-setting", "setting="+envVar.SettingName)
 			surfaces = append(surfaces, models.TokenCredentialSurfaceSummary{
 				AccessPath:     "app-setting",
@@ -2369,6 +2369,16 @@ func tokenCredentialSurfacesFromEnvVars(envVars []models.EnvVarSummary) []models
 		}
 	}
 	return surfaces
+}
+
+func tokenCredentialPlainTextEnvVar(envVar models.EnvVarSummary) bool {
+	if envVar.ValueType != "plain-text" {
+		return false
+	}
+	if envVar.LooksSensitive {
+		return true
+	}
+	return envVar.AssetKind == "FunctionApp" && envVar.SettingName == "AzureWebJobsStorage"
 }
 
 func tokenCredentialSurfacesFromArmDeployments(deployments []models.ArmDeploymentSummary) []models.TokenCredentialSurfaceSummary {

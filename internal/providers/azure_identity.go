@@ -404,7 +404,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		}
 		for _, identityID := range vm.IdentityIDs {
 			if strings.HasSuffix(identityID, "/identities/system") {
-				identityMap[identityID] = managedIdentityFromAttachment(
+				mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 					identityID,
 					vm.Name+"-system",
 					"systemAssigned",
@@ -416,12 +416,12 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 					exposure,
 					subscriptionScope,
 					nil,
-				)
+				))
 				continue
 			}
 			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
-			identityMap[identityID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				identityID,
 				resourceNameFromID(identityID),
 				"userAssigned",
@@ -433,7 +433,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
-			)
+			))
 		}
 	}
 
@@ -444,7 +444,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		}
 		if identityIncludesType(vmss.IdentityType, "SystemAssigned") {
 			systemID := vmss.ID + "/identities/system"
-			identityMap[systemID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				systemID,
 				vmss.Name+"-system",
 				"systemAssigned",
@@ -456,7 +456,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(vmss.PrincipalID)],
-			)
+			))
 		}
 		for _, identityID := range vmss.IdentityIDs {
 			if strings.HasSuffix(identityID, "/identities/system") {
@@ -464,7 +464,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 			}
 			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
-			identityMap[identityID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				identityID,
 				resourceNameFromID(identityID),
 				"userAssigned",
@@ -476,7 +476,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
-			)
+			))
 		}
 	}
 
@@ -487,7 +487,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		}
 		if identityIncludesType(app.WorkloadIdentityType, "SystemAssigned") {
 			systemID := app.ID + "/identities/system"
-			identityMap[systemID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				systemID,
 				app.Name+"-system",
 				"systemAssigned",
@@ -499,12 +499,12 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(app.WorkloadPrincipalID)],
-			)
+			))
 		}
 		for _, identityID := range app.WorkloadIdentityIDs {
 			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
-			identityMap[identityID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				identityID,
 				resourceNameFromID(identityID),
 				"userAssigned",
@@ -516,7 +516,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
-			)
+			))
 		}
 	}
 
@@ -527,7 +527,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		}
 		if identityIncludesType(app.WorkloadIdentityType, "SystemAssigned") {
 			systemID := app.ID + "/identities/system"
-			identityMap[systemID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				systemID,
 				app.Name+"-system",
 				"systemAssigned",
@@ -539,12 +539,12 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(app.WorkloadPrincipalID)],
-			)
+			))
 		}
 		for _, identityID := range app.WorkloadIdentityIDs {
 			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
-			identityMap[identityID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				identityID,
 				resourceNameFromID(identityID),
 				"userAssigned",
@@ -556,7 +556,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
-			)
+			))
 		}
 	}
 
@@ -564,7 +564,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 		exposure := models.WorkloadExposureNone
 		if identityIncludesType(workflow.IdentityType, "SystemAssigned") {
 			systemID := workflow.ID + "/identities/system"
-			identityMap[systemID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				systemID,
 				workflow.Name+"-identity",
 				"systemAssigned",
@@ -576,7 +576,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(workflow.PrincipalID)],
-			)
+			))
 		}
 		for _, identityID := range workflow.IdentityIDs {
 			if strings.HasSuffix(identityID, "/identities/system") {
@@ -584,7 +584,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 			}
 			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
 			issues = append(issues, detailIssues...)
-			identityMap[identityID] = managedIdentityFromAttachment(
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
 				identityID,
 				resourceNameFromID(identityID),
 				"userAssigned",
@@ -596,7 +596,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
-			)
+			))
 		}
 	}
 
@@ -716,6 +716,72 @@ func managedIdentityFromAttachment(identityID string, identityName string, ident
 		WorkloadExposure:     exposure,
 		DirectControlVisible: directControlVisible,
 	}
+}
+
+func mergeManagedIdentityAttachment(identityMap map[string]models.ManagedIdentity, candidate models.ManagedIdentity) {
+	key := armIDJoinKey(candidate.ID)
+	if existing, ok := identityMap[key]; ok {
+		identityMap[key] = mergedManagedIdentity(existing, candidate)
+		return
+	}
+	identityMap[key] = candidate
+}
+
+func mergedManagedIdentity(existing models.ManagedIdentity, candidate models.ManagedIdentity) models.ManagedIdentity {
+	merged := existing
+	merged.AttachedTo = sortedUniqueStrings(append(existing.AttachedTo, candidate.AttachedTo...))
+	merged.ScopeIDs = sortedUniqueStrings(append(existing.ScopeIDs, candidate.ScopeIDs...))
+	if merged.PrincipalID == nil || stringPtrValue(merged.PrincipalID) == "" {
+		merged.PrincipalID = candidate.PrincipalID
+	}
+	if merged.ClientID == nil || stringPtrValue(merged.ClientID) == "" {
+		merged.ClientID = candidate.ClientID
+	}
+	if managedIdentityCandidatePreferred(existing, candidate) {
+		merged.OperatorSignal = candidate.OperatorSignal
+		merged.NextReview = candidate.NextReview
+		merged.Summary = candidate.Summary
+		merged.WorkloadExposure = candidate.WorkloadExposure
+		merged.DirectControlVisible = candidate.DirectControlVisible
+	}
+	return managedIdentityRepresentativeNarrative(merged)
+}
+
+func managedIdentityCandidatePreferred(existing models.ManagedIdentity, candidate models.ManagedIdentity) bool {
+	switch {
+	case candidate.DirectControlVisible != existing.DirectControlVisible:
+		return candidate.DirectControlVisible
+	case managedIdentityExposureRank(candidate.WorkloadExposure) != managedIdentityExposureRank(existing.WorkloadExposure):
+		return managedIdentityExposureRank(candidate.WorkloadExposure) < managedIdentityExposureRank(existing.WorkloadExposure)
+	default:
+		return false
+	}
+}
+
+func managedIdentityRepresentativeNarrative(identity models.ManagedIdentity) models.ManagedIdentity {
+	if len(identity.AttachedTo) <= 1 {
+		return identity
+	}
+
+	if summary := stringPtrValue(identity.Summary); summary != "" {
+		identity.Summary = stringPtr(fmt.Sprintf(
+			"Managed identity '%s' is attached to multiple visible workloads (%d attachments). Representative workload signal: %s",
+			identity.Name,
+			len(identity.AttachedTo),
+			summary,
+		))
+	}
+
+	if nextReview := stringPtrValue(identity.NextReview); nextReview != "" {
+		identity.NextReview = stringPtr("Review the attached_to list for the full workload set. Representative next step: " + nextReview)
+	}
+
+	operatorSignal := strings.TrimSuffix(stringPtrValue(identity.OperatorSignal), ".")
+	if operatorSignal != "" {
+		identity.OperatorSignal = stringPtr("Multiple workload attachments; representative signal: " + operatorSignal + ".")
+	}
+
+	return identity
 }
 
 func managedIdentityNarrative(attachedKind string, attachedName string, identityName string, exposure models.WorkloadExposure, directControlVisible bool, visibilityBlocked bool, highImpactRoles []string) (string, string, string) {

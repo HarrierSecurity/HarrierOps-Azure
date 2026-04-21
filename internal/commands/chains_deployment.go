@@ -721,13 +721,25 @@ func deploymentLikelyImpactSentence(spec deploymentTargetSpec, targetNames []str
 }
 
 func devopsConfidenceBoundary(spec deploymentTargetSpec, pipeline models.DevopsPipelineAsset, executionIdentityName string, targetResolution string) (string, string) {
+	if (pipeline.CurrentOperatorCanContributeSource != nil && *pipeline.CurrentOperatorCanContributeSource) || (pipeline.CurrentOperatorCanEdit != nil && *pipeline.CurrentOperatorCanEdit) {
+		if targetResolution == "named match" {
+			identityName := "the Azure identity tied to this pipeline"
+			if strings.TrimSpace(executionIdentityName) != "" {
+				identityName = executionIdentityName
+			}
+			text := fmt.Sprintf("Current evidence shows you can poison this trusted input so it runs as Azure identity '%s' against the exact %s target, but not a separate direct sign-in as Azure identity '%s'.", identityName, spec.Label, identityName)
+			return text, fmt.Sprintf("Current evidence already confirms source-side poisoning and the exact %s target; what is still missing is a separate direct sign-in as Azure identity '%s'.", spec.Label, identityName)
+		}
+		text := fmt.Sprintf("This row proves current-credential source poisoning and run-path control, but not the exact %s target.", spec.Label)
+		return text, fmt.Sprintf("Missing exact %s mapping; current evidence already confirms a writable trusted input or current-credential definition-edit path on the source side.", spec.Label)
+	}
 	if targetResolution == "named match" {
 		identityName := "the Azure identity tied to this pipeline"
 		if strings.TrimSpace(executionIdentityName) != "" {
 			identityName = executionIdentityName
 		}
 		text := fmt.Sprintf("Current evidence shows you can poison this trusted input so it runs as Azure identity '%s' against the exact %s target, but not a separate direct sign-in as Azure identity '%s'.", identityName, spec.Label, identityName)
-		return text, fmt.Sprintf("Current evidence names the likely %s target, but does not confirm a writable trusted input or current-credential definition-edit path on the source side.", spec.Label)
+		return text, fmt.Sprintf("Current evidence names the exact %s target, but does not confirm a writable trusted input or current-credential definition-edit path on the source side.", spec.Label)
 	}
 	if pipeline.CurrentOperatorCanQueue != nil && *pipeline.CurrentOperatorCanQueue {
 		text := fmt.Sprintf("This row proves current-credential run-path control, but not a writable source or the exact %s target.", spec.Label)
@@ -739,7 +751,12 @@ func devopsConfidenceBoundary(spec deploymentTargetSpec, pipeline models.DevopsP
 
 func devopsNextReview(spec deploymentTargetSpec, pipeline models.DevopsPipelineAsset, targetNames []string, actionability string, permissionOK bool, supporting []models.ArmDeploymentSummary) string {
 	if actionability == "currently actionable" {
-		text := fmt.Sprintf("Current credentials can already poison a trusted input; HO-Azure already named the exact %s target %s", spec.Label, strings.Join(targetNames, ", "))
+		text := "Current credentials can already poison a trusted input"
+		if len(targetNames) == 1 {
+			text += fmt.Sprintf("; HO-Azure already named the exact %s target %s", spec.Label, strings.Join(targetNames, ", "))
+		} else if len(targetNames) > 1 {
+			text += fmt.Sprintf("; HO-Azure already narrowed the visible %s candidates to %s", spec.Label, strings.Join(targetNames, ", "))
+		}
 		if len(supporting) > 0 {
 			text += "; supporting ARM deployment history includes " + deploymentNames(supporting)
 		}
