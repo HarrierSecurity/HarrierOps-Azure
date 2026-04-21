@@ -154,7 +154,7 @@ func azureMLWorkspaceAsset(
 }
 
 func azureMLIdentityIDs(workspaceID string, identity map[string]any) []string {
-	ids := sortedKeys(identity, "userAssignedIdentities", "user_assigned_identities")
+	ids := sortedKeys(mapValue(identity, "userAssignedIdentities", "user_assigned_identities"))
 	if identityIncludesType(stringPtr(mapStringValue(identity, "type")), "SystemAssigned") && workspaceID != "" {
 		ids = append(ids, workspaceID+"/identities/system")
 	}
