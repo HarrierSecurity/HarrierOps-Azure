@@ -113,6 +113,16 @@ func TestEventGridTopicTypeLocationsFallsBackWhenSupportedLocationsMissing(t *te
 	}
 }
 
+func TestEventGridTopicTypeLocationsNormalizesAzureRegionSpellings(t *testing.T) {
+	got := eventGridTopicTypeLocations(map[string]any{
+		"supportedLocations": []any{"Central US"},
+	}, []string{"centralus"})
+	want := []string{"centralus"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("eventGridTopicTypeLocations() = %#v, want %#v", got, want)
+	}
+}
+
 func TestEventGridItemsFromScopesDedupesAndIgnoresMissingScopes(t *testing.T) {
 	rows, issues := eventGridItemsFromScopes(context.Background(), []eventGridEnumerationScope{
 		{path: "subscription", issueScope: "event-grid.topic-type[global]"},
