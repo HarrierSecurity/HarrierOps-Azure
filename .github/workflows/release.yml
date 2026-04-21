@@ -327,11 +327,43 @@ jobs:
             exit 1
           fi
 
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          release_header_file="$(mktemp)"
+          generated_notes_file="$(mktemp)"
+          final_notes_file="$(mktemp)"
+
+          cat >"$release_header_file" <<EOF
+          ## Runtime-verified containers
+
+          - Debian stable x64: \`docker pull ghcr.io/${owner}/ho-azure-debian:${GITHUB_REF_NAME}\`
+          - Kali rolling x64: \`docker pull ghcr.io/${owner}/ho-azure-kali:${GITHUB_REF_NAME}\`
+
+          These OCI images are built from the released Linux amd64 artifact and smoke-tested with \`ho-azure help\` plus \`AZUREFOX_PROVIDER=static ho-azure whoami --output json\`.
+
+          EOF
+
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
+            gh release view "${GITHUB_REF_NAME}" --json body --jq .body >"$generated_notes_file"
+            if grep -Fq "## Runtime-verified containers" "$generated_notes_file"; then
+              gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --verify-tag
+            else
+              cat "$release_header_file" "$generated_notes_file" >"$final_notes_file"
+              gh release edit "${GITHUB_REF_NAME}" \
+                --title "${GITHUB_REF_NAME}" \
+                --notes-file "$final_notes_file" \
+                --verify-tag
+            fi
           else
+            gh api \
+              -X POST \
+              "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="${GITHUB_REF_NAME}" \
+              -f target_commitish="${GITHUB_SHA}" \
+              --jq .body >"$generated_notes_file"
+            cat "$release_header_file" "$generated_notes_file" >"$final_notes_file"
             gh release create "${GITHUB_REF_NAME}" "${assets[@]}" \
-              --generate-notes \
+              --notes-file "$final_notes_file" \
               --title "${GITHUB_REF_NAME}" \
               --verify-tag
           fi
