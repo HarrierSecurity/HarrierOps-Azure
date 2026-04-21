@@ -129,11 +129,11 @@ func eventGridSubscriptionLocations(ctx context.Context, session azureSession) (
 			return dedupeStrings(locations), []models.Issue{issueFromError("event-grid.resources", err)}
 		}
 		for _, resource := range page.Value {
-			location := strings.TrimSpace(stringValue(resource.Location))
+			location := eventGridCanonicalLocation(stringValue(resource.Location))
 			if location == "" {
 				continue
 			}
-			locations = append(locations, strings.ToLower(location))
+			locations = append(locations, location)
 		}
 	}
 
@@ -200,7 +200,7 @@ func eventGridTopicTypeSupportsRegionalEnumeration(properties map[string]any) bo
 func eventGridTopicTypeLocations(properties map[string]any, subscriptionLocations []string) []string {
 	supported := []string{}
 	for _, value := range listValue(properties, "supportedLocations", "supported_locations") {
-		location := strings.ToLower(strings.TrimSpace(stringValue(value)))
+		location := eventGridCanonicalLocation(stringValue(value))
 		if location == "" {
 			continue
 		}
@@ -226,6 +226,10 @@ func eventGridTopicTypeLocations(properties map[string]any, subscriptionLocation
 		}
 	}
 	return out
+}
+
+func eventGridCanonicalLocation(location string) string {
+	return strings.ReplaceAll(strings.ToLower(strings.TrimSpace(location)), " ", "")
 }
 
 type eventGridEnumerationScope struct {

@@ -69,10 +69,10 @@ var commandCompactIntroHint = map[string]string{
 }
 
 var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
-	"compute-control":  chainsComputeControlTable,
-	"credential-path":  chainsCredentialPathTable,
-	"deployment-path":  chainsDeploymentPathTable,
-	"escalation-path":  chainsEscalationPathTable,
+	"compute-control": chainsComputeControlTable,
+	"credential-path": chainsCredentialPathTable,
+	"deployment-path": chainsDeploymentPathTable,
+	"escalation-path": chainsEscalationPathTable,
 }
 
 func chainsTableRenderer(payload any) (string, error) {

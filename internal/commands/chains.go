@@ -51,10 +51,10 @@ type credentialPathTarget struct {
 type chainsFamilyBuilder func(context.Context, providers.Provider, func() time.Time, Request, contracts.FamilyContract) (models.ChainsOutput, error)
 
 var chainsFamilyBuilders = map[string]chainsFamilyBuilder{
-	"credential-path":  buildCredentialPathOutput,
-	"deployment-path":  buildDeploymentPathOutput,
-	"escalation-path":  buildEscalationPathOutput,
-	"compute-control":  buildComputeControlOutput,
+	"credential-path": buildCredentialPathOutput,
+	"deployment-path": buildDeploymentPathOutput,
+	"escalation-path": buildEscalationPathOutput,
+	"compute-control": buildComputeControlOutput,
 }
 
 func chainsHandler(provider providers.Provider, now func() time.Time) Handler {

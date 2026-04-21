@@ -11,10 +11,10 @@ import (
 )
 
 var chainsFamilyCSVRenderers = map[string]func(models.ChainsOutput) (string, error){
-	"compute-control":  chainsComputeControlCSV,
-	"credential-path":  chainsCredentialPathCSV,
-	"deployment-path":  chainsDeploymentPathCSV,
-	"escalation-path":  chainsEscalationPathCSV,
+	"compute-control": chainsComputeControlCSV,
+	"credential-path": chainsCredentialPathCSV,
+	"deployment-path": chainsDeploymentPathCSV,
+	"escalation-path": chainsEscalationPathCSV,
 }
 
 func CSV(command string, payload any) (string, error) {
