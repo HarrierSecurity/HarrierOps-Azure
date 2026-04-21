@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"context"
+	"fmt"
 	"slices"
 	"testing"
 )
@@ -60,5 +62,99 @@ func TestEventGridRouteAssetWebhookStaysExternalCallback(t *testing.T) {
 	}
 	if !slices.Equal(route.IncludedEventTypes, []string{"All"}) {
 		t.Fatalf("expected default event types to be All, got %#v", route.IncludedEventTypes)
+	}
+}
+
+func TestEventGridEnumerationScopesBuildsTopicTypePaths(t *testing.T) {
+	scopes := eventGridEnumerationScopes("sub", []map[string]any{
+		{
+			"name": "Microsoft.Resources.Subscriptions",
+			"properties": map[string]any{
+				"resourceRegionType": "GlobalResource",
+			},
+		},
+		{
+			"name": "Microsoft.Storage.StorageAccounts",
+			"properties": map[string]any{
+				"resourceRegionType": "RegionalResource",
+				"supportedLocations": []any{"centralus", "westus"},
+			},
+		},
+		{
+			"name": "Microsoft.KeyVault.Vaults",
+			"properties": map[string]any{
+				"supportedScopesForSource": []any{"Resource"},
+				"supportedLocations":       []any{"eastus", "centralus"},
+			},
+		},
+	}, []string{"centralus", "eastus"})
+
+	got := make([]string, 0, len(scopes))
+	for _, scope := range scopes {
+		got = append(got, scope.path)
+	}
+
+	want := []string{
+		"/subscriptions/sub/providers/Microsoft.EventGrid/topicTypes/Microsoft.Resources.Subscriptions/eventSubscriptions",
+		"/subscriptions/sub/providers/Microsoft.EventGrid/locations/centralus/topicTypes/Microsoft.Storage.StorageAccounts/eventSubscriptions",
+		"/subscriptions/sub/providers/Microsoft.EventGrid/locations/centralus/topicTypes/Microsoft.KeyVault.Vaults/eventSubscriptions",
+		"/subscriptions/sub/providers/Microsoft.EventGrid/locations/eastus/topicTypes/Microsoft.KeyVault.Vaults/eventSubscriptions",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("eventGridEnumerationScopes() = %#v, want %#v", got, want)
+	}
+}
+
+func TestEventGridTopicTypeLocationsFallsBackWhenSupportedLocationsMissing(t *testing.T) {
+	got := eventGridTopicTypeLocations(map[string]any{}, []string{"centralus", "eastus", "centralus"})
+	want := []string{"centralus", "eastus"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("eventGridTopicTypeLocations() = %#v, want %#v", got, want)
+	}
+}
+
+func TestEventGridItemsFromScopesDedupesAndIgnoresMissingScopes(t *testing.T) {
+	rows, issues := eventGridItemsFromScopes(context.Background(), []eventGridEnumerationScope{
+		{path: "subscription", issueScope: "event-grid.topic-type[global]"},
+		{path: "regional", issueScope: "event-grid.topic-type[storage@centralus]"},
+		{path: "missing", issueScope: "event-grid.topic-type[storage@eastus]"},
+		{path: "broken", issueScope: "event-grid.topic-type[keyvault@centralus]"},
+	}, func(_ context.Context, path string) ([]map[string]any, error) {
+		switch path {
+		case "subscription":
+			return []map[string]any{
+				{"id": "/subscriptions/sub/providers/Microsoft.EventGrid/eventSubscriptions/subscription-route"},
+			}, nil
+		case "regional":
+			return []map[string]any{
+				{"id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/st/providers/Microsoft.EventGrid/eventSubscriptions/storage-route"},
+				{"id": "/subscriptions/sub/providers/Microsoft.EventGrid/eventSubscriptions/subscription-route"},
+			}, nil
+		case "missing":
+			return nil, fmt.Errorf("GET https://management.azure.com/example: 404 Not Found")
+		case "broken":
+			return nil, fmt.Errorf("GET https://management.azure.com/example: 500 Internal Server Error")
+		default:
+			return nil, fmt.Errorf("unexpected path %q", path)
+		}
+	})
+
+	gotIDs := []string{}
+	for _, row := range rows {
+		gotIDs = append(gotIDs, mapStringValue(row, "id"))
+	}
+	wantIDs := []string{
+		"/subscriptions/sub/providers/Microsoft.EventGrid/eventSubscriptions/subscription-route",
+		"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/st/providers/Microsoft.EventGrid/eventSubscriptions/storage-route",
+	}
+	if !slices.Equal(gotIDs, wantIDs) {
+		t.Fatalf("eventGridItemsFromScopes() ids = %#v, want %#v", gotIDs, wantIDs)
+	}
+
+	if len(issues) != 1 {
+		t.Fatalf("expected one surfaced issue, got %#v", issues)
+	}
+	if issues[0].Scope != "event-grid.topic-type[keyvault@centralus]" {
+		t.Fatalf("unexpected issue scope: %#v", issues[0])
 	}
 }

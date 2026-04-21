@@ -118,3 +118,30 @@ func TestAzureMLWorkspaceAssetScheduleOnlyBecomesSupportingPersistenceContext(t 
 		t.Fatalf("summary drifted into notebook overclaiming: %q", asset.Summary)
 	}
 }
+
+func TestAzureMLWorkspaceAssetSystemAssignedIdentityDoesNotLeakTopLevelIdentityKeys(t *testing.T) {
+	asset := azureMLWorkspaceAsset(
+		map[string]any{
+			"id":   "/subscriptions/sub/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-system",
+			"name": "ml-system",
+			"identity": map[string]any{
+				"type":        "SystemAssigned",
+				"principalId": "11111111-1111-1111-1111-111111111111",
+				"tenantId":    "22222222-2222-2222-2222-222222222222",
+			},
+		},
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	identityIDs := asset.IdentityIDs
+	want := []string{
+		"/subscriptions/sub/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-system/identities/system",
+	}
+	if !slices.Equal(identityIDs, want) {
+		t.Fatalf("azureMLWorkspaceAsset().IdentityIDs = %#v, want %#v", identityIDs, want)
+	}
+}

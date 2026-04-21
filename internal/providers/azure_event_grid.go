@@ -16,10 +16,11 @@ func (provider AzureProvider) EventGrid(ctx context.Context, tenant string, subs
 		return EventGridFacts{}, err
 	}
 
+	subscriptionPath := "/subscriptions/" + session.subscription.ID + "/providers/Microsoft.EventGrid/eventSubscriptions"
 	items, listErr := armListObjects(
 		ctx,
 		session.credential,
-		"/subscriptions/"+session.subscription.ID+"/providers/Microsoft.EventGrid/eventSubscriptions",
+		subscriptionPath,
 		armEventGridAPIVersion,
 	)
 
@@ -28,6 +29,9 @@ func (provider AzureProvider) EventGrid(ctx context.Context, tenant string, subs
 	if listErr != nil {
 		issues = append(issues, issueFromError("event-grid.event-subscriptions", listErr))
 	}
+	scopedItems, scopedIssues := eventGridTopicTypeItems(ctx, session)
+	items = append(items, scopedItems...)
+	issues = append(issues, scopedIssues...)
 
 	seen := map[string]struct{}{}
 	for _, item := range items {
@@ -92,6 +96,187 @@ func eventGridRouteAsset(item map[string]any) models.EventGridRouteAsset {
 		),
 		RelatedIDs: eventGridRelatedIDs(sourceID, destinationTargetID, identityID),
 	}
+}
+
+func eventGridTopicTypeItems(ctx context.Context, session azureSession) ([]map[string]any, []models.Issue) {
+	topicTypes, err := armListObjects(
+		ctx,
+		session.credential,
+		"/providers/Microsoft.EventGrid/topicTypes",
+		armEventGridAPIVersion,
+	)
+	if err != nil {
+		return []map[string]any{}, []models.Issue{issueFromError("event-grid.topic-types", err)}
+	}
+
+	locations, locationIssues := eventGridSubscriptionLocations(ctx, session)
+	scopes := eventGridEnumerationScopes(session.subscription.ID, topicTypes, locations)
+	items, scopeIssues := eventGridItemsFromScopes(ctx, scopes, func(ctx context.Context, path string) ([]map[string]any, error) {
+		return armListObjects(ctx, session.credential, path, armEventGridAPIVersion)
+	})
+
+	return items, append(locationIssues, scopeIssues...)
+}
+
+func eventGridSubscriptionLocations(ctx context.Context, session azureSession) ([]string, []models.Issue) {
+	resourcesClient := session.clientFactory.NewClient()
+	locations := []string{}
+
+	resourcePager := resourcesClient.NewListPager(nil)
+	for resourcePager.More() {
+		page, err := resourcePager.NextPage(ctx)
+		if err != nil {
+			return dedupeStrings(locations), []models.Issue{issueFromError("event-grid.resources", err)}
+		}
+		for _, resource := range page.Value {
+			location := strings.TrimSpace(stringValue(resource.Location))
+			if location == "" {
+				continue
+			}
+			locations = append(locations, strings.ToLower(location))
+		}
+	}
+
+	return dedupeStrings(locations), []models.Issue{}
+}
+
+func eventGridEnumerationScopes(subscriptionID string, topicTypes []map[string]any, locations []string) []eventGridEnumerationScope {
+	scopes := []eventGridEnumerationScope{}
+	for _, topicType := range topicTypes {
+		name := strings.TrimSpace(mapStringValue(topicType, "name"))
+		if name == "" {
+			continue
+		}
+		properties := mapValue(topicType, "properties")
+		if eventGridTopicTypeSupportsGlobalEnumeration(properties) {
+			scopes = append(scopes, eventGridEnumerationScope{
+				path:       "/subscriptions/" + subscriptionID + "/providers/Microsoft.EventGrid/topicTypes/" + name + "/eventSubscriptions",
+				issueScope: "event-grid.topic-type[" + name + "]",
+			})
+		}
+
+		if !eventGridTopicTypeSupportsRegionalEnumeration(properties) {
+			continue
+		}
+
+		for _, location := range eventGridTopicTypeLocations(properties, locations) {
+			scopes = append(scopes, eventGridEnumerationScope{
+				path:       "/subscriptions/" + subscriptionID + "/providers/Microsoft.EventGrid/locations/" + location + "/topicTypes/" + name + "/eventSubscriptions",
+				issueScope: "event-grid.topic-type[" + name + "@" + location + "]",
+			})
+		}
+	}
+	return scopes
+}
+
+func eventGridTopicTypeSupportsGlobalEnumeration(properties map[string]any) bool {
+	if strings.EqualFold(mapStringValue(properties, "resourceRegionType", "resource_region_type"), "GlobalResource") {
+		return true
+	}
+	if value := optionalBoolPtr(properties, "areRegionalAndGlobalSourcesSupported", "are_regional_and_global_sources_supported"); value != nil && *value {
+		return true
+	}
+	for _, value := range listValue(properties, "supportedScopesForSource", "supported_scopes_for_source") {
+		if strings.EqualFold(strings.TrimSpace(stringValue(value)), "AzureSubscription") {
+			return true
+		}
+	}
+	return false
+}
+
+func eventGridTopicTypeSupportsRegionalEnumeration(properties map[string]any) bool {
+	if strings.EqualFold(mapStringValue(properties, "resourceRegionType", "resource_region_type"), "RegionalResource") {
+		return true
+	}
+	for _, value := range listValue(properties, "supportedScopesForSource", "supported_scopes_for_source") {
+		if strings.EqualFold(strings.TrimSpace(stringValue(value)), "Resource") ||
+			strings.EqualFold(strings.TrimSpace(stringValue(value)), "ResourceGroup") {
+			return true
+		}
+	}
+	return false
+}
+
+func eventGridTopicTypeLocations(properties map[string]any, subscriptionLocations []string) []string {
+	supported := []string{}
+	for _, value := range listValue(properties, "supportedLocations", "supported_locations") {
+		location := strings.ToLower(strings.TrimSpace(stringValue(value)))
+		if location == "" {
+			continue
+		}
+		supported = append(supported, location)
+	}
+	supported = dedupeStrings(supported)
+	if len(supported) == 0 {
+		return dedupeStrings(subscriptionLocations)
+	}
+	if len(subscriptionLocations) == 0 {
+		return supported
+	}
+
+	available := map[string]struct{}{}
+	for _, location := range supported {
+		available[location] = struct{}{}
+	}
+
+	out := []string{}
+	for _, location := range dedupeStrings(subscriptionLocations) {
+		if _, exists := available[location]; exists {
+			out = append(out, location)
+		}
+	}
+	return out
+}
+
+type eventGridEnumerationScope struct {
+	path       string
+	issueScope string
+}
+
+func eventGridItemsFromScopes(
+	ctx context.Context,
+	scopes []eventGridEnumerationScope,
+	listFn func(context.Context, string) ([]map[string]any, error),
+) ([]map[string]any, []models.Issue) {
+	items := []map[string]any{}
+	issues := []models.Issue{}
+	seen := map[string]struct{}{}
+
+	for _, scope := range scopes {
+		rows, err := listFn(ctx, scope.path)
+		if err != nil {
+			if eventGridIgnoreEnumerationError(err) {
+				continue
+			}
+			issues = append(issues, issueFromError(scope.issueScope, err))
+			continue
+		}
+		for _, row := range rows {
+			routeID := mapStringValue(row, "id")
+			if routeID == "" {
+				items = append(items, row)
+				continue
+			}
+			if _, exists := seen[routeID]; exists {
+				continue
+			}
+			seen[routeID] = struct{}{}
+			items = append(items, row)
+		}
+	}
+
+	return items, issues
+}
+
+func eventGridIgnoreEnumerationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, ": 404") ||
+		strings.Contains(message, "resourcenotfound") ||
+		strings.Contains(message, "invalidresourcetype") ||
+		strings.Contains(message, "noregisteredproviderfound")
 }
 
 func eventGridDestinationTargetID(destination map[string]any) *string {
