@@ -26,8 +26,8 @@ type WebJobAsset struct {
 type WebJobsMetadata = RuntimeCommandMetadata
 
 type WebJobsOutput struct {
-	Findings []Finding        `json:"findings"`
-	Issues   []Issue          `json:"issues"`
-	Metadata WebJobsMetadata  `json:"metadata"`
-	WebJobs  []WebJobAsset    `json:"webjobs"`
+	Findings []Finding       `json:"findings"`
+	Issues   []Issue         `json:"issues"`
+	Metadata WebJobsMetadata `json:"metadata"`
+	WebJobs  []WebJobAsset   `json:"webjobs"`
 }
