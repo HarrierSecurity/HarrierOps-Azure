@@ -19,6 +19,9 @@ func TestFunctionsTableUsesCompactRowPlusNoteLayout(t *testing.T) {
 	runFromPackage := false
 	keyVaultRefs := 1
 	alwaysOn := true
+	httpTrigger := "HTTP"
+	timerTrigger := "timer"
+	falseValue := false
 
 	output, err := Table("functions", models.FunctionsOutput{
 		FunctionApps: []models.FunctionAppAsset{{
@@ -37,6 +40,11 @@ func TestFunctionsTableUsesCompactRowPlusNoteLayout(t *testing.T) {
 			FTPSState:                    &ftps,
 			AlwaysOn:                     &alwaysOn,
 			Summary:                      "Function App 'func-orders' publishes hostname 'func-orders.azurewebsites.net', runs runtime 'PYTHON|3.11', targets Functions runtime '~4', and uses managed identity (SystemAssigned, UserAssigned). Deployment signals: AzureWebJobsStorage as plain-text app setting, 1 Key Vault-backed setting(s). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled, Always On enabled.",
+			TriggerTypes:                 []string{httpTrigger, timerTrigger},
+			VisibleFunctions: []models.FunctionChildAsset{
+				{Name: "OrdersWebhook", TriggerType: &httpTrigger, IsDisabled: &falseValue, InvokeURLTemplate: &hostname, BindingTypes: []string{"httpTrigger", "http"}},
+				{Name: "NightlyReconcile", TriggerType: &timerTrigger, IsDisabled: &falseValue, BindingTypes: []string{"timerTrigger"}},
+			},
 		}},
 	}, models.RenderContext{})
 	if err != nil {
@@ -48,6 +56,15 @@ func TestFunctionsTableUsesCompactRowPlusNoteLayout(t *testing.T) {
 	}
 	if !strings.Contains(output, "│ note ") {
 		t.Fatalf("expected wrapped note section in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "triggers") {
+		t.Fatalf("expected triggers column in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "2 fn; HTTP, timer") {
+		t.Fatalf("expected trigger summary in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Visible child functions: OrdersWebhook") {
+		t.Fatalf("expected child-function note in output, got:\n%s", output)
 	}
 	if strings.Contains(output, "│ operator signal") {
 		t.Fatalf("did not expect operator signal section in output, got:\n%s", output)

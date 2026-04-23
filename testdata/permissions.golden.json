@@ -33,6 +33,50 @@
       "summary": "Current identity 'azurefox-lab-sp' already has direct control visible through Owner at subscription scope. Check privesc for the direct abuse or escalation path behind this current identity."
     },
     {
+      "principal_id": "6a6a5656-5656-5656-5656-565656565656",
+      "display_name": "ua-ml-ops",
+      "principal_type": "ServicePrincipal",
+      "priority": "high",
+      "high_impact_roles": [
+        "Owner"
+      ],
+      "all_role_names": [
+        "Owner"
+      ],
+      "role_assignment_count": 1,
+      "scope_count": 1,
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ],
+      "privileged": true,
+      "is_current_identity": false,
+      "operator_signal": "Direct control visible; workload pivot visible.",
+      "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
+      "summary": "ServicePrincipal 'ua-ml-ops' already has direct control visible through Owner at subscription scope, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
+    },
+    {
+      "principal_id": "cece2222-2222-2222-2222-222222222222",
+      "display_name": "ua-orders",
+      "principal_type": "ServicePrincipal",
+      "priority": "high",
+      "high_impact_roles": [
+        "Owner"
+      ],
+      "all_role_names": [
+        "Owner"
+      ],
+      "role_assignment_count": 1,
+      "scope_count": 1,
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222"
+      ],
+      "privileged": true,
+      "is_current_identity": false,
+      "operator_signal": "Direct control visible; workload pivot visible.",
+      "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
+      "summary": "ServicePrincipal 'ua-orders' already has direct control visible through Owner at subscription scope, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
+    },
+    {
       "principal_id": "eeee3333-3333-3333-3333-333333333333",
       "display_name": "app-empty-mi-system",
       "principal_type": "ServicePrincipal",
@@ -97,6 +141,28 @@
       "operator_signal": "Direct control visible; workload pivot visible.",
       "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
       "summary": "ServicePrincipal 'la-inbound-redeploy-identity' already has direct control visible through Contributor at resource group rg-workflow, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
+    },
+    {
+      "principal_id": "5a5a5656-5656-5656-5656-565656565656",
+      "display_name": "ml-ops-hub-workspace-identity",
+      "principal_type": "ServicePrincipal",
+      "priority": "high",
+      "high_impact_roles": [
+        "Contributor"
+      ],
+      "all_role_names": [
+        "Contributor"
+      ],
+      "role_assignment_count": 1,
+      "scope_count": 1,
+      "scope_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml"
+      ],
+      "privileged": true,
+      "is_current_identity": false,
+      "operator_signal": "Direct control visible; workload pivot visible.",
+      "next_review": "Check managed-identities for the workload pivot behind this direct control row.",
+      "summary": "ServicePrincipal 'ml-ops-hub-workspace-identity' already has direct control visible through Contributor at resource group rg-ml, and current scope also shows a workload pivot. Check managed-identities for the workload pivot behind this direct control row."
     },
     {
       "principal_id": "90909090-9090-9090-9090-909090909090",

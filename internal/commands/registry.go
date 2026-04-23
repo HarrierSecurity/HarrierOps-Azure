@@ -86,6 +86,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return appServicesHandler(provider, now)
 	case "functions":
 		return functionsHandler(provider, now)
+	case "webjobs":
+		return webJobsHandler(provider, now)
 	case "azure-ml":
 		return azureMLHandler(provider, now)
 	case "event-grid":

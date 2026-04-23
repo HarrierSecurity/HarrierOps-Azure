@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -132,12 +133,15 @@ func (provider AzureProvider) buildSession(ctx context.Context, tenant string, s
 }
 
 type liveWebAppResource struct {
-	appMap        map[string]any
-	assetKind     string
-	resourceGroup string
-	name          string
-	config        *onceValue[map[string]any]
-	settings      *onceValue[map[string]any]
+	appMap            map[string]any
+	assetKind         string
+	resourceGroup     string
+	name              string
+	config            *onceValue[map[string]any]
+	connectionStrings *onceValue[map[string]any]
+	functions         *onceValue[[]models.FunctionChildAsset]
+	settings          *onceValue[map[string]any]
+	sourceControl     *onceValue[map[string]any]
 }
 
 const armWebAppsAPIVersion = "2021-03-01"
@@ -211,12 +215,15 @@ func (state *liveWebAppsState) list(ctx context.Context) ([]*liveWebAppResource,
 
 func newLiveWebAppResource(appMap map[string]any) *liveWebAppResource {
 	return &liveWebAppResource{
-		appMap:        appMap,
-		assetKind:     webAssetKind(mapStringValue(appMap, "kind")),
-		resourceGroup: resourceGroupFromID(mapStringValue(appMap, "id")),
-		name:          mapStringValue(appMap, "name"),
-		config:        &onceValue[map[string]any]{},
-		settings:      &onceValue[map[string]any]{},
+		appMap:            appMap,
+		assetKind:         webAssetKind(mapStringValue(appMap, "kind")),
+		resourceGroup:     resourceGroupFromID(mapStringValue(appMap, "id")),
+		name:              mapStringValue(appMap, "name"),
+		config:            &onceValue[map[string]any]{},
+		connectionStrings: &onceValue[map[string]any]{},
+		functions:         &onceValue[[]models.FunctionChildAsset]{},
+		settings:          &onceValue[map[string]any]{},
+		sourceControl:     &onceValue[map[string]any]{},
 	}
 }
 
@@ -248,6 +255,69 @@ func (state *liveWebAppsState) settingsMap(ctx context.Context, app *liveWebAppR
 		decodeJSONInto(settings.StringDictionary, &settingsMap)
 		return settingsMap, nil
 	})
+}
+
+func (state *liveWebAppsState) connectionStringsMap(ctx context.Context, app *liveWebAppResource) (map[string]any, error) {
+	if app.resourceGroup == "" || app.name == "" {
+		return map[string]any{}, nil
+	}
+	return app.connectionStrings.get(func() (map[string]any, error) {
+		connectionStrings, err := state.client.ListConnectionStrings(ctx, app.resourceGroup, app.name, nil)
+		if err != nil {
+			return map[string]any{}, err
+		}
+		connectionStringsMap := map[string]any{}
+		decodeJSONInto(connectionStrings.ConnectionStringDictionary, &connectionStringsMap)
+		return connectionStringsMap, nil
+	})
+}
+
+func (state *liveWebAppsState) sourceControlMap(ctx context.Context, app *liveWebAppResource) (map[string]any, error) {
+	if app.resourceGroup == "" || app.name == "" {
+		return map[string]any{}, nil
+	}
+	return app.sourceControl.get(func() (map[string]any, error) {
+		sourceControl, err := state.client.GetSourceControl(ctx, app.resourceGroup, app.name, nil)
+		if err != nil {
+			var responseErr *azcore.ResponseError
+			if errors.As(err, &responseErr) && responseErr.StatusCode == 404 {
+				return map[string]any{}, nil
+			}
+			return map[string]any{}, err
+		}
+		sourceControlMap := map[string]any{}
+		decodeJSONInto(sourceControl.SiteSourceControl, &sourceControlMap)
+		return sourceControlMap, nil
+	})
+}
+
+func (state *liveWebAppsState) functionAssets(ctx context.Context, app *liveWebAppResource) ([]models.FunctionChildAsset, error) {
+	if app.resourceGroup == "" || app.name == "" {
+		return []models.FunctionChildAsset{}, nil
+	}
+	return app.functions.get(func() ([]models.FunctionChildAsset, error) {
+		rows := []models.FunctionChildAsset{}
+		pager := state.client.NewListFunctionsPager(app.resourceGroup, app.name, nil)
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				return rows, err
+			}
+			for _, function := range page.Value {
+				if function == nil {
+					continue
+				}
+				rows = append(rows, functionChildAssetFromEnvelope(function))
+			}
+		}
+		return rows, nil
+	})
+}
+
+func functionChildAssetFromEnvelope(function *armappservice.FunctionEnvelope) models.FunctionChildAsset {
+	data := map[string]any{}
+	decodeJSONInto(function, &data)
+	return functionChildAssetFromMap(data)
 }
 
 type liveNICSnapshot struct {

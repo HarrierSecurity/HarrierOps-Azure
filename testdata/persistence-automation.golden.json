@@ -13,7 +13,7 @@
   "surface": "automation",
   "input_mode": "live",
   "command_state": "implemented",
-  "summary": "Walk the current identity through the end-to-end Azure Automation steps that can store runnable code and make Azure invoke it again later.",
+  "summary": "Review Azure Automation for reusable code, execution context, and trigger paths.",
   "backing_commands": [
     "automation",
     "permissions",

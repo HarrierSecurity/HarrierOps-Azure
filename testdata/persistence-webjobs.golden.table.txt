@@ -1,0 +1,53 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] WebJobs persistence means deployed background job code plus mode plus inherited app context that App Service and Kudu can run again later, not a shell living on the host.
+WebJob capability
+
+╭───────────────────────────────────────┬────────────────────────────────────────────────────────────────────┬────────╮
+│ action                                │ api surface                                                        │ status │
+├───────────────────────────────────────┼────────────────────────────────────────────────────────────────────┼────────┤
+│ create or reuse parent app service    │ Microsoft.Web/sites                                                │ yes    │
+│ add or replace webjob package         │ site/wwwroot/app_data/jobs                                         │ yes    │
+│ set or reuse webjob mode              │ continuouswebjobs / triggeredwebjobs / scheduler                   │ yes    │
+│ reuse inherited app execution context │ parent app identity / app settings / connection strings            │ yes    │
+│ leave or repurpose rerun path         │ Kudu and App Service runtime discovery / schedule / manual trigger │ yes    │
+╰───────────────────────────────────────┴────────────────────────────────────────────────────────────────────┴────────╯
+This walkthrough shows the strongest currently visible WebJobs persistence path. The inventory below lists the other visible WebJobs without repeating the same narrative.
+- Current identity can create or reuse the parent App Service host that carries this WebJob.
+   WebJobs run alongside the existing web, API, or mobile app path in that App Service instead of replacing the main endpoint.
+
+- Current identity can add or replace the WebJob script or executable this App Service keeps deployed.
+   This is the durable WebJob content layer, separate from the parent app's main web route.
+   Visible run command here is `node /home/site/wwwroot/app_data/jobs/continuous/queue-worker/index.js`.
+
+- Current identity can leave this WebJob on a continuous path that Kudu and the App Service runtime can discover and run again later.
+   This is the WebJobs-specific control point: the deployed job path plus its mode tells the platform how it comes back later.
+   Visible mode here is continuous.
+   Kudu and the App Service runtime discover the job from the deployed WebJobs path and run it again according to that mode.
+
+- Current identity can reuse the parent App Service execution context this WebJob inherits.
+   This is the inherited power layer for WebJobs: managed identity, app settings, and connection material come from the parent App Service.
+   Visible inherited app context here includes 4 parent app setting(s), 2 Key Vault-backed setting(s), 2 connection string(s).
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   App Service identity `app-public-api-system` is visible here, but no Azure role-assignment rows are found for its principal ID.
+
+- As long as the job stays deployed, that rerun path can bring it back later without relying on the main web endpoint.
+   Continuous mode means the job stays on a background execution path inside the parent app.
+   Visible parent-app posture includes parent hostname `app-public-api.azurewebsites.net`, public network access Enabled.
+
+- This remains reusable background persistence until the job package, mode, or parent app context is changed.
+   The operator story here is the parent App Service plus the deployed WebJob plus the rerun mode the platform will keep honoring later.
+   Nearby maintenance- or sync-themed WebJob names visible from the current environment include `nightly-reconcile`.
+
+Visible WebJobs
+webjob            | parent app     | visible state                                                                                                                                   | execution context                                                                    
+
+queue-worker      | app-public-api | continuous; status Running; run command visible; parent hostname app-public-api.azurewebsites.net                                               | `app-public-api-system` with no Azure role-assignment rows found for its principal ID
+nightly-reconcile | app-public-api | scheduled; status Success; latest trigger Schedule; schedule 0 0 * * * *; run command visible; parent hostname app-public-api.azurewebsites.net | `app-public-api-system` with no Azure role-assignment rows found for its principal ID
+
+
+Not collected by default
+- the current command does not retrieve deployed WebJob package contents or script bodies, so operator intent is not inferred from code here
+- the current command does not replay runtime-side execution, logs, or job history, so conclusions stop at visible management-plane WebJob posture
+- the current command does not infer downstream API, data, or automation impact from WebJob names, package names, or runtime hints alone

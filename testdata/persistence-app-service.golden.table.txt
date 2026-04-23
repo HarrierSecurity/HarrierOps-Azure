@@ -1,0 +1,56 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] App Service persistence means a deployed web host plus deployment path plus configuration and identity plus a reachable entry path Azure will keep serving later, not a long-running shell on a VM.
+App Service capability
+
+╭────────────────────────────────────────────┬──────────────────────────────────────────────────────┬────────╮
+│ action                                     │ api surface                                          │ status │
+├────────────────────────────────────────────┼──────────────────────────────────────────────────────┼────────┤
+│ create or reuse app service                │ Microsoft.Web/sites                                  │ yes    │
+│ set or reuse deployment path               │ source control / package deployment / site config    │ yes    │
+│ change app settings or identity attachment │ app settings / connection strings / managed identity │ yes    │
+│ deploy or replace application code         │ zip deploy / package deploy / publish                │ yes    │
+│ expose or reuse HTTP/HTTPS entry path      │ hostname / TLS / public network access               │ yes    │
+╰────────────────────────────────────────────┴──────────────────────────────────────────────────────┴────────╯
+This walkthrough shows the strongest currently visible App Service persistence path. The inventory below lists the other visible App Services without repeating the same narrative.
+- Current identity can create a new App Service app or reuse this existing app.
+   The App Service app is the Azure-side host that keeps the web workload deployed, configurable, identity-backed, and reachable over time.
+
+- Current identity can set or reuse the deployment path this App Service will load.
+   This is distinct from the application content itself: it is the trust path Azure uses to decide where code arrives from.
+   Visible deployment signals here include repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled.
+
+- Current identity can change app settings and attach or reuse managed identity for this App Service.
+   This is the execution-power layer for App Service: settings, connection strings, and workload identity shape what the deployed app can reach later.
+   Visible config posture here includes 4 app setting(s), 2 Key Vault-backed setting(s), 1 sensitive-looking setting name(s), 2 connection string(s), 1 Key Vault-backed connection string(s), connection types Custom, SQLAzure.
+   Visible sensitive-looking setting names include `DB_PASSWORD`.
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   App Service identity `app-public-api-system` is visible here, but no Azure role-assignment rows are found for its principal ID.
+
+- Current identity can deploy or replace the application code this App Service will run.
+   This is the runnable content layer, separate from the deployment path that feeds it.
+   Because the current identity already controls this App Service, package replacement, source-based deployment, or pipeline-backed redeploy are part of the defended App Service persistence path here.
+   Run-from-package is already enabled.
+
+- Current identity can expose or reuse this app's HTTP or HTTPS entry path so it remains reachable later.
+   App Service re-entry is usually the app's reachable HTTP or HTTPS path, not a background process on a VM.
+   Visible hostname here is `app-public-api.azurewebsites.net`.
+   Visible entry posture includes public network access Enabled, HTTPS-only enabled, TLS 1.2.
+
+- This App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth.
+
+- Because the app stays deployed, reachable, and trusted until changed, this remains reusable App Service persistence even after the original session is gone.
+
+Visible App Services
+app service    | resource group | visible state                                                                                                                                                                                                                     | execution context                                                                    
+
+app-empty-mi   | rg-apps        | Running; hostname app-empty-mi.azurewebsites.net; DOTNETCORE|8.0; run-from-package disabled; settings=2; conn=1; public Enabled                                                                                                   | `app-empty-mi-system` with Contributor at resource group `rg-apps`                   
+app-public-api | rg-apps        | Running; hostname app-public-api.azurewebsites.net; NODE|20-lts; repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled; settings=4; kv=2; conn=2; public Enabled | `app-public-api-system` with no Azure role-assignment rows found for its principal ID
+
+
+Not collected by default
+- the current command does not retrieve deployed application packages, repository contents, or source bundles, so operator intent is not inferred from code here
+- the current command does not replay HTTP traffic or inspect runtime-side request handling, so conclusions stop at visible management-plane exposure posture
+- the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone
+- this App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth

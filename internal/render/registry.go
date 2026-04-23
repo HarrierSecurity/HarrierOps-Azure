@@ -57,6 +57,8 @@ func renderRegistryEntry(command string) (rendererEntry, error) {
 		return rendererEntry{table: wrapTableRenderer("app-services", appServicesTable), csv: wrapCSVRenderer("app-services", appServicesCSV)}, nil
 	case "functions":
 		return rendererEntry{table: wrapTableRenderer("functions", functionsTable), csv: wrapCSVRenderer("functions", functionsCSV)}, nil
+	case "webjobs":
+		return rendererEntry{table: wrapTableRenderer("webjobs", webJobsTable), csv: wrapCSVRenderer("webjobs", webJobsCSV)}, nil
 	case "azure-ml":
 		return rendererEntry{table: wrapTableRenderer("azure-ml", azureMLTable), csv: wrapCSVRenderer("azure-ml", azureMLCSV)}, nil
 	case "event-grid":

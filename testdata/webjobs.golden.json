@@ -1,0 +1,59 @@
+{
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "webjobs",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  },
+  "webjobs": [
+    {
+      "detailed_status": "Polling queue messages",
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/continuouswebjobs/queue-worker",
+      "job_type": "Continuous",
+      "location": "eastus",
+      "mode": "continuous",
+      "name": "queue-worker",
+      "parent_app_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+      "parent_app_name": "app-public-api",
+      "parent_hostname": "app-public-api.azurewebsites.net",
+      "parent_identity_type": "SystemAssigned",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/continuouswebjobs/queue-worker",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+        "aaaa1111-1111-1111-1111-111111111111"
+      ],
+      "resource_group": "rg-apps",
+      "run_command": "node /home/site/wwwroot/app_data/jobs/continuous/queue-worker/index.js",
+      "status": "Running",
+      "summary": "WebJob 'queue-worker' is a continuous WebJob under App Service 'app-public-api'; status Running, run command 'node /home/site/wwwroot/app_data/jobs/continuous/queue-worker/index.js'; parent App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net'; the parent app uses managed identity (SystemAssigned)."
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/triggeredwebjobs/nightly-reconcile",
+      "job_type": "Triggered",
+      "latest_run_status": "Success",
+      "latest_run_trigger": "Schedule",
+      "location": "eastus",
+      "mode": "scheduled",
+      "name": "nightly-reconcile",
+      "parent_app_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+      "parent_app_name": "app-public-api",
+      "parent_hostname": "app-public-api.azurewebsites.net",
+      "parent_identity_type": "SystemAssigned",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/triggeredwebjobs/nightly-reconcile",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+        "aaaa1111-1111-1111-1111-111111111111"
+      ],
+      "resource_group": "rg-apps",
+      "run_command": "python /home/site/wwwroot/app_data/jobs/triggered/nightly-reconcile/run.py",
+      "schedule_expression": "0 0 * * * *",
+      "scheduler_logs_url": "https://app-public-api.scm.azurewebsites.net/api/triggeredwebjobs/nightly-reconcile/history",
+      "status": "Success",
+      "summary": "WebJob 'nightly-reconcile' is a scheduled WebJob under App Service 'app-public-api'; status Success, latest visible trigger Schedule, schedule '0 0 * * * *', run command 'python /home/site/wwwroot/app_data/jobs/triggered/nightly-reconcile/run.py'; parent App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net'; the parent app uses managed identity (SystemAssigned)."
+    }
+  ]
+}

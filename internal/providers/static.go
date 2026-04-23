@@ -46,6 +46,7 @@ type Provider interface {
 	TokensCredentials(context.Context, string, string) (TokensCredentialsFacts, error)
 	VMs(context.Context, string, string) (VMsFacts, error)
 	VMSS(context.Context, string, string) (VMSSFacts, error)
+	WebJobs(context.Context, string, string) (WebJobsFacts, error)
 	Workloads(context.Context, string, string) (WorkloadsFacts, error)
 	WhoAmI(context.Context, string, string) (WhoAmIFacts, error)
 }
@@ -189,6 +190,13 @@ type FunctionsFacts struct {
 	TenantID       string
 	SubscriptionID string
 	FunctionApps   []models.FunctionAppAsset
+	Issues         []models.Issue
+}
+
+type WebJobsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	WebJobs        []models.WebJobAsset
 	Issues         []models.Issue
 }
 
@@ -494,60 +502,100 @@ func (StaticProvider) AppServices(_ context.Context, tenant string, subscription
 	disabled := "Disabled"
 	node20 := "NODE|20-lts"
 	tls12 := "1.2"
+	sqlAzure := "SQLAzure"
+	custom := "Custom"
+	packageDisabled := false
+	packageEnabled := true
+	emptyMIDeployment := "run-from-package disabled"
+	publicAPIDeployment := "repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled"
+	mainBranch := "main"
+	trueValue := true
+	falseValue := false
+	repoURL := "https://github.com/contoso/customer-portal"
+	emptyMIAppSettingsCount := 2
+	emptyMIConnectionStringCount := 1
+	emptyMIKeyVaultConnectionStringCount := 0
+	emptyMIKeyVaultReferenceCount := 0
+	emptyMISensitiveSettingCount := 1
+	publicAPIAppSettingsCount := 4
+	publicAPIConnectionStringCount := 2
+	publicAPIKeyVaultConnectionStringCount := 1
+	publicAPIKeyVaultReferenceCount := 2
+	publicAPISensitiveSettingCount := 1
 
 	return AppServicesFacts{
 		TenantID:       session.TenantID,
 		SubscriptionID: subscriptionID,
 		AppServices: []models.AppServiceAsset{
 			{
-				AppServicePlanID:    &aspLinuxID,
-				ClientCertEnabled:   false,
-				DefaultHostname:     models.StringPtr("app-empty-mi.azurewebsites.net"),
-				FTPSState:           &allAllowed,
-				HTTPSOnly:           false,
-				ID:                  "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
-				Location:            "eastus",
-				MinTLSVersion:       &tls10,
-				Name:                "app-empty-mi",
-				PublicNetworkAccess: &enabled,
+				AppSettingsCount:              &emptyMIAppSettingsCount,
+				AppServicePlanID:              &aspLinuxID,
+				ClientCertEnabled:             false,
+				ConnectionStringCount:         &emptyMIConnectionStringCount,
+				ConnectionStringTypes:         []string{sqlAzure},
+				DefaultHostname:               models.StringPtr("app-empty-mi.azurewebsites.net"),
+				Deployment:                    &emptyMIDeployment,
+				FTPSState:                     &allAllowed,
+				HTTPSOnly:                     false,
+				ID:                            "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
+				KeyVaultConnectionStringCount: &emptyMIKeyVaultConnectionStringCount,
+				KeyVaultReferenceCount:        &emptyMIKeyVaultReferenceCount,
+				Location:                      "eastus",
+				MinTLSVersion:                 &tls10,
+				Name:                          "app-empty-mi",
+				PublicNetworkAccess:           &enabled,
 				RelatedIDs: []string{
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
 					"eeee3333-3333-3333-3333-333333333333",
 					aspLinuxID,
 				},
-				ResourceGroup:        "rg-apps",
-				RuntimeStack:         &dotnet,
-				State:                &running,
-				Summary:              "App Service 'app-empty-mi' publishes hostname 'app-empty-mi.azurewebsites.net', runs runtime 'DOTNETCORE|8.0', and uses managed identity (SystemAssigned). Visible posture: public network access Enabled, HTTPS-only disabled, TLS 1.0, FTPS AllAllowed.",
-				WorkloadClientID:     models.StringPtr("ffff3333-3333-3333-3333-333333333333"),
-				WorkloadIdentityIDs:  []string{},
-				WorkloadIdentityType: &systemAssigned,
-				WorkloadPrincipalID:  models.StringPtr("eeee3333-3333-3333-3333-333333333333"),
+				ResourceGroup:         "rg-apps",
+				RunFromPackage:        &packageDisabled,
+				RuntimeStack:          &dotnet,
+				SensitiveSettingCount: &emptyMISensitiveSettingCount,
+				State:                 &running,
+				Summary:               "App Service 'app-empty-mi' publishes hostname 'app-empty-mi.azurewebsites.net', runs runtime 'DOTNETCORE|8.0', and uses managed identity (SystemAssigned). Deployment signals: run-from-package disabled. Visible config: 2 app setting(s), 1 sensitive-looking setting name(s), 1 connection string(s), connection types SQLAzure. Visible posture: public network access Enabled, HTTPS-only disabled, TLS 1.0, FTPS AllAllowed.",
+				WorkloadClientID:      models.StringPtr("ffff3333-3333-3333-3333-333333333333"),
+				WorkloadIdentityIDs:   []string{},
+				WorkloadIdentityType:  &systemAssigned,
+				WorkloadPrincipalID:   models.StringPtr("eeee3333-3333-3333-3333-333333333333"),
 			},
 			{
-				AppServicePlanID:    &aspLinuxID,
-				ClientCertEnabled:   true,
-				DefaultHostname:     models.StringPtr("app-public-api.azurewebsites.net"),
-				FTPSState:           &disabled,
-				HTTPSOnly:           true,
-				ID:                  "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
-				Location:            "eastus",
-				MinTLSVersion:       &tls12,
-				Name:                "app-public-api",
-				PublicNetworkAccess: &enabled,
+				AppSettingsCount:              &publicAPIAppSettingsCount,
+				AppServicePlanID:              &aspLinuxID,
+				ClientCertEnabled:             true,
+				ConnectionStringCount:         &publicAPIConnectionStringCount,
+				ConnectionStringTypes:         []string{custom, sqlAzure},
+				DefaultHostname:               models.StringPtr("app-public-api.azurewebsites.net"),
+				Deployment:                    &publicAPIDeployment,
+				DeploymentBranch:              &mainBranch,
+				DeploymentIsGitHubAction:      &trueValue,
+				DeploymentManualIntegration:   &falseValue,
+				DeploymentRepoURL:             &repoURL,
+				FTPSState:                     &disabled,
+				HTTPSOnly:                     true,
+				ID:                            "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+				KeyVaultConnectionStringCount: &publicAPIKeyVaultConnectionStringCount,
+				KeyVaultReferenceCount:        &publicAPIKeyVaultReferenceCount,
+				Location:                      "eastus",
+				MinTLSVersion:                 &tls12,
+				Name:                          "app-public-api",
+				PublicNetworkAccess:           &enabled,
 				RelatedIDs: []string{
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
 					"aaaa1111-1111-1111-1111-111111111111",
 					aspLinuxID,
 				},
-				ResourceGroup:        "rg-apps",
-				RuntimeStack:         &node20,
-				State:                &running,
-				Summary:              "App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net', runs runtime 'NODE|20-lts', and uses managed identity (SystemAssigned). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled.",
-				WorkloadClientID:     models.StringPtr("bbbb1111-1111-1111-1111-111111111111"),
-				WorkloadIdentityIDs:  []string{},
-				WorkloadIdentityType: &systemAssigned,
-				WorkloadPrincipalID:  models.StringPtr("aaaa1111-1111-1111-1111-111111111111"),
+				ResourceGroup:         "rg-apps",
+				RunFromPackage:        &packageEnabled,
+				RuntimeStack:          &node20,
+				SensitiveSettingCount: &publicAPISensitiveSettingCount,
+				State:                 &running,
+				Summary:               "App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net', runs runtime 'NODE|20-lts', and uses managed identity (SystemAssigned). Deployment signals: repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled. Visible config: 4 app setting(s), 2 Key Vault-backed setting(s), 1 sensitive-looking setting name(s), 2 connection string(s), 1 Key Vault-backed connection string(s), connection types Custom, SQLAzure. Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled.",
+				WorkloadClientID:      models.StringPtr("bbbb1111-1111-1111-1111-111111111111"),
+				WorkloadIdentityIDs:   []string{},
+				WorkloadIdentityType:  &systemAssigned,
+				WorkloadPrincipalID:   models.StringPtr("aaaa1111-1111-1111-1111-111111111111"),
 			},
 		},
 		Issues: []models.Issue{},
@@ -569,6 +617,13 @@ func (StaticProvider) Functions(_ context.Context, tenant string, subscription s
 	tls12 := "1.2"
 	alwaysOn := true
 	keyVaultRefs := 1
+	httpTrigger := "HTTP"
+	timerTrigger := "timer"
+	serviceBusTrigger := "Service Bus"
+	uaOrdersPrincipalID := "cece2222-2222-2222-2222-222222222222"
+	uaOrdersClientID := "dfdf2222-2222-2222-2222-222222222222"
+	falseValue := false
+	trueValue := true
 
 	return FunctionsFacts{
 		TenantID:       session.TenantID,
@@ -597,12 +652,104 @@ func (StaticProvider) Functions(_ context.Context, tenant string, subscription s
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
 					aspFunctionsID,
 				},
-				ResourceGroup:    "rg-apps",
-				RunFromPackage:   nil,
-				RuntimeStack:     &python311,
-				State:            &running,
-				Summary:          "Function App 'func-orders' publishes hostname 'func-orders.azurewebsites.net', runs runtime 'PYTHON|3.11', targets Functions runtime '~4', and uses managed identity (SystemAssigned, UserAssigned). Deployment signals: AzureWebJobsStorage as plain-text app setting, 1 Key Vault-backed setting(s). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled, Always On enabled.",
+				ResourceGroup:  "rg-apps",
+				RunFromPackage: nil,
+				RuntimeStack:   &python311,
+				State:          &running,
+				Summary:        "Function App 'func-orders' publishes hostname 'func-orders.azurewebsites.net', runs runtime 'PYTHON|3.11', targets Functions runtime '~4', and uses managed identity (SystemAssigned, UserAssigned). Deployment signals: AzureWebJobsStorage as plain-text app setting, 1 Key Vault-backed setting(s). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled, Always On enabled.",
+				TriggerTypes:   []string{httpTrigger, timerTrigger, serviceBusTrigger},
+				VisibleFunctions: []models.FunctionChildAsset{
+					{
+						BindingTypes: []string{"httpTrigger", "http"},
+						Bindings: []models.FunctionBinding{
+							{Direction: "in", Name: "req", Type: "httpTrigger"},
+							{Direction: "out", Name: "$return", Type: "http"},
+						},
+						Config: map[string]any{
+							"bindings": []any{
+								map[string]any{
+									"authLevel": "function",
+									"direction": "in",
+									"methods":   []any{"post"},
+									"name":      "req",
+									"route":     "orders/webhook",
+									"type":      "httpTrigger",
+								},
+								map[string]any{
+									"direction": "out",
+									"name":      "$return",
+									"type":      "http",
+								},
+							},
+						},
+						ID:                "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/OrdersWebhook",
+						InvokeURLTemplate: models.StringPtr("https://func-orders.azurewebsites.net/api/orders/webhook"),
+						IsDisabled:        &falseValue,
+						Language:          models.StringPtr("Python"),
+						Name:              "OrdersWebhook",
+						TriggerType:       &httpTrigger,
+					},
+					{
+						BindingTypes: []string{"timerTrigger"},
+						Bindings: []models.FunctionBinding{
+							{Direction: "in", Name: "timer", Type: "timerTrigger"},
+						},
+						Config: map[string]any{
+							"bindings": []any{
+								map[string]any{
+									"direction": "in",
+									"name":      "timer",
+									"schedule":  "0 0 * * * *",
+									"type":      "timerTrigger",
+								},
+							},
+						},
+						ID:          "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/NightlyReconcile",
+						IsDisabled:  &falseValue,
+						Language:    models.StringPtr("Python"),
+						Name:        "NightlyReconcile",
+						TriggerType: &timerTrigger,
+					},
+					{
+						BindingTypes: []string{"serviceBusTrigger", "queue"},
+						Bindings: []models.FunctionBinding{
+							{Direction: "in", Name: "message", Type: "serviceBusTrigger"},
+							{Direction: "out", Name: "outQueue", Type: "queue"},
+						},
+						Config: map[string]any{
+							"bindings": []any{
+								map[string]any{
+									"connection": "ServiceBusConnection",
+									"direction":  "in",
+									"name":       "message",
+									"queueName":  "orders-incoming",
+									"type":       "serviceBusTrigger",
+								},
+								map[string]any{
+									"connection": "StorageConnection",
+									"direction":  "out",
+									"name":       "outQueue",
+									"queueName":  "orders-processed",
+									"type":       "queue",
+								},
+							},
+						},
+						ID:          "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/BusReconcile",
+						IsDisabled:  &trueValue,
+						Language:    models.StringPtr("Python"),
+						Name:        "BusReconcile",
+						TriggerType: &serviceBusTrigger,
+					},
+				},
 				WorkloadClientID: models.StringPtr("dddd2222-2222-2222-2222-222222222222"),
+				UserAssignedIdentities: []models.FunctionAttachedIdentity{
+					{
+						ID:          "/subscriptions/" + subscriptionID + "/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
+						Name:        "ua-orders",
+						PrincipalID: models.StringPtr(uaOrdersPrincipalID),
+						ClientID:    models.StringPtr(uaOrdersClientID),
+					},
+				},
 				WorkloadIdentityIDs: []string{
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
 				},
@@ -1404,7 +1551,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 				PrincipalType: "User",
 				TenantID:      session.TenantID,
 			},
-		}, staticLogicAppRBACPrincipals(session.TenantID)...),
+		}, append(staticLogicAppRBACPrincipals(session.TenantID), staticAzureMLRBACPrincipals(session.TenantID)...)...),
 		Scopes: []models.ScopeRef{
 			{
 				DisplayName: session.Subscription.DisplayName,
@@ -1429,7 +1576,7 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 				RoleName:         "Reader",
 				ScopeID:          "/subscriptions/" + session.Subscription.ID,
 			},
-		}, staticLogicAppRBACRoleAssignments(session.Subscription.ID)...),
+		}, append(staticLogicAppRBACRoleAssignments(session.Subscription.ID), staticAzureMLRBACRoleAssignments(session.Subscription.ID)...)...),
 		Issues: []models.Issue{},
 	}, nil
 }
@@ -1504,6 +1651,18 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 				IsCurrentIdentity:   false,
 			},
 			{
+				PrincipalID:         "cece2222-2222-2222-2222-222222222222",
+				DisplayName:         "ua-orders",
+				PrincipalType:       "ServicePrincipal",
+				HighImpactRoles:     []string{"Owner"},
+				AllRoleNames:        []string{"Owner"},
+				RoleAssignmentCount: 1,
+				ScopeCount:          1,
+				ScopeIDs:            []string{"/subscriptions/" + session.Subscription.ID},
+				Privileged:          true,
+				IsCurrentIdentity:   false,
+			},
+			{
 				PrincipalID:         "eeee3333-3333-3333-3333-333333333333",
 				DisplayName:         "app-empty-mi-system",
 				PrincipalType:       "ServicePrincipal",
@@ -1551,7 +1710,7 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 				Privileged:          true,
 				IsCurrentIdentity:   false,
 			},
-		}, staticLogicAppPermissionFacts(session.Subscription.ID)...),
+		}, append(staticLogicAppPermissionFacts(session.Subscription.ID), staticAzureMLPermissionFacts(session.Subscription.ID)...)...),
 		Principals: append([]PermissionPrincipalFact{
 			{
 				ID:            session.Principal.ID,
@@ -1565,6 +1724,14 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 				ID:            "cccc2222-2222-2222-2222-222222222222",
 				Sources:       []string{"managed-identities"},
 				IdentityNames: []string{"func-orders-system"},
+				AttachedTo: []string{
+					"/subscriptions/" + session.Subscription.ID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+				},
+			},
+			{
+				ID:            "cece2222-2222-2222-2222-222222222222",
+				Sources:       []string{"managed-identities"},
+				IdentityNames: []string{"ua-orders"},
 				AttachedTo: []string{
 					"/subscriptions/" + session.Subscription.ID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
 				},
@@ -1585,7 +1752,7 @@ func (StaticProvider) Permissions(_ context.Context, tenant string, subscription
 					"/subscriptions/" + session.Subscription.ID + "/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-edge-01",
 				},
 			},
-		}, staticLogicAppPermissionPrincipals(session.Subscription.ID)...),
+		}, append(staticLogicAppPermissionPrincipals(session.Subscription.ID), staticAzureMLPermissionPrincipals(session.Subscription.ID)...)...),
 		Issues: []models.Issue{},
 	}, nil
 }
@@ -1918,7 +2085,7 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 				WorkloadExposure:     models.WorkloadExposurePublic,
 				DirectControlVisible: false,
 			},
-		}, staticLogicAppManagedIdentities(subscriptionID)...),
+		}, append(staticLogicAppManagedIdentities(subscriptionID), staticAzureMLManagedIdentities(subscriptionID)...)...),
 		RoleAssignments: append([]models.ManagedIdentityRoleAssignment{
 			{
 				ID:               "ra-1",
@@ -1928,7 +2095,7 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 				RoleDefinitionID: "rd-owner",
 				RoleName:         "Owner",
 			},
-		}, staticLogicAppManagedIdentityRoleAssignments(subscriptionID)...),
+		}, append(staticLogicAppManagedIdentityRoleAssignments(subscriptionID), staticAzureMLManagedIdentityRoleAssignments(subscriptionID)...)...),
 		Findings: append([]models.ManagedIdentityFinding{
 			{
 				ID:          "identity-privileged-/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
@@ -1940,7 +2107,7 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 					"ra-1",
 				},
 			},
-		}, staticLogicAppManagedIdentityFindings(subscriptionID)...),
+		}, append(staticLogicAppManagedIdentityFindings(subscriptionID), staticAzureMLManagedIdentityFindings(subscriptionID)...)...),
 		Issues: []models.Issue{},
 	}, nil
 }

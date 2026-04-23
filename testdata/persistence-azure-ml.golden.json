@@ -1,0 +1,323 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "azure-ml",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Azure ML for reusable compute, job, schedule, endpoint, and identity paths.",
+  "backing_commands": [
+    "azure-ml",
+    "managed-identities",
+    "permissions",
+    "rbac"
+  ],
+  "workspaces": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub",
+      "workspace": "ml-ops-hub",
+      "resource_group": "rg-ml",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or modify workspace",
+          "api_surface": "Microsoft.MachineLearningServices/workspaces",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse compute",
+          "api_surface": "computes",
+          "status": "yes"
+        },
+        {
+          "action": "add or modify jobs or pipelines",
+          "api_surface": "jobs / pipelines",
+          "status": "yes"
+        },
+        {
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
+          "status": "yes"
+        },
+        {
+          "action": "expose or reuse endpoint",
+          "api_surface": "onlineEndpoints",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "workspace-linked storage",
+        "workspace-linked key vault",
+        "workspace-linked container registry"
+      ],
+      "current_state": {
+        "classification": "execution-capable",
+        "state": "Succeeded",
+        "public_network_access": "Enabled",
+        "identity_type": "SystemAssigned,UserAssigned",
+        "visible_identity_names": [
+          "ua-ml-ops",
+          "ml-ops-hub-workspace-identity"
+        ],
+        "compute_count": 2,
+        "compute_types": [
+          "ComputeCluster",
+          "ComputeInstance"
+        ],
+        "job_count": 2,
+        "job_types": [
+          "Command",
+          "Pipeline"
+        ],
+        "schedule_count": 1,
+        "schedule_trigger_types": [
+          "Cron"
+        ],
+        "endpoint_count": 1,
+        "endpoint_auth_modes": [
+          "AADToken"
+        ],
+        "endpoint_public_access": [
+          "Enabled"
+        ],
+        "datastore_count": 2,
+        "datastore_types": [
+          "AzureBlob",
+          "AzureDataLakeGen2"
+        ],
+        "strongest_visible_execution_context": {
+          "name": "ua-ml-ops",
+          "kind": "azure-ml-execution-context",
+          "principal_id": "6a6a5656-5656-5656-5656-565656565656",
+          "identity_type": "userAssigned",
+          "role_names": [
+            "Owner"
+          ],
+          "scope_ids": [
+            "/subscriptions/22222222-2222-2222-2222-222222222222"
+          ],
+          "summary": "The strongest visible execution context here is the Azure ML identity `ua-ml-ops`, which already holds Owner at subscription scope."
+        },
+        "nearby_thematic_names": [
+          "ml-nightly-train"
+        ]
+      },
+      "still_unmapped": [
+        "the current command does not retrieve notebook content, model content, environment definitions, or job or pipeline payloads from Azure ML workspaces, so operator intent is not inferred from Azure ML content here",
+        "the current command does not inspect run history, job outputs, or schedule execution history, so it does not prove what has already run here over time",
+        "the current command does not invoke online endpoints or test live runtime behavior, so endpoint conclusions here stop at visible management-plane posture"
+      ],
+      "summary": "Current identity can repurpose Azure ML workspace 'ml-ops-hub' as reusable ML compute, schedule, and endpoint-backed persistence, and the strongest visible execution context already carries Azure control.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub/identities/system",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-ml-ops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stamlops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-amlops",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-app/providers/Microsoft.ContainerRegistry/registries/cramlops"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-nightly-train",
+      "workspace": "ml-nightly-train",
+      "resource_group": "rg-ml",
+      "location": "centralus",
+      "capability_steps": [
+        {
+          "action": "create or modify workspace",
+          "api_surface": "Microsoft.MachineLearningServices/workspaces",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse compute",
+          "api_surface": "computes",
+          "status": "yes"
+        },
+        {
+          "action": "add or modify jobs or pipelines",
+          "api_surface": "jobs / pipelines",
+          "status": "yes"
+        },
+        {
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
+          "status": "yes"
+        },
+        {
+          "action": "expose or reuse endpoint",
+          "api_surface": "onlineEndpoints",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "workspace-linked storage"
+      ],
+      "current_state": {
+        "classification": "supporting-persistence-context",
+        "state": "Succeeded",
+        "public_network_access": "Disabled",
+        "visible_identity_names": [],
+        "compute_count": 0,
+        "compute_types": [],
+        "job_count": 0,
+        "job_types": [],
+        "schedule_count": 1,
+        "schedule_trigger_types": [
+          "Recurrence"
+        ],
+        "endpoint_count": 0,
+        "endpoint_auth_modes": [],
+        "endpoint_public_access": [],
+        "datastore_count": 1,
+        "datastore_types": [
+          "AzureBlob"
+        ],
+        "nearby_thematic_names": [
+          "ml-ops-hub"
+        ]
+      },
+      "still_unmapped": [
+        "the current command does not retrieve notebook content, model content, environment definitions, or job or pipeline payloads from Azure ML workspaces, so operator intent is not inferred from Azure ML content here",
+        "the current command does not inspect run history, job outputs, or schedule execution history, so it does not prove what has already run here over time",
+        "the current command does not invoke online endpoints or test live runtime behavior, so endpoint conclusions here stop at visible management-plane posture"
+      ],
+      "summary": "Current identity can repurpose Azure ML workspace 'ml-nightly-train' as reusable ML compute, schedule, and endpoint-backed persistence from current RBAC evidence.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-nightly-train",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmltrain"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-catalog",
+      "workspace": "ml-catalog",
+      "resource_group": "rg-ml",
+      "location": "westus2",
+      "capability_steps": [
+        {
+          "action": "create or modify workspace",
+          "api_surface": "Microsoft.MachineLearningServices/workspaces",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse compute",
+          "api_surface": "computes",
+          "status": "yes"
+        },
+        {
+          "action": "add or modify jobs or pipelines",
+          "api_surface": "jobs / pipelines",
+          "status": "yes"
+        },
+        {
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
+          "status": "yes"
+        },
+        {
+          "action": "expose or reuse endpoint",
+          "api_surface": "onlineEndpoints",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "workspace-linked storage"
+      ],
+      "current_state": {
+        "classification": "supporting-context",
+        "state": "Succeeded",
+        "public_network_access": "Enabled",
+        "visible_identity_names": [],
+        "compute_count": 0,
+        "compute_types": [],
+        "job_count": 0,
+        "job_types": [],
+        "schedule_count": 0,
+        "schedule_trigger_types": [],
+        "endpoint_count": 0,
+        "endpoint_auth_modes": [],
+        "endpoint_public_access": [],
+        "datastore_count": 2,
+        "datastore_types": [
+          "AzureBlob",
+          "AzureDataLakeGen2"
+        ],
+        "nearby_thematic_names": [
+          "ml-nightly-train",
+          "ml-ops-hub"
+        ]
+      },
+      "still_unmapped": [
+        "the current command does not retrieve notebook content, model content, environment definitions, or job or pipeline payloads from Azure ML workspaces, so operator intent is not inferred from Azure ML content here",
+        "the current command does not inspect run history, job outputs, or schedule execution history, so it does not prove what has already run here over time",
+        "the current command does not invoke online endpoints or test live runtime behavior, so endpoint conclusions here stop at visible management-plane posture"
+      ],
+      "summary": "Current identity can repurpose Azure ML workspace 'ml-catalog' as reusable ML compute, schedule, and endpoint-backed persistence from current RBAC evidence.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-catalog",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stmlcatalog",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/components/ai-mlcatalog"
+      ]
+    }
+  ],
+  "issues": []
+}

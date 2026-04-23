@@ -38,6 +38,30 @@ type artifactCase struct {
 	tableContains []string
 }
 
+func commandArtifactCase(contract contracts.CommandContract) artifactCase {
+	return artifactCase{
+		name:         contract.Name,
+		args:         []string{contract.Name, "--output", "json"},
+		artifactBase: contract.Name,
+		jsonGolden:   contract.Name + ".golden.json",
+		lootGolden:   contract.Name + ".golden.json",
+		csvGolden:    contract.Name + ".golden.csv",
+		tableGolden:  contract.Name + ".golden.table.txt",
+	}
+}
+
+func explicitArtifactCase(name string, args []string, artifactBase string) artifactCase {
+	return artifactCase{
+		name:         name,
+		args:         append([]string{}, args...),
+		artifactBase: artifactBase,
+		jsonGolden:   name + ".golden.json",
+		lootGolden:   name + ".golden.json",
+		csvGolden:    name + ".golden.csv",
+		tableGolden:  name + ".golden.table.txt",
+	}
+}
+
 func implementedArtifactCases() []artifactCase {
 	overrides := map[string]artifactCase{
 		"whoami": {
@@ -60,15 +84,7 @@ func implementedArtifactCases() []artifactCase {
 
 	cases := []artifactCase{}
 	for _, contract := range contracts.ImplementedCommands() {
-		artifact := artifactCase{
-			name:         contract.Name,
-			args:         []string{contract.Name, "--output", "json"},
-			artifactBase: contract.Name,
-			jsonGolden:   contract.Name + ".golden.json",
-			lootGolden:   contract.Name + ".golden.json",
-			csvGolden:    contract.Name + ".golden.csv",
-			tableGolden:  contract.Name + ".golden.table.txt",
-		}
+		artifact := commandArtifactCase(contract)
 		if override, ok := overrides[contract.Name]; ok {
 			if override.lootGolden != "" {
 				artifact.lootGolden = override.lootGolden
@@ -79,69 +95,21 @@ func implementedArtifactCases() []artifactCase {
 		cases = append(cases, artifact)
 	}
 
-	cases = append(cases, artifactCase{
-		name:         "role-trusts-full",
-		args:         []string{"role-trusts", "--mode", "full", "--output", "json"},
-		artifactBase: "role-trusts",
-		jsonGolden:   "role-trusts-full.golden.json",
-		lootGolden:   "role-trusts-full.golden.json",
-		csvGolden:    "role-trusts-full.golden.csv",
-		tableGolden:  "role-trusts-full.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "chains-credential-path",
-		args:         []string{"chains", "credential-path", "--output", "json"},
-		artifactBase: "chains",
-		jsonGolden:   "chains-credential-path.golden.json",
-		lootGolden:   "chains-credential-path.golden.json",
-		csvGolden:    "chains-credential-path.golden.csv",
-		tableGolden:  "chains-credential-path.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "chains-deployment-path",
-		args:         []string{"chains", "deployment-path", "--output", "json"},
-		artifactBase: "chains",
-		jsonGolden:   "chains-deployment-path.golden.json",
-		lootGolden:   "chains-deployment-path.golden.json",
-		csvGolden:    "chains-deployment-path.golden.csv",
-		tableGolden:  "chains-deployment-path.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "chains-escalation-path",
-		args:         []string{"chains", "escalation-path", "--output", "json"},
-		artifactBase: "chains",
-		jsonGolden:   "chains-escalation-path.golden.json",
-		lootGolden:   "chains-escalation-path.golden.json",
-		csvGolden:    "chains-escalation-path.golden.csv",
-		tableGolden:  "chains-escalation-path.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "chains-compute-control",
-		args:         []string{"chains", "compute-control", "--output", "json"},
-		artifactBase: "chains",
-		jsonGolden:   "chains-compute-control.golden.json",
-		lootGolden:   "chains-compute-control.golden.json",
-		csvGolden:    "chains-compute-control.golden.csv",
-		tableGolden:  "chains-compute-control.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "persistence-automation",
-		args:         []string{"persistence", "automation", "--output", "json"},
-		artifactBase: "persistence",
-		jsonGolden:   "persistence-automation.golden.json",
-		lootGolden:   "persistence-automation.golden.json",
-		csvGolden:    "persistence-automation.golden.csv",
-		tableGolden:  "persistence-automation.golden.table.txt",
-	})
-	cases = append(cases, artifactCase{
-		name:         "persistence-logic-apps",
-		args:         []string{"persistence", "logic-apps", "--output", "json"},
-		artifactBase: "persistence",
-		jsonGolden:   "persistence-logic-apps.golden.json",
-		lootGolden:   "persistence-logic-apps.golden.json",
-		csvGolden:    "persistence-logic-apps.golden.csv",
-		tableGolden:  "persistence-logic-apps.golden.table.txt",
-	})
+	for _, extra := range []artifactCase{
+		explicitArtifactCase("role-trusts-full", []string{"role-trusts", "--mode", "full", "--output", "json"}, "role-trusts"),
+		explicitArtifactCase("chains-credential-path", []string{"chains", "credential-path", "--output", "json"}, "chains"),
+		explicitArtifactCase("chains-deployment-path", []string{"chains", "deployment-path", "--output", "json"}, "chains"),
+		explicitArtifactCase("chains-escalation-path", []string{"chains", "escalation-path", "--output", "json"}, "chains"),
+		explicitArtifactCase("chains-compute-control", []string{"chains", "compute-control", "--output", "json"}, "chains"),
+		explicitArtifactCase("persistence-automation", []string{"persistence", "automation", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-app-service", []string{"persistence", "app-service", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-azure-ml", []string{"persistence", "azure-ml", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-logic-apps", []string{"persistence", "logic-apps", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-functions", []string{"persistence", "functions", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-webjobs", []string{"persistence", "webjobs", "--output", "json"}, "persistence"),
+	} {
+		cases = append(cases, extra)
+	}
 
 	return cases
 }

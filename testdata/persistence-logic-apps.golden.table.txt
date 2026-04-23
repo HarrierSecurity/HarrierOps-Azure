@@ -1,7 +1,7 @@
 HO-Azure :: attack-path-focused Azure recon
 context :: tenant=auto subscription=auto output=table
 
-[persistence] Walking the current identity through Azure-native persistence surfaces one service at a time.
+[persistence] Logic App persistence means a stored workflow plus a trigger plus access that remains valid, not malware living on a host.
 Workflow capability
 action                              | api surface                           | status
 
@@ -12,21 +12,25 @@ define or modify trigger            | request, recurrence, or event trigger | ye
 enable workflow                     | workflow state                        | yes   
 add or repurpose downstream actions | workflow actions / connectors         | yes   
 
-This walkthrough shows one currently visible Logic App persistence path. The inventory below lists the other visible workflows without repeating the same narrative.
+This walkthrough shows the strongest currently visible Logic App persistence path. The inventory below lists the other visible workflows without repeating the same narrative.
 - Current identity can create a new Logic App or modify this existing workflow.
-- Current identity can change the stored workflow definition Azure will execute here.
-- Current identity can attach or reuse execution context for this Logic App.
-  Managed identity or connector-backed actions may provide that execution context.
-  In Logic Apps, the payload is the stored workflow definition and action chain Azure will execute later.
-  Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
-  The strongest visible execution context here is the Logic App identity `la-inbound-redeploy-identity`, which already holds Contributor at resource group rg-workflow.
-- Current identity can define or modify request, recurrence, or event trigger posture for this Logic App.
-- Current identity can enable the workflow so Azure will listen for the trigger and run it later.
-- Current identity can add or repurpose the downstream action paths this Logic App will carry out after the trigger fires.
-- Current identity can repurpose an existing Logic App instead of creating a new one.
-  Nearby maintenance- or schedule-themed names visible from the current environment include `la-nightly-sync`.
 
-Reminder: Logic App persistence is about a stored workflow plus a trigger plus access that remains valid, not malware living on a host.
+- Current identity can change the stored workflow definition Azure will execute here.
+
+- Current identity can attach or reuse execution context for this Logic App.
+   Managed identity or connector-backed actions may provide that execution context.
+   In Logic Apps, the payload is the stored workflow definition and action chain Azure will execute later.
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   The strongest visible execution context here is the Logic App identity `la-inbound-redeploy-identity`, which already holds Contributor at resource group rg-workflow.
+
+- Current identity can define or modify request, recurrence, or event trigger posture for this Logic App.
+
+- Current identity can enable the workflow so Azure will listen for the trigger and run it later.
+
+- Current identity can add or repurpose the downstream action paths this Logic App will carry out after the trigger fires.
+
+- Current identity can repurpose an existing Logic App instead of creating a new one.
+   Nearby maintenance- or schedule-themed names visible from the current environment include `la-nightly-sync`.
 
 Visible Logic Apps
 logic app           | resource group | visible state                          | execution context                                                              

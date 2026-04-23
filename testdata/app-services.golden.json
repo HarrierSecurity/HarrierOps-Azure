@@ -1,12 +1,20 @@
 {
   "app_services": [
     {
+      "app_settings_count": 2,
       "app_service_plan_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux",
       "client_cert_enabled": false,
+      "connection_string_count": 1,
+      "connection_string_types": [
+        "SQLAzure"
+      ],
       "default_hostname": "app-empty-mi.azurewebsites.net",
+      "deployment": "run-from-package disabled",
       "ftps_state": "AllAllowed",
       "https_only": false,
       "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-empty-mi",
+      "key_vault_connection_string_count": 0,
+      "key_vault_reference_count": 0,
       "location": "eastus",
       "min_tls_version": "1.0",
       "name": "app-empty-mi",
@@ -17,21 +25,36 @@
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux"
       ],
       "resource_group": "rg-apps",
+      "run_from_package": false,
       "runtime_stack": "DOTNETCORE|8.0",
+      "sensitive_setting_count": 1,
       "state": "Running",
-      "summary": "App Service 'app-empty-mi' publishes hostname 'app-empty-mi.azurewebsites.net', runs runtime 'DOTNETCORE|8.0', and uses managed identity (SystemAssigned). Visible posture: public network access Enabled, HTTPS-only disabled, TLS 1.0, FTPS AllAllowed.",
+      "summary": "App Service 'app-empty-mi' publishes hostname 'app-empty-mi.azurewebsites.net', runs runtime 'DOTNETCORE|8.0', and uses managed identity (SystemAssigned). Deployment signals: run-from-package disabled. Visible config: 2 app setting(s), 1 sensitive-looking setting name(s), 1 connection string(s), connection types SQLAzure. Visible posture: public network access Enabled, HTTPS-only disabled, TLS 1.0, FTPS AllAllowed.",
       "workload_client_id": "ffff3333-3333-3333-3333-333333333333",
       "workload_identity_ids": [],
       "workload_identity_type": "SystemAssigned",
       "workload_principal_id": "eeee3333-3333-3333-3333-333333333333"
     },
     {
+      "app_settings_count": 4,
       "app_service_plan_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux",
       "client_cert_enabled": true,
+      "connection_string_count": 2,
+      "connection_string_types": [
+        "Custom",
+        "SQLAzure"
+      ],
       "default_hostname": "app-public-api.azurewebsites.net",
+      "deployment": "repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled",
+      "deployment_branch": "main",
+      "deployment_is_github_action": true,
+      "deployment_manual_integration": false,
+      "deployment_repo_url": "https://github.com/contoso/customer-portal",
       "ftps_state": "Disabled",
       "https_only": true,
       "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+      "key_vault_connection_string_count": 1,
+      "key_vault_reference_count": 2,
       "location": "eastus",
       "min_tls_version": "1.2",
       "name": "app-public-api",
@@ -42,9 +65,11 @@
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux"
       ],
       "resource_group": "rg-apps",
+      "run_from_package": true,
       "runtime_stack": "NODE|20-lts",
+      "sensitive_setting_count": 1,
       "state": "Running",
-      "summary": "App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net', runs runtime 'NODE|20-lts', and uses managed identity (SystemAssigned). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled.",
+      "summary": "App Service 'app-public-api' publishes hostname 'app-public-api.azurewebsites.net', runs runtime 'NODE|20-lts', and uses managed identity (SystemAssigned). Deployment signals: repo github.com/contoso/customer-portal, branch main, GitHub Actions, continuous integration, run-from-package enabled. Visible config: 4 app setting(s), 2 Key Vault-backed setting(s), 1 sensitive-looking setting name(s), 2 connection string(s), 1 Key Vault-backed connection string(s), connection types Custom, SQLAzure. Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled.",
       "workload_client_id": "bbbb1111-1111-1111-1111-111111111111",
       "workload_identity_ids": [],
       "workload_identity_type": "SystemAssigned",

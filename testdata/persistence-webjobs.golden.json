@@ -1,0 +1,209 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "webjobs",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review App Service WebJobs for reusable background code, mode, inherited app context, and rerun paths.",
+  "backing_commands": [
+    "webjobs",
+    "app-services",
+    "managed-identities",
+    "permissions",
+    "rbac"
+  ],
+  "webjobs": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/continuouswebjobs/queue-worker",
+      "webjob": "queue-worker",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or reuse parent app service",
+          "api_surface": "Microsoft.Web/sites",
+          "status": "yes"
+        },
+        {
+          "action": "add or replace webjob package",
+          "api_surface": "site/wwwroot/app_data/jobs",
+          "status": "yes"
+        },
+        {
+          "action": "set or reuse webjob mode",
+          "api_surface": "continuouswebjobs / triggeredwebjobs / scheduler",
+          "status": "yes"
+        },
+        {
+          "action": "reuse inherited app execution context",
+          "api_surface": "parent app identity / app settings / connection strings",
+          "status": "yes"
+        },
+        {
+          "action": "leave or repurpose rerun path",
+          "api_surface": "Kudu and App Service runtime discovery / schedule / manual trigger",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "parent app settings",
+        "Key Vault-backed settings",
+        "connection strings",
+        "run command visible"
+      ],
+      "current_state": {
+        "mode": "continuous",
+        "job_type": "Continuous",
+        "status": "Running",
+        "detailed_status": "Polling queue messages",
+        "run_command": "node /home/site/wwwroot/app_data/jobs/continuous/queue-worker/index.js",
+        "parent_app_name": "app-public-api",
+        "parent_hostname": "app-public-api.azurewebsites.net",
+        "parent_runtime": "NODE|20-lts",
+        "parent_public_network_access": "Enabled",
+        "parent_identity_type": "SystemAssigned",
+        "parent_app_settings_count": 4,
+        "parent_key_vault_reference_count": 2,
+        "parent_connection_string_count": 2,
+        "strongest_visible_execution_context": {
+          "name": "app-public-api-system",
+          "kind": "app-service-execution-context",
+          "principal_id": "aaaa1111-1111-1111-1111-111111111111",
+          "identity_type": "systemAssigned",
+          "role_names": [],
+          "scope_ids": [],
+          "summary": "App Service identity `app-public-api-system` is visible here, but no Azure role-assignment rows are found for its principal ID."
+        },
+        "nearby_thematic_names": [
+          "nightly-reconcile"
+        ]
+      },
+      "still_unmapped": [
+        "the current command does not retrieve deployed WebJob package contents or script bodies, so operator intent is not inferred from code here",
+        "the current command does not replay runtime-side execution, logs, or job history, so conclusions stop at visible management-plane WebJob posture",
+        "the current command does not infer downstream API, data, or automation impact from WebJob names, package names, or runtime hints alone"
+      ],
+      "summary": "Current identity can repurpose WebJob 'queue-worker' under App Service 'app-public-api' as reusable WebJobs persistence, with visible mode, rerun, and parent-app context from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/continuouswebjobs/queue-worker",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+        "aaaa1111-1111-1111-1111-111111111111",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/triggeredwebjobs/nightly-reconcile",
+      "webjob": "nightly-reconcile",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or reuse parent app service",
+          "api_surface": "Microsoft.Web/sites",
+          "status": "yes"
+        },
+        {
+          "action": "add or replace webjob package",
+          "api_surface": "site/wwwroot/app_data/jobs",
+          "status": "yes"
+        },
+        {
+          "action": "set or reuse webjob mode",
+          "api_surface": "continuouswebjobs / triggeredwebjobs / scheduler",
+          "status": "yes"
+        },
+        {
+          "action": "reuse inherited app execution context",
+          "api_surface": "parent app identity / app settings / connection strings",
+          "status": "yes"
+        },
+        {
+          "action": "leave or repurpose rerun path",
+          "api_surface": "Kudu and App Service runtime discovery / schedule / manual trigger",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "parent app settings",
+        "Key Vault-backed settings",
+        "connection strings",
+        "run command visible"
+      ],
+      "current_state": {
+        "mode": "scheduled",
+        "job_type": "Triggered",
+        "status": "Success",
+        "latest_run_status": "Success",
+        "latest_run_trigger": "Schedule",
+        "run_command": "python /home/site/wwwroot/app_data/jobs/triggered/nightly-reconcile/run.py",
+        "schedule_expression": "0 0 * * * *",
+        "scheduler_logs_url": "https://app-public-api.scm.azurewebsites.net/api/triggeredwebjobs/nightly-reconcile/history",
+        "parent_app_name": "app-public-api",
+        "parent_hostname": "app-public-api.azurewebsites.net",
+        "parent_runtime": "NODE|20-lts",
+        "parent_public_network_access": "Enabled",
+        "parent_identity_type": "SystemAssigned",
+        "parent_app_settings_count": 4,
+        "parent_key_vault_reference_count": 2,
+        "parent_connection_string_count": 2,
+        "strongest_visible_execution_context": {
+          "name": "app-public-api-system",
+          "kind": "app-service-execution-context",
+          "principal_id": "aaaa1111-1111-1111-1111-111111111111",
+          "identity_type": "systemAssigned",
+          "role_names": [],
+          "scope_ids": [],
+          "summary": "App Service identity `app-public-api-system` is visible here, but no Azure role-assignment rows are found for its principal ID."
+        }
+      },
+      "still_unmapped": [
+        "the current command does not retrieve deployed WebJob package contents or script bodies, so operator intent is not inferred from code here",
+        "the current command does not replay runtime-side execution, logs, or job history, so conclusions stop at visible management-plane WebJob posture",
+        "the current command does not infer downstream API, data, or automation impact from WebJob names, package names, or runtime hints alone"
+      ],
+      "summary": "Current identity can repurpose WebJob 'nightly-reconcile' under App Service 'app-public-api' as reusable WebJobs persistence, with visible mode, rerun, and parent-app context from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/triggeredwebjobs/nightly-reconcile",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+        "aaaa1111-1111-1111-1111-111111111111",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-linux"
+      ]
+    }
+  ],
+  "issues": []
+}

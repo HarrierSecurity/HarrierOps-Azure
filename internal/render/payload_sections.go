@@ -38,6 +38,8 @@ func payloadFindings(payload any) []models.Finding {
 		return envVarFindings(out.Findings)
 	case models.FunctionsOutput:
 		return cloneFindings(out.Findings)
+	case models.WebJobsOutput:
+		return cloneFindings(out.Findings)
 	case models.KeyVaultOutput:
 		return keyVaultFindings(out.Findings)
 	case models.LighthouseOutput:
@@ -111,6 +113,8 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.FunctionsOutput:
 		return cloneIssues(out.Issues)
+	case models.WebJobsOutput:
+		return cloneIssues(out.Issues)
 	case models.InventoryOutput:
 		return cloneIssues(out.Issues)
 	case models.KeyVaultOutput:
@@ -128,6 +132,14 @@ func payloadIssues(payload any) []models.Issue {
 	case models.PermissionsOutput:
 		return cloneIssues(out.Issues)
 	case models.PersistenceAutomationOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceAppServiceOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceWebJobsOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceAzureMLOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceFunctionsOutput:
 		return cloneIssues(out.Issues)
 	case models.PersistenceLogicAppsOutput:
 		return cloneIssues(out.Issues)

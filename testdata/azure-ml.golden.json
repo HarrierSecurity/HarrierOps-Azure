@@ -24,7 +24,7 @@
       "state": "Succeeded",
       "public_network_access": "Enabled",
       "identity_type": "SystemAssigned,UserAssigned",
-      "principal_id": "56565656-5656-5656-5656-565656565656",
+      "principal_id": "5a5a5656-5656-5656-5656-565656565656",
       "identity_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml/providers/Microsoft.MachineLearningServices/workspaces/ml-ops-hub/identities/system",
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-ml-ops"

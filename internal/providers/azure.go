@@ -214,15 +214,33 @@ func (provider AzureProvider) AppServices(ctx context.Context, tenant string, su
 		}
 
 		configMap := map[string]any{}
+		settingsMap := map[string]any{}
+		connectionStringsMap := map[string]any{}
+		sourceControlMap := map[string]any{}
 		if app.resourceGroup != "" && app.name != "" {
 			configMap, err = webAppsState.configMap(ctx, app)
 			if err != nil {
 				issues = append(issues, issueFromError("app_services["+app.resourceGroup+"/"+app.name+"].configuration", err))
 				configMap = map[string]any{}
 			}
+			settingsMap, err = webAppsState.settingsMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("app_services["+app.resourceGroup+"/"+app.name+"].app_settings", err))
+				settingsMap = map[string]any{}
+			}
+			connectionStringsMap, err = webAppsState.connectionStringsMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("app_services["+app.resourceGroup+"/"+app.name+"].connection_strings", err))
+				connectionStringsMap = map[string]any{}
+			}
+			sourceControlMap, err = webAppsState.sourceControlMap(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("app_services["+app.resourceGroup+"/"+app.name+"].source_control", err))
+				sourceControlMap = map[string]any{}
+			}
 		}
 
-		rows = append(rows, appServiceSummary(app.appMap, configMap))
+		rows = append(rows, appServiceSummary(app.appMap, configMap, settingsMap, connectionStringsMap, sourceControlMap))
 	}
 
 	return AppServicesFacts{
@@ -256,6 +274,7 @@ func (provider AzureProvider) Functions(ctx context.Context, tenant string, subs
 		}
 
 		configMap := map[string]any{}
+		functionAssets := []models.FunctionChildAsset{}
 		settingsMap := map[string]any{}
 		if app.resourceGroup != "" && app.name != "" {
 			configMap, err = webAppsState.configMap(ctx, app)
@@ -268,12 +287,18 @@ func (provider AzureProvider) Functions(ctx context.Context, tenant string, subs
 				issues = append(issues, issueFromError("functions["+app.resourceGroup+"/"+app.name+"].app_settings", err))
 				settingsMap = map[string]any{}
 			}
+			functionAssets, err = webAppsState.functionAssets(ctx, app)
+			if err != nil {
+				issues = append(issues, issueFromError("functions["+app.resourceGroup+"/"+app.name+"].child_functions", err))
+				functionAssets = []models.FunctionChildAsset{}
+			}
 		}
 
 		rows = append(rows, functionAppSummary(
 			app.appMap,
 			configMap,
 			mapValue(settingsMap, "properties"),
+			functionAssets,
 		))
 	}
 
@@ -802,7 +827,7 @@ func containerInstanceSummary(resource map[string]any) models.ContainerInstanceA
 	}
 }
 
-func appServiceSummary(app map[string]any, config map[string]any) models.AppServiceAsset {
+func appServiceSummary(app map[string]any, config map[string]any, settings map[string]any, connectionStrings map[string]any, sourceControl map[string]any) models.AppServiceAsset {
 	appID := mapStringValue(app, "id")
 	appName := mapStringValue(app, "name")
 	if appName == "" {
@@ -810,6 +835,9 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 	}
 
 	identity := mapValue(app, "identity")
+	settings = webAppSettingsProperties(settings)
+	connectionStrings = webAppConnectionStringProperties(connectionStrings)
+	sourceControl = webAppSourceControlProperties(sourceControl)
 	publicNetworkAccess := webAppStringField(app, "publicNetworkAccess", "public_network_access")
 	runtimeStack := appServiceRuntimeStack(config)
 	minTLSVersion := stringPtr(mapStringValue(config, "minTlsVersion", "min_tls_version"))
@@ -818,6 +846,18 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 	workloadPrincipalID := stringPtr(mapStringValue(identity, "principalId", "principal_id"))
 	workloadClientID := stringPtr(mapStringValue(identity, "clientId", "client_id"))
 	workloadIdentityIDs := sortedKeys(mapValue(identity, "userAssignedIdentities"), "user_assigned_identities")
+	runFromPackage := runFromPackageSignal(settings)
+	appSettingsCount := appSettingCount(settings)
+	settingsKeyVaultReferenceCount := keyVaultReferenceCount(settings)
+	settingsSensitiveCount := sensitiveSettingCount(settings)
+	connectionStringCount := appSettingCount(connectionStrings)
+	keyVaultConnectionStringCount := connectionStringKeyVaultCount(connectionStrings)
+	connectionStringTypes := webAppConnectionStringTypes(connectionStrings)
+	deploymentRepoURL := stringPtr(mapStringValue(sourceControl, "repoUrl", "repo_url"))
+	deploymentBranch := stringPtr(mapStringValue(sourceControl, "branch"))
+	deploymentIsGitHubAction := optionalBoolPtr(sourceControl, "isGitHubAction", "is_github_action")
+	deploymentManualIntegration := optionalBoolPtr(sourceControl, "isManualIntegration", "is_manual_integration")
+	deploymentSummary := appServiceDeploymentSummary(sourceControl, runFromPackage)
 
 	postureParts := []string{
 		"public network access " + valueOrUnknown(stringPtrValue(publicNetworkAccess)),
@@ -843,18 +883,55 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 	if workloadIdentityType != nil && *workloadIdentityType != "" {
 		identityPhrase = "uses managed identity (" + *workloadIdentityType + ")"
 	}
+	deploymentPhrase := "Deployment signals are not readable from the current read path."
+	if deploymentSummary != nil && *deploymentSummary != "" {
+		deploymentPhrase = "Deployment signals: " + *deploymentSummary + "."
+	}
+	configParts := []string{}
+	if appSettingsCount != nil {
+		configParts = append(configParts, strconv.Itoa(*appSettingsCount)+" app setting(s)")
+	}
+	if settingsKeyVaultReferenceCount != nil && *settingsKeyVaultReferenceCount > 0 {
+		configParts = append(configParts, strconv.Itoa(*settingsKeyVaultReferenceCount)+" Key Vault-backed setting(s)")
+	}
+	if settingsSensitiveCount != nil && *settingsSensitiveCount > 0 {
+		configParts = append(configParts, strconv.Itoa(*settingsSensitiveCount)+" sensitive-looking setting name(s)")
+	}
+	if connectionStringCount != nil {
+		configParts = append(configParts, strconv.Itoa(*connectionStringCount)+" connection string(s)")
+	}
+	if keyVaultConnectionStringCount != nil && *keyVaultConnectionStringCount > 0 {
+		configParts = append(configParts, strconv.Itoa(*keyVaultConnectionStringCount)+" Key Vault-backed connection string(s)")
+	}
+	if len(connectionStringTypes) > 0 {
+		configParts = append(configParts, "connection types "+strings.Join(connectionStringTypes, ", "))
+	}
+	configPhrase := "Configuration posture is not readable from the current read path."
+	if len(configParts) > 0 {
+		configPhrase = "Visible config: " + strings.Join(configParts, ", ") + "."
+	}
 
 	return models.AppServiceAsset{
-		AppServicePlanID:    webAppStringField(app, "serverFarmId", "server_farm_id"),
-		ClientCertEnabled:   webAppBoolField(app, "clientCertEnabled", "client_cert_enabled"),
-		DefaultHostname:     defaultHostname,
-		FTPSState:           ftpsState,
-		HTTPSOnly:           webAppBoolField(app, "httpsOnly", "https_only"),
-		ID:                  firstNonEmpty(appID, "/unknown/"+appName),
-		Location:            mapStringValue(app, "location"),
-		MinTLSVersion:       minTLSVersion,
-		Name:                appName,
-		PublicNetworkAccess: publicNetworkAccess,
+		AppSettingsCount:              appSettingsCount,
+		AppServicePlanID:              webAppStringField(app, "serverFarmId", "server_farm_id"),
+		ClientCertEnabled:             webAppBoolField(app, "clientCertEnabled", "client_cert_enabled"),
+		ConnectionStringCount:         connectionStringCount,
+		ConnectionStringTypes:         connectionStringTypes,
+		DefaultHostname:               defaultHostname,
+		Deployment:                    deploymentSummary,
+		DeploymentBranch:              deploymentBranch,
+		DeploymentIsGitHubAction:      deploymentIsGitHubAction,
+		DeploymentManualIntegration:   deploymentManualIntegration,
+		DeploymentRepoURL:             deploymentRepoURL,
+		FTPSState:                     ftpsState,
+		HTTPSOnly:                     webAppBoolField(app, "httpsOnly", "https_only"),
+		ID:                            firstNonEmpty(appID, "/unknown/"+appName),
+		KeyVaultConnectionStringCount: keyVaultConnectionStringCount,
+		KeyVaultReferenceCount:        settingsKeyVaultReferenceCount,
+		Location:                      mapStringValue(app, "location"),
+		MinTLSVersion:                 minTLSVersion,
+		Name:                          appName,
+		PublicNetworkAccess:           publicNetworkAccess,
 		RelatedIDs: dedupeStrings(
 			append([]string{
 				appID,
@@ -862,18 +939,20 @@ func appServiceSummary(app map[string]any, config map[string]any) models.AppServ
 				stringPtrValue(webAppStringField(app, "serverFarmId", "server_farm_id")),
 			}, workloadIdentityIDs...),
 		),
-		ResourceGroup:        resourceGroupFromID(appID),
-		RuntimeStack:         runtimeStack,
-		State:                webAppStringField(app, "state"),
-		Summary:              "App Service '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", and " + identityPhrase + ". Visible posture: " + strings.Join(postureParts, ", ") + ".",
-		WorkloadClientID:     workloadClientID,
-		WorkloadIdentityIDs:  workloadIdentityIDs,
-		WorkloadIdentityType: workloadIdentityType,
-		WorkloadPrincipalID:  workloadPrincipalID,
+		ResourceGroup:         resourceGroupFromID(appID),
+		RunFromPackage:        runFromPackage,
+		RuntimeStack:          runtimeStack,
+		SensitiveSettingCount: settingsSensitiveCount,
+		State:                 webAppStringField(app, "state"),
+		Summary:               "App Service '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", and " + identityPhrase + ". " + deploymentPhrase + " " + configPhrase + " Visible posture: " + strings.Join(postureParts, ", ") + ".",
+		WorkloadClientID:      workloadClientID,
+		WorkloadIdentityIDs:   workloadIdentityIDs,
+		WorkloadIdentityType:  workloadIdentityType,
+		WorkloadPrincipalID:   workloadPrincipalID,
 	}
 }
 
-func functionAppSummary(app map[string]any, config map[string]any, settings map[string]any) models.FunctionAppAsset {
+func functionAppSummary(app map[string]any, config map[string]any, settings map[string]any, functionAssets []models.FunctionChildAsset) models.FunctionAppAsset {
 	appID := mapStringValue(app, "id")
 	appName := mapStringValue(app, "name")
 	if appName == "" {
@@ -881,6 +960,7 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 	}
 
 	identity := mapValue(app, "identity")
+	settings = webAppSettingsProperties(settings)
 	publicNetworkAccess := webAppStringField(app, "publicNetworkAccess", "public_network_access")
 	runtimeStack := appServiceRuntimeStack(config)
 	minTLSVersion := stringPtr(mapStringValue(config, "minTlsVersion", "min_tls_version"))
@@ -890,7 +970,11 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 	workloadIdentityType := stringPtr(mapStringValue(identity, "type"))
 	workloadPrincipalID := stringPtr(mapStringValue(identity, "principalId", "principal_id"))
 	workloadClientID := stringPtr(mapStringValue(identity, "clientId", "client_id"))
-	workloadIdentityIDs := sortedKeys(mapValue(identity, "userAssignedIdentities"), "user_assigned_identities")
+	userAssignedIdentities := functionUserAssignedIdentities(identity, "userAssignedIdentities", "user_assigned_identities")
+	workloadIdentityIDs := make([]string, 0, len(userAssignedIdentities))
+	for _, identity := range userAssignedIdentities {
+		workloadIdentityIDs = append(workloadIdentityIDs, identity.ID)
+	}
 	azureWebJobsStorageValue, hasAzureWebJobsStorage := settings["AzureWebJobsStorage"]
 	azureWebJobsStorageValueType := stringPtr(envVarValueType(azureWebJobsStorageValue, hasAzureWebJobsStorage))
 	azureWebJobsStorageReferenceTarget := stringPtr(envVarReferenceTarget(azureWebJobsStorageValue))
@@ -958,6 +1042,7 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 	if len(deploymentParts) > 0 {
 		deploymentPhrase = "Deployment signals: " + strings.Join(deploymentParts, ", ") + "."
 	}
+	triggerTypes := functionTriggerTypes(functionAssets)
 
 	return models.FunctionAppAsset{
 		AlwaysOn:                           alwaysOn,
@@ -975,22 +1060,162 @@ func functionAppSummary(app map[string]any, config map[string]any, settings map[
 		MinTLSVersion:                      minTLSVersion,
 		Name:                               appName,
 		PublicNetworkAccess:                publicNetworkAccess,
-		RelatedIDs: dedupeStrings(
-			append([]string{
-				appID,
-				stringPtrValue(workloadPrincipalID),
-				stringPtrValue(webAppStringField(app, "serverFarmId", "server_farm_id")),
-			}, workloadIdentityIDs...),
-		),
-		ResourceGroup:        resourceGroupFromID(appID),
-		RunFromPackage:       runFromPackage,
-		RuntimeStack:         runtimeStack,
-		State:                webAppStringField(app, "state"),
-		Summary:              "Function App '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", " + functionsPhrase + ", and " + identityPhrase + ". " + deploymentPhrase + " Visible posture: " + strings.Join(postureParts, ", ") + ".",
-		WorkloadClientID:     workloadClientID,
-		WorkloadIdentityIDs:  workloadIdentityIDs,
-		WorkloadIdentityType: workloadIdentityType,
-		WorkloadPrincipalID:  workloadPrincipalID,
+		RelatedIDs:                         functionAppRelatedIDs(appID, workloadPrincipalID, webAppStringField(app, "serverFarmId", "server_farm_id"), userAssignedIdentities),
+		ResourceGroup:                      resourceGroupFromID(appID),
+		RunFromPackage:                     runFromPackage,
+		RuntimeStack:                       runtimeStack,
+		State:                              webAppStringField(app, "state"),
+		Summary:                            "Function App '" + appName + "' " + hostnamePhrase + ", " + runtimePhrase + ", " + functionsPhrase + ", and " + identityPhrase + ". " + deploymentPhrase + " Visible posture: " + strings.Join(postureParts, ", ") + ".",
+		TriggerTypes:                       triggerTypes,
+		UserAssignedIdentities:             userAssignedIdentities,
+		VisibleFunctions:                   functionAssets,
+		WorkloadClientID:                   workloadClientID,
+		WorkloadIdentityIDs:                workloadIdentityIDs,
+		WorkloadIdentityType:               workloadIdentityType,
+		WorkloadPrincipalID:                workloadPrincipalID,
+	}
+}
+
+func functionUserAssignedIdentities(identity map[string]any, keys ...string) []models.FunctionAttachedIdentity {
+	identities := []models.FunctionAttachedIdentity{}
+	for id, raw := range mapValue(identity, keys...) {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		details, _ := raw.(map[string]any)
+		identities = append(identities, models.FunctionAttachedIdentity{
+			ID:          id,
+			Name:        resourceNameFromID(id),
+			PrincipalID: stringPtr(mapStringValue(details, "principalId", "principal_id")),
+			ClientID:    stringPtr(mapStringValue(details, "clientId", "client_id")),
+		})
+	}
+	sort.SliceStable(identities, func(i, j int) bool {
+		return strings.ToLower(identities[i].ID) < strings.ToLower(identities[j].ID)
+	})
+	return identities
+}
+
+func functionAppRelatedIDs(appID string, workloadPrincipalID *string, planID *string, identities []models.FunctionAttachedIdentity) []string {
+	related := []string{appID, stringPtrValue(workloadPrincipalID), stringPtrValue(planID)}
+	for _, identity := range identities {
+		related = append(related, identity.ID, stringPtrValue(identity.PrincipalID))
+	}
+	return dedupeStrings(related)
+}
+
+func functionChildAssetFromMap(function map[string]any) models.FunctionChildAsset {
+	functionID := mapStringValue(function, "id")
+	name := firstNonEmpty(mapStringValue(function, "name"), resourceNameFromID(functionID), "unknown")
+	properties := mapValue(function, "properties")
+	config := mapValue(properties, "config")
+	bindings := functionBindings(config)
+	triggerType := stringPtr(firstNonEmpty(functionTriggerType(bindings), functionTriggerTypeFromConfig(config)))
+	if triggerType != nil && strings.TrimSpace(*triggerType) == "" {
+		triggerType = nil
+	}
+
+	return models.FunctionChildAsset{
+		BindingTypes:      functionBindingTypes(bindings),
+		Bindings:          bindings,
+		Config:            config,
+		ID:                firstNonEmpty(functionID, "/unknown/"+name),
+		InvokeURLTemplate: stringPtr(mapStringValue(properties, "invokeURLTemplate", "invoke_url_template")),
+		IsDisabled:        optionalBoolPtr(properties, "isDisabled", "is_disabled"),
+		Language:          stringPtr(mapStringValue(properties, "language")),
+		Name:              name,
+		TriggerType:       triggerType,
+	}
+}
+
+func functionBindings(config map[string]any) []models.FunctionBinding {
+	rows := []models.FunctionBinding{}
+	for _, raw := range listValue(config, "bindings") {
+		binding := models.FunctionBinding{
+			Direction: mapStringValue(raw, "direction"),
+			Name:      mapStringValue(raw, "name"),
+			Type:      mapStringValue(raw, "type"),
+		}
+		if binding.Direction == "" && binding.Name == "" && binding.Type == "" {
+			continue
+		}
+		rows = append(rows, binding)
+	}
+	return rows
+}
+
+func functionBindingTypes(bindings []models.FunctionBinding) []string {
+	types := make([]string, 0, len(bindings))
+	for _, binding := range bindings {
+		if strings.TrimSpace(binding.Type) == "" {
+			continue
+		}
+		types = append(types, binding.Type)
+	}
+	return dedupeStrings(types)
+}
+
+func functionTriggerTypes(functionAssets []models.FunctionChildAsset) []string {
+	triggerTypes := make([]string, 0, len(functionAssets))
+	for _, function := range functionAssets {
+		if function.TriggerType == nil || strings.TrimSpace(*function.TriggerType) == "" {
+			continue
+		}
+		triggerTypes = append(triggerTypes, *function.TriggerType)
+	}
+	return dedupeStrings(triggerTypes)
+}
+
+func functionTriggerType(bindings []models.FunctionBinding) string {
+	for _, binding := range bindings {
+		if label := functionTriggerLabel(binding.Type); label != "" {
+			return label
+		}
+	}
+	return ""
+}
+
+func functionTriggerTypeFromConfig(config map[string]any) string {
+	return functionTriggerLabel(firstNonEmpty(
+		mapStringValue(config, "trigger", "triggerType", "trigger_type"),
+		mapStringValue(mapValue(config, "trigger"), "type"),
+	))
+}
+
+func functionTriggerLabel(rawType string) string {
+	value := strings.ToLower(strings.TrimSpace(rawType))
+	switch value {
+	case "":
+		return ""
+	case "httptrigger":
+		return "HTTP"
+	case "timertrigger":
+		return "timer"
+	case "queuetrigger":
+		return "queue"
+	case "servicebustrigger":
+		return "Service Bus"
+	case "blobtrigger":
+		return "Storage blob"
+	case "eventgridtrigger":
+		return "Event Grid"
+	case "eventhubtrigger":
+		return "Event Hub"
+	case "cosmosdbtrigger":
+		return "Cosmos DB"
+	default:
+		if strings.HasSuffix(value, "trigger") {
+			base := strings.TrimSuffix(value, "trigger")
+			base = strings.ReplaceAll(base, "-", " ")
+			base = strings.ReplaceAll(base, "_", " ")
+			base = strings.TrimSpace(base)
+			if base == "" {
+				return ""
+			}
+			return base
+		}
+		return ""
 	}
 }
 
@@ -1542,6 +1767,107 @@ func runFromPackageSignal(settings map[string]any) *bool {
 	}
 	result := true
 	return &result
+}
+
+func webAppSettingsProperties(settings map[string]any) map[string]any {
+	if properties := mapValue(settings, "properties"); len(properties) > 0 {
+		return properties
+	}
+	return settings
+}
+
+func webAppConnectionStringProperties(connectionStrings map[string]any) map[string]any {
+	if properties := mapValue(connectionStrings, "properties"); len(properties) > 0 {
+		return properties
+	}
+	return connectionStrings
+}
+
+func webAppSourceControlProperties(sourceControl map[string]any) map[string]any {
+	if properties := mapValue(sourceControl, "properties"); len(properties) > 0 {
+		return properties
+	}
+	return sourceControl
+}
+
+func appSettingCount(settings map[string]any) *int {
+	if settings == nil {
+		return nil
+	}
+	count := len(settings)
+	return &count
+}
+
+func sensitiveSettingCount(settings map[string]any) *int {
+	if settings == nil {
+		return nil
+	}
+	count := 0
+	for key := range settings {
+		if looksSensitiveSettingName(key) {
+			count++
+		}
+	}
+	return &count
+}
+
+func webAppConnectionStringTypes(connectionStrings map[string]any) []string {
+	types := []string{}
+	for _, value := range connectionStrings {
+		typed := strings.TrimSpace(mapStringValue(value, "type"))
+		if typed == "" {
+			continue
+		}
+		types = appendUniqueString(types, typed)
+	}
+	slices.Sort(types)
+	return types
+}
+
+func connectionStringKeyVaultCount(connectionStrings map[string]any) *int {
+	if connectionStrings == nil {
+		return nil
+	}
+	count := 0
+	for _, value := range connectionStrings {
+		if envVarValueType(mapStringValue(value, "value"), true) == "keyvault-ref" {
+			count++
+		}
+	}
+	return &count
+}
+
+func appServiceDeploymentSummary(sourceControl map[string]any, runFromPackage *bool) *string {
+	parts := []string{}
+	repoURL := compactLink(mapStringValue(sourceControl, "repoUrl", "repo_url"))
+	if repoURL != "" {
+		parts = append(parts, "repo "+repoURL)
+	}
+	branch := mapStringValue(sourceControl, "branch")
+	if branch != "" {
+		parts = append(parts, "branch "+branch)
+	}
+	if value := optionalBoolPtr(sourceControl, "isGitHubAction", "is_github_action"); value != nil && *value {
+		parts = append(parts, "GitHub Actions")
+	}
+	if value := optionalBoolPtr(sourceControl, "isManualIntegration", "is_manual_integration"); value != nil {
+		if *value {
+			parts = append(parts, "manual integration")
+		} else {
+			parts = append(parts, "continuous integration")
+		}
+	}
+	if runFromPackage != nil {
+		if *runFromPackage {
+			parts = append(parts, "run-from-package enabled")
+		} else {
+			parts = append(parts, "run-from-package disabled")
+		}
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	return stringPtr(strings.Join(parts, ", "))
 }
 
 func envVarValueType(value any, exists bool) string {

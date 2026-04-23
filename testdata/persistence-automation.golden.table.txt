@@ -1,33 +1,39 @@
 HO-Azure :: attack-path-focused Azure recon
 context :: tenant=auto subscription=auto output=table
 
-[persistence] Walking the current identity through Azure-native persistence surfaces one service at a time.
+[persistence] Azure Automation persistence means Azure stores code plus execution context plus a trigger that can invoke it again later, not a backdoor listening on a port.
 Automation capability
-action                   | api surface                          | status
 
-create or modify account | automationAccounts                   | yes   
-add or edit runbook      | automationAccounts/runbooks          | yes   
-upload or replace code   | runbook content update               | yes   
-publish runbook          | runbook publish action               | yes   
-attach or reuse exec ctx | account identity / automation assets | yes   
-create schedule          | automationAccounts/schedules         | yes   
-link schedule to runbook | automationAccounts/jobSchedules      | yes   
-create webhook           | automation webhook resource          | yes   
-
-This walkthrough shows one currently visible Automation persistence path. The inventory below lists the other visible accounts without repeating the same narrative.
+╭──────────────────────────┬──────────────────────────────────────┬────────╮
+│ action                   │ api surface                          │ status │
+├──────────────────────────┼──────────────────────────────────────┼────────┤
+│ create or modify account │ automationAccounts                   │ yes    │
+│ add or edit runbook      │ automationAccounts/runbooks          │ yes    │
+│ upload or replace code   │ runbook content update               │ yes    │
+│ publish runbook          │ runbook publish action               │ yes    │
+│ attach or reuse exec ctx │ account identity / automation assets │ yes    │
+│ create schedule          │ automationAccounts/schedules         │ yes    │
+│ link schedule to runbook │ automationAccounts/jobSchedules      │ yes    │
+│ create webhook           │ automation webhook resource          │ yes    │
+╰──────────────────────────┴──────────────────────────────────────┴────────╯
+This walkthrough shows the strongest currently visible Automation persistence path. The inventory below lists the other visible accounts without repeating the same narrative.
 - Current identity can create or modify an Azure Automation Account.
-- Current identity can add or edit a runbook inside an existing Azure Automation Account.
-- Current identity can upload or replace the code inside a runbook.
-- Current identity can publish runnable automation so Azure can execute it later.
-- Current identity can attach or reuse execution context for that runbook.
-  Managed identity, stored credentials, connections, certificates, variables, or other Automation assets may provide that execution context.
-  Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
-  The strongest visible execution context here is the Automation Account identity `aa-hybrid-prod-mi`, which already holds Contributor at resource group rg-ops.
-- Current identity can create durable triggers for the runbook, including schedules, schedule links, and webhooks.
-- Current identity can repurpose an existing Azure Automation Account instead of creating a new one.
-  Nearby maintenance- or schedule-themed names visible from the current environment include `Baseline-Config`, `Nightly-Reconcile`, `Reapply-Agent`, and `Lab-Maintenance`.
 
-Reminder: a runbook does not run continuously and is not a backdoor listening on a port. In this context, persistence means Azure stores code plus execution context plus a trigger that can invoke it again later.
+- Current identity can add or edit a runbook inside an existing Azure Automation Account.
+
+- Current identity can upload or replace the code inside a runbook.
+
+- Current identity can publish runnable automation so Azure can execute it later.
+
+- Current identity can attach or reuse execution context for that runbook.
+   Managed identity, stored credentials, connections, certificates, variables, or other Automation assets may provide that execution context.
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   The strongest visible execution context here is the Automation Account identity `aa-hybrid-prod-mi`, which already holds Contributor at resource group rg-ops.
+
+- Current identity can create durable triggers for the runbook, including schedules, schedule links, and webhooks.
+
+- Current identity can repurpose an existing Azure Automation Account instead of creating a new one.
+   Nearby maintenance- or schedule-themed names visible from the current environment include `Baseline-Config`, `Nightly-Reconcile`, `Reapply-Agent`, and `Lab-Maintenance`.
 
 Visible Automation Accounts
 automation account | resource group | visible state                                            | execution context                                              

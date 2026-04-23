@@ -13,7 +13,7 @@
   "surface": "logic-apps",
   "input_mode": "live",
   "command_state": "implemented",
-  "summary": "Walk the current identity through the Logic Apps workflow steps that can leave Azure waiting for the next request, schedule, or event to run the workflow again.",
+  "summary": "Review Logic Apps for reusable workflow and trigger paths.",
   "backing_commands": [
     "logic-apps",
     "permissions",
