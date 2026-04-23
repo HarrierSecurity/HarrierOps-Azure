@@ -3,3 +3,5 @@ ra-1,33333333-3333-3333-3333-333333333333,ServicePrincipal,rd-owner,Owner,/subsc
 ra-2,44444444-4444-4444-4444-444444444444,User,rd-reader,Reader,/subscriptions/22222222-2222-2222-2222-222222222222
 ra-3,56565656-5656-5656-5656-565656565656,ServicePrincipal,rd-contributor,Contributor,/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow
 ra-4,90909090-9090-9090-9090-909090909090,ServicePrincipal,rd-contributor,Contributor,/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow
+ra-aml-1,5a5a5656-5656-5656-5656-565656565656,ServicePrincipal,rd-contributor,Contributor,/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ml
+ra-aml-2,6a6a5656-5656-5656-5656-565656565656,ServicePrincipal,rd-owner,Owner,/subscriptions/22222222-2222-2222-2222-222222222222

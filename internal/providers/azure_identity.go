@@ -367,6 +367,7 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	appServiceFacts, appErr := provider.AppServices(ctx, tenant, subscription)
 	functionFacts, functionErr := provider.Functions(ctx, tenant, subscription)
 	logicAppsFacts, logicAppsErr := provider.LogicApps(ctx, tenant, subscription)
+	azureMLFacts, azureMLErr := provider.AzureML(ctx, tenant, subscription)
 	userAssignedClient, userAssignedErr := armmsi.NewUserAssignedIdentitiesClient(session.subscription.ID, session.credential, nil)
 
 	issues := append([]models.Issue{}, rbacFacts.Issues...)
@@ -384,6 +385,9 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	}
 	if logicAppsErr != nil {
 		issues = append(issues, issueFromError("managed-identities.logic-apps", logicAppsErr))
+	}
+	if azureMLErr != nil {
+		issues = append(issues, issueFromError("managed-identities.azure-ml", azureMLErr))
 	}
 	if userAssignedErr != nil {
 		issues = append(issues, issueFromError("managed-identities.user_assigned_client", userAssignedErr))
@@ -593,6 +597,51 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 				workflow.ID,
 				"LogicApp",
 				workflow.Name,
+				exposure,
+				subscriptionScope,
+				assignmentsByPrincipal[stringPtrValue(details.principalID)],
+			))
+		}
+	}
+
+	for _, workspace := range azureMLFacts.Workspaces {
+		exposure := models.WorkloadExposureNone
+		if strings.EqualFold(stringPtrValue(workspace.PublicNetworkAccess), "Enabled") || containsFold(workspace.EndpointPublicAccess, "Enabled") {
+			exposure = models.WorkloadExposurePublic
+		} else if workspace.EndpointCount > 0 || workspace.ScheduleCount > 0 || workspace.JobCount > 0 || workspace.ComputeCount > 0 {
+			exposure = models.WorkloadExposureExposed
+		}
+		if identityIncludesType(workspace.IdentityType, "SystemAssigned") {
+			systemID := workspace.ID + "/identities/system"
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
+				systemID,
+				workspace.Name+"-workspace-identity",
+				"systemAssigned",
+				workspace.PrincipalID,
+				nil,
+				workspace.ID,
+				"AzureML",
+				workspace.Name,
+				exposure,
+				subscriptionScope,
+				assignmentsByPrincipal[stringPtrValue(workspace.PrincipalID)],
+			))
+		}
+		for _, identityID := range workspace.IdentityIDs {
+			if strings.HasSuffix(identityID, "/identities/system") {
+				continue
+			}
+			details, detailIssues := loadUserAssignedIdentityDetails(ctx, userAssignedClient, identityID, userAssignedCache)
+			issues = append(issues, detailIssues...)
+			mergeManagedIdentityAttachment(identityMap, managedIdentityFromAttachment(
+				identityID,
+				resourceNameFromID(identityID),
+				"userAssigned",
+				details.principalID,
+				details.clientID,
+				workspace.ID,
+				"AzureML",
+				workspace.Name,
 				exposure,
 				subscriptionScope,
 				assignmentsByPrincipal[stringPtrValue(details.principalID)],
@@ -823,6 +872,18 @@ func managedIdentityNarrative(attachedKind string, attachedName string, identity
 			nextReview := "Check logic-apps for the workflow context behind this workload pivot, then permissions to confirm direct control."
 			return exposureLabel + "; direct control not confirmed.", nextReview, "Logic App '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope does not confirm direct control. " + nextReview
 		}
+	case "AzureML":
+		switch {
+		case directControlVisible:
+			nextReview := "Check azure-ml for the workspace, compute, and execution context behind this workload pivot."
+			return exposureLabel + "; direct control visible.", nextReview, "Azure ML workspace '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope already shows direct control through high-impact roles (" + strings.Join(highImpactRoles, ", ") + "). " + nextReview
+		case visibilityBlocked:
+			nextReview := "Check azure-ml for the backing workspace context; current scope does not yet show direct control on this identity."
+			return exposureLabel + "; visibility blocked.", nextReview, "Azure ML workspace '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "', but current scope does not show the backing principal cleanly. " + nextReview
+		default:
+			nextReview := "Check azure-ml for the workspace, compute, and execution context behind this workload pivot, then permissions to confirm direct control."
+			return exposureLabel + "; direct control not confirmed.", nextReview, "Azure ML workspace '" + attachedName + "' gives a " + strings.ToLower(exposureLabel) + " into managed identity '" + identityName + "'. Current scope does not confirm direct control. " + nextReview
+		}
 	default:
 		workloadLabel := "App Service"
 		if attachedKind == "FunctionApp" {
@@ -861,9 +922,20 @@ func managedIdentityWorkloadLabel(attachedKind string) string {
 		return "App Service"
 	case "LogicApp":
 		return "Logic App"
+	case "AzureML":
+		return "Azure ML"
 	default:
 		return attachedKind
 	}
+}
+
+func containsFold(values []string, target string) bool {
+	for _, value := range values {
+		if strings.EqualFold(strings.TrimSpace(value), target) {
+			return true
+		}
+	}
+	return false
 }
 
 func managedIdentityExposureRank(value models.WorkloadExposure) int {

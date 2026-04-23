@@ -1,0 +1,59 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] Azure ML persistence means stored workspace logic plus compute, schedules, endpoints, and identity-backed runtime context that Azure can invoke later, not a permanently compromised host.
+Azure ML capability
+
+╭─────────────────────────────────┬──────────────────────────────────────────────┬────────╮
+│ action                          │ api surface                                  │ status │
+├─────────────────────────────────┼──────────────────────────────────────────────┼────────┤
+│ create or modify workspace      │ Microsoft.MachineLearningServices/workspaces │ yes    │
+│ attach or reuse compute         │ computes                                     │ yes    │
+│ add or modify jobs or pipelines │ jobs / pipelines                             │ yes    │
+│ create or modify schedule       │ schedules                                    │ yes    │
+│ attach or reuse exec ctx        │ workspace identity                           │ yes    │
+│ expose or reuse endpoint        │ onlineEndpoints                              │ yes    │
+╰─────────────────────────────────┴──────────────────────────────────────────────┴────────╯
+This walkthrough shows the strongest currently visible Azure ML persistence path. The inventory below lists the other visible workspaces without repeating the same narrative.
+- Current identity can create a new Azure ML workspace or reuse this existing workspace.
+   This is the Azure ML object you would reuse instead of standing up a new ML path from scratch.
+
+- Current identity can attach or reuse Azure ML compute for this workspace, including long-lived instances or cluster-backed execution.
+   Compute is the runtime side of Azure ML that gives saved notebooks, jobs, or pipelines a place to run later.
+   Long-lived compute instances can stay behind, while cluster-backed execution can launch saved jobs or pipelines again when Azure ML re-triggers them.
+
+- Current identity can add or modify Azure ML jobs or pipelines that hold stored execution logic this workspace can run later.
+   In Azure ML, persistence can live in saved notebooks, jobs, pipelines, scheduled jobs, and environment definitions.
+   Those are the stored execution surfaces that can remain in the workspace even when no host is persistently compromised.
+
+- Current identity can attach or reuse execution context for this Azure ML workspace.
+   When a notebook, job, or pipeline runs later, it executes with the attached identity plus the linked workspace resources Azure ML will use at runtime.
+   That execution context determines what Azure actions, storage access, and downstream calls the re-triggered path can actually make.
+   Linked workspace context here already includes managed identity, workspace-linked storage, workspace-linked key vault, workspace-linked container registry.
+   The strongest visible execution context here is the Azure ML identity `ua-ml-ops`, which already holds Owner at subscription scope.
+
+- Current identity can create or modify Azure ML schedules so this workspace can run again later.
+   Visible schedule trigger types here include Cron.
+   A saved schedule can re-run that stored execution path later on the attached compute without requiring a compromised host to stay resident.
+
+- Current identity can expose or reuse Azure ML online endpoints as a serving or externally reachable re-entry path.
+   Visible endpoint posture here includes auth AADToken; public access Enabled.
+   API-driven or endpoint-driven paths are another way Azure ML can be re-entered later, separate from saved schedules.
+
+- Current identity can repurpose an existing Azure ML workspace instead of standing up a brand-new ML control path.
+   Reusing an existing Azure ML workspace can blend in better than creating a new ML runtime surface from scratch.
+   The persistence story here is the workspace plus compute plus stored code and re-entry paths that can all remain in place for later execution.
+   Nearby maintenance- or schedule-themed names visible from the current environment include `ml-nightly-train`.
+
+Visible Azure ML Workspaces
+workspace        | resource group | visible state                                                                                                                                  | execution context                           
+
+ml-ops-hub       | rg-ml          | execution-capable; compute=ComputeCluster,ComputeInstance; jobs 2; schedules 1; endpoints 1; endpoint public Enabled; workspace public Enabled | `ua-ml-ops` with Owner at subscription scope
+ml-nightly-train | rg-ml          | supporting-persistence-context; schedules 1; workspace public Disabled                                                                         | workspace-linked storage                    
+ml-catalog       | rg-ml          | supporting-context; workspace public Enabled                                                                                                   | workspace-linked storage                    
+
+
+Not collected by default
+- the current command does not retrieve notebook content, model content, environment definitions, or job or pipeline payloads from Azure ML workspaces, so operator intent is not inferred from Azure ML content here
+- the current command does not inspect run history, job outputs, or schedule execution history, so it does not prove what has already run here over time
+- the current command does not invoke online endpoints or test live runtime behavior, so endpoint conclusions here stop at visible management-plane posture

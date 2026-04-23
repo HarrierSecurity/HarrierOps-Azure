@@ -31,6 +31,132 @@
       "runtime_stack": "PYTHON|3.11",
       "state": "Running",
       "summary": "Function App 'func-orders' publishes hostname 'func-orders.azurewebsites.net', runs runtime 'PYTHON|3.11', targets Functions runtime '~4', and uses managed identity (SystemAssigned, UserAssigned). Deployment signals: AzureWebJobsStorage as plain-text app setting, 1 Key Vault-backed setting(s). Visible posture: public network access Enabled, HTTPS-only enabled, TLS 1.2, FTPS Disabled, Always On enabled.",
+      "trigger_types": [
+        "HTTP",
+        "timer",
+        "Service Bus"
+      ],
+      "user_assigned_identities": [
+        {
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
+          "name": "ua-orders",
+          "principal_id": "cece2222-2222-2222-2222-222222222222",
+          "client_id": "dfdf2222-2222-2222-2222-222222222222"
+        }
+      ],
+      "visible_functions": [
+        {
+          "binding_types": [
+            "httpTrigger",
+            "http"
+          ],
+          "bindings": [
+            {
+              "direction": "in",
+              "name": "req",
+              "type": "httpTrigger"
+            },
+            {
+              "direction": "out",
+              "name": "$return",
+              "type": "http"
+            }
+          ],
+          "config": {
+            "bindings": [
+              {
+                "authLevel": "function",
+                "direction": "in",
+                "methods": [
+                  "post"
+                ],
+                "name": "req",
+                "route": "orders/webhook",
+                "type": "httpTrigger"
+              },
+              {
+                "direction": "out",
+                "name": "$return",
+                "type": "http"
+              }
+            ]
+          },
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/OrdersWebhook",
+          "invoke_url_template": "https://func-orders.azurewebsites.net/api/orders/webhook",
+          "is_disabled": false,
+          "language": "Python",
+          "name": "OrdersWebhook",
+          "trigger_type": "HTTP"
+        },
+        {
+          "binding_types": [
+            "timerTrigger"
+          ],
+          "bindings": [
+            {
+              "direction": "in",
+              "name": "timer",
+              "type": "timerTrigger"
+            }
+          ],
+          "config": {
+            "bindings": [
+              {
+                "direction": "in",
+                "name": "timer",
+                "schedule": "0 0 * * * *",
+                "type": "timerTrigger"
+              }
+            ]
+          },
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/NightlyReconcile",
+          "is_disabled": false,
+          "language": "Python",
+          "name": "NightlyReconcile",
+          "trigger_type": "timer"
+        },
+        {
+          "binding_types": [
+            "serviceBusTrigger",
+            "queue"
+          ],
+          "bindings": [
+            {
+              "direction": "in",
+              "name": "message",
+              "type": "serviceBusTrigger"
+            },
+            {
+              "direction": "out",
+              "name": "outQueue",
+              "type": "queue"
+            }
+          ],
+          "config": {
+            "bindings": [
+              {
+                "connection": "ServiceBusConnection",
+                "direction": "in",
+                "name": "message",
+                "queueName": "orders-incoming",
+                "type": "serviceBusTrigger"
+              },
+              {
+                "connection": "StorageConnection",
+                "direction": "out",
+                "name": "outQueue",
+                "queueName": "orders-processed",
+                "type": "queue"
+              }
+            ]
+          },
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/BusReconcile",
+          "is_disabled": true,
+          "language": "Python",
+          "name": "BusReconcile",
+          "trigger_type": "Service Bus"
+        }
+      ],
       "workload_client_id": "dddd2222-2222-2222-2222-222222222222",
       "workload_identity_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders"

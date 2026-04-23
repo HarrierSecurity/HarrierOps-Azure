@@ -1,0 +1,60 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] Azure Functions persistence means a hosted Function App plus deployed code plus trigger posture plus access that Azure can invoke later, not a long-running process on a VM.
+Function capability
+
+╭──────────────────────────────────────────┬─────────────────────────────────────────┬────────╮
+│ action                                   │ api surface                             │ status │
+├──────────────────────────────────────────┼─────────────────────────────────────────┼────────┤
+│ create or modify function app            │ Microsoft.Web/sites                     │ yes    │
+│ deploy or replace code                   │ zip deploy / run-from-package / publish │ yes    │
+│ attach or reuse exec ctx                 │ function identity / app settings        │ yes    │
+│ change app settings or deployment config │ app settings / site config              │ yes    │
+│ repurpose trigger posture                │ HTTP, timer, queue, or event trigger    │ yes    │
+│ restart or enable function host          │ site state / restart action             │ yes    │
+╰──────────────────────────────────────────┴─────────────────────────────────────────┴────────╯
+- Current identity can create a new Function App or reuse this existing Function App.
+   The Function App is the Azure-side host for function code, app settings, identity, trigger configuration, and the deployed package.
+
+- Current identity can deploy or replace the function package Azure will load in this Function App.
+   Because the current identity already controls this Function App, zip deploy, publish, or package replacement are part of the defended Functions persistence path here.
+   Common deploy paths here include ZIP package deployment, pipeline deployment, run-from-package, or local project publish.
+   Visible deployment posture includes storage=plain-text.
+   Visible deployment posture includes kv-refs=1.
+   AzureWebJobsStorage is plain-text.
+
+- Current identity can repurpose this Function App's trigger exposure so Azure has a way to run it again later, including HTTP-style externally reachable entrypoints.
+   Visible child functions here show `HTTP`, `timer`, and `Service Bus` trigger paths.
+   Current visible functions include OrdersWebhook [HTTP], NightlyReconcile [timer], BusReconcile [Service Bus; disabled].
+   HTTP-triggered functions are visible from management-plane metadata, including an invoke URL template and visible auth-level metadata.
+  Timer, queue, Service Bus, or other event-driven triggers are visible from bindings, but they are not the same as a directly callable public entrypoint.
+   The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.
+   That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.
+
+- Current identity can change app settings, identity attachment, and deployment configuration for this Function App.
+   This is where runtime behavior, package behavior, and connection material get shaped for this Function App.
+   App settings can control service endpoints, feature toggles, and other runtime behavior the function will use when the trigger fires.
+
+- Current identity can attach or reuse execution context for this Function App.
+   In Functions, execution context usually comes from the managed identity attached to this Function App.
+   That can be a system-assigned identity, a user-assigned identity, or connection material referenced through settings the code will use later.
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   The strongest visible execution context here is the attached user-assigned identity `ua-orders`, which already holds Owner at subscription scope.
+
+- Current identity can restart or enable the Function App so Azure is ready to run it again when the trigger path is hit.
+   Once the package is in place and the Function App is active, Azure can invoke it whenever the trigger condition is met.
+
+- Current identity can repurpose an existing Function App instead of creating a new one.
+   Reusing an existing Function App can blend in better than standing up a brand-new serverless entrypoint.
+
+Visible Function Apps
+function app | resource group | visible state                                                                                                                          | execution context                           
+
+func-orders  | rg-apps        | Running; hostname visible; PYTHON|3.11; functions=~4; storage=plain-text; kv-refs=1; public Enabled; triggers=HTTP, timer, Service Bus | `ua-orders` with Owner at subscription scope
+
+
+Not collected by default
+- the current default collector does not perform data-plane validation of function keys, caller auth, upstream bus or storage access, or other runtime-side restrictions behind the visible management-plane trigger metadata
+- the current command does not retrieve deployed function packages or project contents, so operator intent is not inferred from code here
+- the current command does not infer downstream resource actions, secret usage, or service connections without reading deployed code or exercising the function path

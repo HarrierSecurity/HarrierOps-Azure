@@ -19,13 +19,14 @@ var commandNarration = map[string]string{
 	"automation":         "Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.",
 	"app-credentials":    "Reviewing application and service-principal authentication material, federated trust, and visible current-identity control paths.",
 	"devops":             "Reviewing Azure DevOps build definitions for trusted source inputs, visible injection surfaces, and Azure-facing change paths.",
-	"app-services":       "Reviewing App Service runtime, hostname, identity, and ingress cues that change follow-on paths.",
+	"app-services":       "Reviewing App Service runtime, hostname, identity, deployment, and config cues that change follow-on paths.",
 	"acr":                "Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.",
 	"databases":          "Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.",
 	"dns":                "Reviewing public and private DNS zone inventory and namespace boundaries.",
 	"aks":                "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
 	"api-mgmt":           "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
-	"functions":          "Reviewing Function App runtime, storage binding, identity, and deployment posture.",
+	"functions":          "Reviewing Function App runtime, trigger, storage binding, identity, and deployment posture.",
+	"webjobs":            "Reviewing App Service WebJobs for background execution mode, rerun posture, and inherited app context.",
 	"azure-ml":           "Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.",
 	"event-grid":         "Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.",
 	"logic-apps":         "Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.",
@@ -102,7 +103,7 @@ func Table(command string, payload any, context models.RenderContext) (string, e
 		body = appendPayloadFindingsSection(body, payload)
 	}
 	body = appendPayloadIssuesSection(body, payload)
-	return renderTableDocument(command, context, body), nil
+	return renderTableDocument(command, context, payload, body), nil
 }
 
 func commandSuppressesBottomFindings(command string) bool {
@@ -152,16 +153,16 @@ func renderListTable(title string, headers []string, rows [][]string, emptyRow [
 	return output
 }
 
-func renderTableDocument(command string, context models.RenderContext, body string) string {
-	prelude := renderTablePrelude(command, context)
+func renderTableDocument(command string, context models.RenderContext, payload any, body string) string {
+	prelude := renderTablePrelude(command, context, payload)
 	if prelude == "" {
 		return body
 	}
 	return prelude + body
 }
 
-func renderTablePrelude(command string, context models.RenderContext) string {
-	narration := commandNarration[command]
+func renderTablePrelude(command string, context models.RenderContext, payload any) string {
+	narration := commandNarrationForPayload(command, payload)
 	if narration == "" {
 		narration = "Running command."
 	}
@@ -180,6 +181,29 @@ func renderTablePrelude(command string, context models.RenderContext) string {
 	}
 	lines = append(lines, "")
 	return strings.Join(lines, "\n")
+}
+
+func commandNarrationForPayload(command string, payload any) string {
+	if command != "persistence" {
+		return commandNarration[command]
+	}
+
+	switch payload.(type) {
+	case models.PersistenceAutomationOutput:
+		return "Azure Automation persistence means Azure stores code plus execution context plus a trigger that can invoke it again later, not a backdoor listening on a port."
+	case models.PersistenceAppServiceOutput:
+		return "App Service persistence means a deployed web host plus deployment path plus configuration and identity plus a reachable entry path Azure will keep serving later, not a long-running shell on a VM."
+	case models.PersistenceAzureMLOutput:
+		return "Azure ML persistence means stored workspace logic plus compute, schedules, endpoints, and identity-backed runtime context that Azure can invoke later, not a permanently compromised host."
+	case models.PersistenceFunctionsOutput:
+		return "Azure Functions persistence means a hosted Function App plus deployed code plus trigger posture plus access that Azure can invoke later, not a long-running process on a VM."
+	case models.PersistenceLogicAppsOutput:
+		return "Logic App persistence means a stored workflow plus a trigger plus access that remains valid, not malware living on a host."
+	case models.PersistenceWebJobsOutput:
+		return "WebJobs persistence means deployed background job code plus mode plus inherited app context that App Service and Kudu can run again later, not a shell living on the host."
+	default:
+		return commandNarration[command]
+	}
 }
 
 func tableContextValue(value string) string {
@@ -242,23 +266,24 @@ func appServicesTable(payload models.AppServicesOutput) string {
 			valueOrEmpty(app.DefaultHostname),
 			valueOrFallback(app.RuntimeStack, "-"),
 			resourceIdentityContext(app.WorkloadIdentityType, app.WorkloadIdentityIDs),
-			appServiceExposureContext(app),
+			appServiceDeploymentContext(app),
+			appServiceConfigContext(app),
 			appServicePostureContext(app),
 			app.Summary,
 		})
 	}
 	return renderListTable("ho-azure app-services", []string{
-		"app service", "hostname", "runtime", "identity", "exposure", "posture", "why it matters",
-	}, rows, []string{"no App Service apps visible", "", "", "", "", "", ""}, appServicesTakeaway(payload))
+		"app service", "hostname", "runtime", "identity", "deployment", "config", "posture", "why it matters",
+	}, rows, []string{"no App Service apps visible", "", "", "", "", "", "", ""}, appServicesTakeaway(payload))
 }
 
 func functionsTable(payload models.FunctionsOutput) string {
 	if len(payload.FunctionApps) == 0 {
 		return renderListTable(
 			"ho-azure functions",
-			[]string{"function app", "hostname", "runtime", "identity", "deployment"},
+			[]string{"function app", "hostname", "runtime", "triggers", "identity", "deployment"},
 			nil,
-			[]string{"no Function Apps visible", "", "", "", ""},
+			[]string{"no Function Apps visible", "", "", "", "", ""},
 			functionsTakeaway(payload),
 		)
 	}
@@ -267,11 +292,12 @@ func functionsTable(payload models.FunctionsOutput) string {
 	for _, app := range payload.FunctionApps {
 		row := renderStructuredTableWithTitle(
 			"",
-			[]string{"function app", "hostname", "runtime", "identity", "deployment"},
+			[]string{"function app", "hostname", "runtime", "triggers", "identity", "deployment"},
 			[][]string{{
 				app.Name,
 				valueOrEmpty(app.DefaultHostname),
 				functionRuntimeContext(app),
+				functionTriggerContext(app),
 				resourceIdentityContext(app.WorkloadIdentityType, app.WorkloadIdentityIDs),
 				functionDeploymentContext(app),
 			}},
@@ -279,13 +305,31 @@ func functionsTable(payload models.FunctionsOutput) string {
 		)
 		rowWidth := renderedTableCellWidth(row)
 		parts := []string{row}
-		if note := strings.TrimSpace(app.Summary); note != "" {
+		if note := strings.TrimSpace(functionNote(app)); note != "" {
 			parts = append(parts, renderWrappedNoteTableWithWidth(note, rowWidth))
 		}
 		sections = append(sections, joinRenderedSections(parts...))
 	}
 
 	return joinRenderedBlocks(sections) + "\n\nTakeaway: " + functionsTakeaway(payload) + "\n"
+}
+
+func webJobsTable(payload models.WebJobsOutput) string {
+	rows := make([][]string, 0, len(payload.WebJobs))
+	for _, job := range payload.WebJobs {
+		rows = append(rows, []string{
+			job.Name,
+			job.ParentAppName,
+			job.Mode,
+			webJobStatusContext(job),
+			webJobParentContext(job),
+			webJobExecutionContext(job),
+			job.Summary,
+		})
+	}
+	return renderListTable("ho-azure webjobs", []string{
+		"webjob", "parent app", "mode", "status", "app context", "execution", "why it matters",
+	}, rows, []string{"no WebJobs visible", "", "", "", "", "", ""}, webJobsTakeaway(payload))
 }
 
 func containerAppsTable(payload models.ContainerAppsOutput) string {
@@ -355,6 +399,9 @@ func appServicesTakeaway(payload models.AppServicesOutput) string {
 	httpsOnly := 0
 	publicNetwork := 0
 	identities := 0
+	deploymentVisible := 0
+	keyVaultBacked := 0
+	connectionStrings := 0
 
 	for _, app := range payload.AppServices {
 		if app.HTTPSOnly {
@@ -366,28 +413,46 @@ func appServicesTakeaway(payload models.AppServicesOutput) string {
 		if app.WorkloadIdentityType != nil && *app.WorkloadIdentityType != "" {
 			identities++
 		}
+		if app.Deployment != nil && *app.Deployment != "" {
+			deploymentVisible++
+		}
+		if app.KeyVaultReferenceCount != nil && *app.KeyVaultReferenceCount > 0 {
+			keyVaultBacked++
+		}
+		if app.ConnectionStringCount != nil && *app.ConnectionStringCount > 0 {
+			connectionStrings++
+		}
 	}
 
 	return fmt.Sprintf(
-		"%d App Service apps visible; %d keep public network access enabled, %d enforce HTTPS-only, and %d carry managed identity context.",
+		"%d App Service apps visible; %d keep public network access enabled, %d enforce HTTPS-only, %d carry managed identity context, %d expose deployment signals, %d surface connection strings, and %d include Key Vault-backed settings.",
 		len(payload.AppServices),
 		publicNetwork,
 		httpsOnly,
 		identities,
+		deploymentVisible,
+		connectionStrings,
+		keyVaultBacked,
 	)
 }
 
 func functionsTakeaway(payload models.FunctionsOutput) string {
 	identities := 0
+	visibleFunctions := 0
 	runFromPackage := 0
+	triggerVisible := 0
 	keyVaultBacked := 0
 
 	for _, app := range payload.FunctionApps {
 		if app.WorkloadIdentityType != nil && *app.WorkloadIdentityType != "" {
 			identities++
 		}
+		visibleFunctions += len(app.VisibleFunctions)
 		if app.RunFromPackage != nil && *app.RunFromPackage {
 			runFromPackage++
+		}
+		if len(app.TriggerTypes) > 0 {
+			triggerVisible++
 		}
 		if app.KeyVaultReferenceCount != nil && *app.KeyVaultReferenceCount > 0 {
 			keyVaultBacked++
@@ -395,11 +460,48 @@ func functionsTakeaway(payload models.FunctionsOutput) string {
 	}
 
 	return fmt.Sprintf(
-		"%d Function Apps visible; %d carry managed identity context, %d show run-from-package deployment, and %d include Key Vault-backed settings.",
+		"%d Function Apps visible; %d carry managed identity context, %d expose child-function trigger truth, %d visible child functions were enumerated, %d show run-from-package deployment, and %d include Key Vault-backed settings.",
 		len(payload.FunctionApps),
 		identities,
+		triggerVisible,
+		visibleFunctions,
 		runFromPackage,
 		keyVaultBacked,
+	)
+}
+
+func webJobsTakeaway(payload models.WebJobsOutput) string {
+	continuous := 0
+	scheduled := 0
+	triggeredManual := 0
+	identity := 0
+	runCommand := 0
+
+	for _, job := range payload.WebJobs {
+		switch strings.ToLower(strings.TrimSpace(job.Mode)) {
+		case "continuous":
+			continuous++
+		case "scheduled":
+			scheduled++
+		case "triggered/manual":
+			triggeredManual++
+		}
+		if job.ParentIdentityType != nil && *job.ParentIdentityType != "" {
+			identity++
+		}
+		if job.RunCommand != nil && *job.RunCommand != "" {
+			runCommand++
+		}
+	}
+
+	return fmt.Sprintf(
+		"%d WebJobs visible; %d continuous, %d with scheduled rerun clues, %d still in the triggered/manual bucket, %d inherit managed identity context from the parent app, and %d expose a run-command clue.",
+		len(payload.WebJobs),
+		continuous,
+		scheduled,
+		triggeredManual,
+		identity,
+		runCommand,
 	)
 }
 
@@ -711,13 +813,36 @@ func resourceIdentityContext(identityType *string, identityIDs []string) string 
 	return strings.Join(parts, "; ")
 }
 
-func appServiceExposureContext(app models.AppServiceAsset) string {
+func appServiceDeploymentContext(app models.AppServiceAsset) string {
 	parts := make([]string, 0, 2)
-	if app.DefaultHostname != nil && *app.DefaultHostname != "" {
-		parts = append(parts, "hostname")
+	if app.Deployment != nil && *app.Deployment != "" {
+		parts = append(parts, *app.Deployment)
 	}
-	if app.PublicNetworkAccess != nil && *app.PublicNetworkAccess != "" {
-		parts = append(parts, "public="+*app.PublicNetworkAccess)
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func appServiceConfigContext(app models.AppServiceAsset) string {
+	parts := []string{}
+	if app.AppSettingsCount != nil {
+		parts = append(parts, fmt.Sprintf("settings=%d", *app.AppSettingsCount))
+	}
+	if app.KeyVaultReferenceCount != nil {
+		parts = append(parts, fmt.Sprintf("kv-refs=%d", *app.KeyVaultReferenceCount))
+	}
+	if app.ConnectionStringCount != nil {
+		parts = append(parts, fmt.Sprintf("conn=%d", *app.ConnectionStringCount))
+	}
+	if app.KeyVaultConnectionStringCount != nil && *app.KeyVaultConnectionStringCount > 0 {
+		parts = append(parts, fmt.Sprintf("conn-kv=%d", *app.KeyVaultConnectionStringCount))
+	}
+	if app.SensitiveSettingCount != nil && *app.SensitiveSettingCount > 0 {
+		parts = append(parts, fmt.Sprintf("sensitive=%d", *app.SensitiveSettingCount))
+	}
+	if len(app.ConnectionStringTypes) > 0 {
+		parts = append(parts, "types="+strings.Join(app.ConnectionStringTypes, ","))
 	}
 	if len(parts) == 0 {
 		return "-"
@@ -726,7 +851,11 @@ func appServiceExposureContext(app models.AppServiceAsset) string {
 }
 
 func appServicePostureContext(app models.AppServiceAsset) string {
-	parts := []string{fmt.Sprintf("https=%s", yesNo(app.HTTPSOnly))}
+	parts := []string{}
+	if app.PublicNetworkAccess != nil && *app.PublicNetworkAccess != "" {
+		parts = append(parts, "public="+*app.PublicNetworkAccess)
+	}
+	parts = append(parts, fmt.Sprintf("https=%s", yesNo(app.HTTPSOnly)))
 	if app.MinTLSVersion != nil && *app.MinTLSVersion != "" {
 		parts = append(parts, "tls="+*app.MinTLSVersion)
 	}
@@ -753,6 +882,17 @@ func functionRuntimeContext(app models.FunctionAppAsset) string {
 	return strings.Join(parts, "; ")
 }
 
+func functionTriggerContext(app models.FunctionAppAsset) string {
+	if len(app.VisibleFunctions) == 0 {
+		return "-"
+	}
+	parts := []string{fmt.Sprintf("%d fn", len(app.VisibleFunctions))}
+	if len(app.TriggerTypes) > 0 {
+		parts = append(parts, strings.Join(app.TriggerTypes, ", "))
+	}
+	return strings.Join(parts, "; ")
+}
+
 func functionDeploymentContext(app models.FunctionAppAsset) string {
 	parts := make([]string, 0, 3)
 	if app.AzureWebJobsStorageValueType != nil && *app.AzureWebJobsStorageValueType != "" {
@@ -772,6 +912,93 @@ func functionDeploymentContext(app models.FunctionAppAsset) string {
 		return "-"
 	}
 	return strings.Join(parts, "; ")
+}
+
+func webJobStatusContext(job models.WebJobAsset) string {
+	parts := []string{}
+	if job.Status != nil && *job.Status != "" {
+		parts = append(parts, *job.Status)
+	}
+	if job.DetailedStatus != nil && *job.DetailedStatus != "" {
+		parts = append(parts, *job.DetailedStatus)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func webJobParentContext(job models.WebJobAsset) string {
+	parts := []string{}
+	if job.ParentHostname != nil && *job.ParentHostname != "" {
+		parts = append(parts, *job.ParentHostname)
+	}
+	identity := resourceIdentityContext(job.ParentIdentityType, job.ParentIdentityIDs)
+	if identity != "-" {
+		parts = append(parts, identity)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func webJobExecutionContext(job models.WebJobAsset) string {
+	parts := []string{}
+	if job.RunCommand != nil && *job.RunCommand != "" {
+		parts = append(parts, *job.RunCommand)
+	}
+	if job.ScheduleExpression != nil && *job.ScheduleExpression != "" {
+		parts = append(parts, "schedule="+*job.ScheduleExpression)
+	}
+	if job.LatestRunTrigger != nil && *job.LatestRunTrigger != "" {
+		parts = append(parts, "trigger="+*job.LatestRunTrigger)
+	}
+	if job.SchedulerLogsURL != nil && *job.SchedulerLogsURL != "" {
+		parts = append(parts, "scheduler=yes")
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func functionNote(app models.FunctionAppAsset) string {
+	parts := []string{}
+	if summary := strings.TrimSpace(app.Summary); summary != "" {
+		parts = append(parts, summary)
+	}
+	if len(app.VisibleFunctions) == 0 {
+		return strings.Join(parts, "\n")
+	}
+
+	lines := make([]string, 0, len(app.VisibleFunctions))
+	for _, function := range app.VisibleFunctions {
+		line := function.Name
+		detailParts := []string{}
+		if function.TriggerType != nil && strings.TrimSpace(*function.TriggerType) != "" {
+			detailParts = append(detailParts, *function.TriggerType)
+		}
+		if function.IsDisabled != nil {
+			if *function.IsDisabled {
+				detailParts = append(detailParts, "disabled")
+			} else {
+				detailParts = append(detailParts, "enabled")
+			}
+		}
+		if function.InvokeURLTemplate != nil && strings.TrimSpace(*function.InvokeURLTemplate) != "" {
+			detailParts = append(detailParts, "invoke URL visible")
+		}
+		if len(function.BindingTypes) > 0 {
+			detailParts = append(detailParts, "bindings="+strings.Join(function.BindingTypes, ", "))
+		}
+		if len(detailParts) > 0 {
+			line += " [" + strings.Join(detailParts, "; ") + "]"
+		}
+		lines = append(lines, line)
+	}
+	parts = append(parts, "Visible child functions: "+strings.Join(lines, "; "))
+	return strings.Join(parts, "\n")
 }
 
 func functionPostureContext(app models.FunctionAppAsset) string {

@@ -62,35 +62,16 @@ func buildPersistenceLogicAppsOutput(
 		stringPtrValue(permissions.Metadata.TenantID),
 	)
 
-	permissionsByPrincipal := make(map[string]models.PermissionRow, len(permissions.Permissions))
-	currentIdentity := models.PermissionRow{}
-	currentIdentityVisible := false
-	for _, permission := range permissions.Permissions {
-		if permission.PrincipalID == "" {
-			continue
-		}
-		permissionsByPrincipal[permission.PrincipalID] = permission
-		if permission.IsCurrentIdentity && !currentIdentityVisible {
-			currentIdentity = permission
-			currentIdentityVisible = true
-		}
-	}
-
-	currentIdentityAssignments := make([]models.RoleAssignment, 0)
-	for _, assignment := range rbac.RoleAssignments {
-		if currentIdentityVisible && assignment.PrincipalID == currentIdentity.PrincipalID {
-			currentIdentityAssignments = append(currentIdentityAssignments, assignment)
-		}
-	}
+	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
 
 	workflows := sortedByLess(logicApps.Workflows, logicAppLess)
 	rows := make([]models.PersistenceLogicAppWorkflow, 0, len(workflows))
 	for _, workflow := range workflows {
-		control, controlOK := persistenceAutomationControl(workflow.ID, currentIdentityAssignments)
-		currentContext := persistenceCurrentIdentityContext(currentIdentity, control, controlOK)
+		control, controlOK := persistenceAutomationControl(workflow.ID, evidence.currentIdentityAssignments)
+		currentContext := persistenceCurrentIdentityContext(evidence.currentIdentity, control, controlOK)
 		capabilitySteps := persistenceLogicAppCapabilitySteps(controlOK)
 		executionContextOptions := persistenceLogicAppExecutionContextOptions(workflow)
-		strongestContext, strongestContextHasAzureControl := persistenceLogicAppExecutionContext(workflow, permissionsByPrincipal)
+		strongestContext, strongestContextHasAzureControl := persistenceLogicAppExecutionContext(workflow, evidence.permissionsByPrincipal, evidence.assignmentsByPrincipal)
 		nearbyNames := persistenceLogicAppNearbyNames(workflows, workflow.Name)
 
 		rows = append(rows, models.PersistenceLogicAppWorkflow{
@@ -101,7 +82,7 @@ func buildPersistenceLogicAppsOutput(
 			CapabilitySteps:         capabilitySteps,
 			CurrentIdentityContext:  currentContext,
 			ExecutionContextOptions: executionContextOptions,
-			CurrentState: models.PersistenceLogicAppState{
+			CurrentState: models.PersistenceLogicAppWorkflowState{
 				Classification:                   workflow.Classification,
 				Platform:                         workflow.Platform,
 				WorkflowKind:                     workflow.WorkflowKind,
@@ -201,44 +182,30 @@ func persistenceLogicAppExecutionContextOptions(workflow models.LogicAppWorkflow
 func persistenceLogicAppExecutionContext(
 	workflow models.LogicAppWorkflowAsset,
 	permissionsByPrincipal map[string]models.PermissionRow,
+	assignmentsByPrincipal map[string][]models.RoleAssignment,
 ) (*models.PersistenceRoleContext, bool) {
-	if workflow.PrincipalID == nil || strings.TrimSpace(*workflow.PrincipalID) == "" {
-		return nil, false
-	}
-
-	name := persistenceLogicAppIdentityName(workflow)
-	permission, ok := permissionsByPrincipal[*workflow.PrincipalID]
-	if !ok {
-		return &models.PersistenceRoleContext{
-			Name:         name,
-			Kind:         "logic-app-execution-context",
-			PrincipalID:  workflow.PrincipalID,
-			IdentityType: workflow.IdentityType,
-			RoleNames:    []string{},
-			ScopeIDs:     []string{},
-			Summary:      fmt.Sprintf("Logic App identity `%s` is visible here, but no matching Azure role context is confirmed from current scope.", name),
-		}, false
-	}
-
-	roleNames := append([]string{}, permission.HighImpactRoles...)
-	if len(roleNames) == 0 {
-		roleNames = append(roleNames, permission.AllRoleNames...)
-	}
-
-	summary := fmt.Sprintf("The strongest visible execution context here is the Logic App identity `%s`, which already holds %s.", name, persistenceRoleSummary(roleNames, permission.ScopeIDs))
-	if !permission.Privileged {
-		summary = fmt.Sprintf("Logic App identity `%s` is visible here, but no high-impact Azure role assignments are confirmed from current scope.", name)
-	}
-
-	return &models.PersistenceRoleContext{
-		Name:         name,
-		Kind:         "logic-app-execution-context",
-		PrincipalID:  workflow.PrincipalID,
-		IdentityType: workflow.IdentityType,
-		RoleNames:    dedupeStrings(roleNames),
-		ScopeIDs:     dedupeStrings(permission.ScopeIDs),
-		Summary:      summary,
-	}, permission.Privileged
+	context, carriesAzureControl, _ := persistencePrincipalRoleContext(persistencePrincipalRoleContextOptions{
+		fallbackName:           persistenceLogicAppIdentityName(workflow),
+		kind:                   "logic-app-execution-context",
+		principalID:            workflow.PrincipalID,
+		identityType:           workflow.IdentityType,
+		permissionsByPrincipal: permissionsByPrincipal,
+		assignmentsByPrincipal: assignmentsByPrincipal,
+		resolvedSummary: func(name string, roleSummary string) string {
+			return fmt.Sprintf("The strongest visible execution context here is the Logic App identity `%s`, which already holds %s.", name, roleSummary)
+		},
+		lowerImpactSummary: func(name string) string {
+			return fmt.Sprintf("Logic App identity `%s` is visible here, but only lower-impact Azure role assignments are visible from current scope.", name)
+		},
+		unresolvedPrivilegedSummary: func(name string, roleSummary string) string {
+			return fmt.Sprintf("The strongest visible execution context here is the Logic App identity `%s`, which already holds %s.", name, roleSummary)
+		},
+		noAssignmentsSummary: func(name string) string {
+			return fmt.Sprintf("Logic App identity `%s` is visible here, but no Azure role-assignment rows are found for its principal ID.", name)
+		},
+		rbacOnlyCarriesAzureControl: true,
+	})
+	return context, carriesAzureControl
 }
 
 func persistenceLogicAppIdentityName(workflow models.LogicAppWorkflowAsset) string {

@@ -13,6 +13,14 @@ func persistenceTableRenderer(payload any) (string, error) {
 		return persistenceOverviewTable(out), nil
 	case models.PersistenceAutomationOutput:
 		return persistenceAutomationTable(out), nil
+	case models.PersistenceAppServiceOutput:
+		return persistenceAppServiceTable(out), nil
+	case models.PersistenceWebJobsOutput:
+		return persistenceWebJobsTable(out), nil
+	case models.PersistenceAzureMLOutput:
+		return persistenceAzureMLTable(out), nil
+	case models.PersistenceFunctionsOutput:
+		return persistenceFunctionsTable(out), nil
 	case models.PersistenceLogicAppsOutput:
 		return persistenceLogicAppsTable(out), nil
 	default:
@@ -25,16 +33,14 @@ func persistenceOverviewTable(payload models.PersistenceOverviewOutput) string {
 	for _, surface := range payload.Surfaces {
 		rows = append(rows, []string{
 			surface.Surface,
-			surface.State,
-			surface.OperatorQuestion,
-			strings.Join(surface.BackingCommands, ", "),
+			surface.Summary,
 		})
 	}
 	return renderListTable(
 		"ho-azure persistence",
-		[]string{"surface", "state", "operator question", "backing commands"},
+		[]string{"surface", "summary"},
 		rows,
-		[]string{"no persistence surfaces implemented", "", "", ""},
+		[]string{"no persistence surfaces available", ""},
 		persistenceOverviewTakeaway(payload),
 	)
 }
@@ -53,18 +59,17 @@ func persistenceAutomationTable(payload models.PersistenceAutomationOutput) stri
 	lead := persistenceAutomationLeadAccount(payload.AutomationAccounts)
 	lines := []string{
 		"Automation capability",
-		renderAlignedPipeTable(
+		"",
+		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
 			persistenceAutomationCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.AutomationAccounts) > 1 {
-		lines = append(lines, "This walkthrough shows one currently visible Automation persistence path. The inventory below lists the other visible accounts without repeating the same narrative.")
+		lines = append(lines, "This walkthrough shows the strongest currently visible Automation persistence path. The inventory below lists the other visible accounts without repeating the same narrative.")
 	}
 	lines = append(lines,
 		persistenceAutomationExplanation(lead),
-		"",
-		"Reminder: a runbook does not run continuously and is not a backdoor listening on a port. In this context, persistence means Azure stores code plus execution context plus a trigger that can invoke it again later.",
 		"",
 		"Visible Automation Accounts",
 		renderAlignedPipeTable(
@@ -76,6 +81,126 @@ func persistenceAutomationTable(payload models.PersistenceAutomationOutput) stri
 		lines = append(lines, "", "Still unmapped", unmapped)
 	}
 
+	return strings.Join(lines, "\n")
+}
+
+func persistenceAppServiceTable(payload models.PersistenceAppServiceOutput) string {
+	if len(payload.AppServices) == 0 {
+		return renderListTable(
+			"ho-azure persistence app-service",
+			[]string{"app service", "status"},
+			nil,
+			[]string{"No visible App Services were confirmed from current scope.", ""},
+			"0 App Services visible; no App Service persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceAppServiceLeadApp(payload.AppServices)
+	lines := []string{
+		"App Service capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceAppServiceCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.AppServices) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible App Service persistence path. The inventory below lists the other visible App Services without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceAppServiceExplanation(lead),
+		"",
+		"Visible App Services",
+		renderAlignedPipeTable(
+			[]string{"app service", "resource group", "visible state", "execution context"},
+			persistenceAppServiceInventoryRows(payload.AppServices),
+		),
+	)
+	if items := persistenceAppServiceCombinedStillUnmapped(payload.AppServices); len(items) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(items))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func persistenceWebJobsTable(payload models.PersistenceWebJobsOutput) string {
+	if len(payload.WebJobs) == 0 {
+		return renderListTable(
+			"ho-azure persistence webjobs",
+			[]string{"webjob", "status"},
+			nil,
+			[]string{"No visible WebJobs were confirmed from current scope.", ""},
+			"0 WebJobs visible; no WebJobs persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceWebJobsLeadJob(payload.WebJobs)
+	lines := []string{
+		"WebJob capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceWebJobsCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.WebJobs) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible WebJobs persistence path. The inventory below lists the other visible WebJobs without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceWebJobsExplanation(lead),
+		"",
+		"Visible WebJobs",
+		renderAlignedPipeTable(
+			[]string{"webjob", "parent app", "visible state", "execution context"},
+			persistenceWebJobsInventoryRows(payload.WebJobs),
+		),
+	)
+	if items := persistenceWebJobsCombinedStillUnmapped(payload.WebJobs); len(items) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(items))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func persistenceAzureMLTable(payload models.PersistenceAzureMLOutput) string {
+	if len(payload.Workspaces) == 0 {
+		return renderListTable(
+			"ho-azure persistence azure-ml",
+			[]string{"workspace", "status"},
+			nil,
+			[]string{"No visible Azure ML workspaces were confirmed from current scope.", ""},
+			"0 Azure ML workspaces visible; no Azure ML persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceAzureMLLeadWorkspace(payload.Workspaces)
+	lines := []string{
+		"Azure ML capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceAzureMLCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.Workspaces) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible Azure ML persistence path. The inventory below lists the other visible workspaces without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceAzureMLExplanation(lead),
+		"",
+		"Visible Azure ML Workspaces",
+		renderAlignedPipeTable(
+			[]string{"workspace", "resource group", "visible state", "execution context"},
+			persistenceAzureMLInventoryRows(payload.Workspaces),
+		),
+	)
+	defaultItems, currentGapItems := persistenceAzureMLBoundarySections(payload.Workspaces)
+	if len(defaultItems) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(defaultItems))
+	}
+	if len(currentGapItems) > 0 {
+		lines = append(lines, "", "Current output gap", renderBulletList(currentGapItems))
+	}
 	return strings.Join(lines, "\n")
 }
 
@@ -99,12 +224,10 @@ func persistenceLogicAppsTable(payload models.PersistenceLogicAppsOutput) string
 		),
 	}
 	if len(payload.Workflows) > 1 {
-		lines = append(lines, "This walkthrough shows one currently visible Logic App persistence path. The inventory below lists the other visible workflows without repeating the same narrative.")
+		lines = append(lines, "This walkthrough shows the strongest currently visible Logic App persistence path. The inventory below lists the other visible workflows without repeating the same narrative.")
 	}
 	lines = append(lines,
 		persistenceLogicAppExplanation(lead),
-		"",
-		"Reminder: Logic App persistence is about a stored workflow plus a trigger plus access that remains valid, not malware living on a host.",
 		"",
 		"Visible Logic Apps",
 		renderAlignedPipeTable(
@@ -119,14 +242,65 @@ func persistenceLogicAppsTable(payload models.PersistenceLogicAppsOutput) string
 	return strings.Join(lines, "\n")
 }
 
+func persistenceFunctionsTable(payload models.PersistenceFunctionsOutput) string {
+	if len(payload.FunctionApps) == 0 {
+		return renderListTable(
+			"ho-azure persistence functions",
+			[]string{"function app", "status"},
+			nil,
+			[]string{"No visible Function Apps were confirmed from current scope.", ""},
+			"0 Function Apps visible; no Azure Functions persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceFunctionsLeadApp(payload.FunctionApps)
+	lines := []string{
+		"Function capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceFunctionsCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.FunctionApps) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible Azure Functions persistence path. The inventory below lists the other visible Function Apps without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceFunctionsExplanation(lead),
+		"",
+		"Visible Function Apps",
+		renderAlignedPipeTable(
+			[]string{"function app", "resource group", "visible state", "execution context"},
+			persistenceFunctionsInventoryRows(payload.FunctionApps),
+		),
+	)
+	defaultItems, currentGapItems := persistenceFunctionsBoundarySections(payload.FunctionApps)
+	if len(defaultItems) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(defaultItems))
+	}
+	if len(currentGapItems) > 0 {
+		lines = append(lines, "", "Current output gap", renderBulletList(currentGapItems))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func persistenceAppServiceCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
+	rows := make([][]string, 0, len(steps))
+	for _, step := range steps {
+		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
+	}
+	return rows
+}
+
 func persistenceOverviewTakeaway(payload models.PersistenceOverviewOutput) string {
 	if len(payload.Surfaces) == 0 {
-		return "No persistence surfaces are implemented yet."
+		return "No persistence surfaces are available yet."
 	}
 	if len(payload.Surfaces) == 1 {
-		return fmt.Sprintf("1 persistence surface is implemented; start with %s.", payload.Surfaces[0].Surface)
+		return fmt.Sprintf("1 persistence surface is available; start with %s.", payload.Surfaces[0].Surface)
 	}
-	return fmt.Sprintf("%d persistence surfaces are implemented; start with the service that best matches your current question.", len(payload.Surfaces))
+	return fmt.Sprintf("%d persistence surfaces are available; start with the service that best matches your current question.", len(payload.Surfaces))
 }
 
 func persistenceAutomationCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
@@ -138,6 +312,30 @@ func persistenceAutomationCapabilityRows(steps []models.PersistenceCapabilitySte
 }
 
 func persistenceLogicAppCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
+	rows := make([][]string, 0, len(steps))
+	for _, step := range steps {
+		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
+	}
+	return rows
+}
+
+func persistenceFunctionsCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
+	rows := make([][]string, 0, len(steps))
+	for _, step := range steps {
+		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
+	}
+	return rows
+}
+
+func persistenceWebJobsCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
+	rows := make([][]string, 0, len(steps))
+	for _, step := range steps {
+		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
+	}
+	return rows
+}
+
+func persistenceAzureMLCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
 	rows := make([][]string, 0, len(steps))
 	for _, step := range steps {
 		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
@@ -183,6 +381,10 @@ func renderAlignedPipeTable(headers []string, rows [][]string) string {
 	return builder.String()
 }
 
+func renderPersistenceSectionTable(headers []string, rows [][]string) string {
+	return strings.TrimRight(renderStructuredTableWithTitle("", headers, rows, false), "\n")
+}
+
 func padRight(value string, width int) string {
 	if len(value) >= width {
 		return value
@@ -191,14 +393,32 @@ func padRight(value string, width int) string {
 }
 
 func persistenceAutomationExplanation(account models.PersistenceAutomationAccount) string {
-	lines := []string{
-		"- " + persistenceAutomationAccountBullet(account),
-		"- " + persistenceAutomationRunbookBullet(account),
-		"- " + persistenceAutomationCodeBullet(account),
-		"- " + persistenceAutomationPublishBullet(account),
-		"- " + persistenceAutomationExecutionContextBullet(account),
-		"  Managed identity, stored credentials, connections, certificates, variables, or other Automation assets may provide that execution context.",
+	lines := []string{"- " + persistenceAutomationAccountBullet(account)}
+	if persistenceCapabilityStatus(account.CapabilitySteps, "create or modify account") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+
+	lines = append(lines, "- "+persistenceAutomationRunbookBullet(account))
+	if persistenceCapabilityStatus(account.CapabilitySteps, "add or edit runbook") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
+	}
+
+	lines = append(lines, "- "+persistenceAutomationCodeBullet(account))
+	if persistenceCapabilityStatus(account.CapabilitySteps, "upload or replace code") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
+	}
+
+	lines = append(lines, "- "+persistenceAutomationPublishBullet(account))
+	if persistenceCapabilityStatus(account.CapabilitySteps, "publish runbook") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
+	}
+
+	lines = append(lines, "- "+persistenceAutomationExecutionContextBullet(account))
+	if persistenceCapabilityStatus(account.CapabilitySteps, "attach or reuse exec ctx") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
+	}
+
+	lines = append(lines, "  Managed identity, stored credentials, connections, certificates, variables, or other Automation assets may provide that execution context.")
 	if account.CurrentIdentityContext != nil && strings.TrimSpace(account.CurrentIdentityContext.Summary) != "" {
 		lines = append(lines, "  "+account.CurrentIdentityContext.Summary)
 	}
@@ -206,11 +426,16 @@ func persistenceAutomationExplanation(account models.PersistenceAutomationAccoun
 		lines = append(lines, "  "+ctx.Summary)
 	}
 	lines = append(lines, "- "+persistenceAutomationTriggerBullet(account))
+	if persistenceCapabilityStatus(account.CapabilitySteps, "create schedule") != "yes" ||
+		persistenceCapabilityStatus(account.CapabilitySteps, "link schedule to runbook") != "yes" ||
+		persistenceCapabilityStatus(account.CapabilitySteps, "create webhook") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
+	}
 	lines = append(lines, "- "+persistenceAutomationRepurposeBullet(account))
 	if nearby := persistenceAutomationNearbyNamesLine(account.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
-	return strings.Join(lines, "\n")
+	return renderPersistenceWalkthrough(lines)
 }
 
 func persistenceAutomationAccountBullet(account models.PersistenceAutomationAccount) string {
@@ -281,6 +506,21 @@ func persistenceAutomationRepurposeBullet(account models.PersistenceAutomationAc
 	}
 }
 
+func persistenceAutomationVisibilityLine(account models.PersistenceAutomationAccount) string {
+	state := strings.TrimSpace(persistenceAutomationInventoryState(account))
+	execution := strings.TrimSpace(persistenceAutomationInventoryExecutionContext(account))
+	switch {
+	case state != "" && state != "none visible" && execution != "" && execution != "none visible":
+		return "Visibility still shows " + state + " with execution context " + execution + "; that is enough to judge whether this account already has runnable automation, trigger posture, or reuse value if stronger control is obtained later."
+	case state != "" && state != "none visible":
+		return "Visibility still shows " + state + "; that is enough to judge whether this account already has runnable automation, trigger posture, or reuse value if stronger control is obtained later."
+	case execution != "" && execution != "none visible":
+		return "Visibility still shows execution context " + execution + "; that is enough to judge whether this account is worth revisiting if stronger control is obtained later."
+	default:
+		return "Visibility still confirms this Automation account exists, even though the current identity does not yet have a proven write path here."
+	}
+}
+
 func persistenceAutomationNearbyNamesLine(names []string) string {
 	if len(names) == 0 {
 		return ""
@@ -324,7 +564,672 @@ func persistenceLogicAppExplanation(workflow models.PersistenceLogicAppWorkflow)
 	if nearby := persistenceAutomationNearbyNamesLine(workflow.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
-	return strings.Join(lines, "\n")
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceFunctionsExplanation(app models.PersistenceFunctionApp) string {
+	lines := []string{"- " + persistenceFunctionsHostBullet(app)}
+	if persistenceCapabilityStatus(app.CapabilitySteps, "create or modify function app") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceFunctionsHostWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceFunctionsCodeBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "deploy or replace code") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceFunctionsCodeWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceFunctionsTriggerBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "repurpose trigger posture") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceFunctionsTriggerWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceFunctionsConfigBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "change app settings or deployment config") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines,
+		"  This is where runtime behavior, package behavior, and connection material get shaped for this Function App.",
+		"  App settings can control service endpoints, feature toggles, and other runtime behavior the function will use when the trigger fires.",
+	)
+
+	lines = append(lines, "- "+persistenceFunctionsExecutionContextBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "attach or reuse exec ctx") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines,
+		"  In Functions, execution context usually comes from the managed identity attached to this Function App.",
+		"  That can be a system-assigned identity, a user-assigned identity, or connection material referenced through settings the code will use later.",
+	)
+	if app.CurrentIdentityContext != nil && strings.TrimSpace(app.CurrentIdentityContext.Summary) != "" {
+		lines = append(lines, "  "+app.CurrentIdentityContext.Summary)
+	}
+	if ctx := app.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
+		lines = append(lines, "  "+ctx.Summary)
+	}
+
+	lines = append(lines, "- "+persistenceFunctionsEnableBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "restart or enable function host") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceFunctionsVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceFunctionsEnableWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceFunctionsRepurposeBullet(app))
+	lines = append(lines, persistenceFunctionsRepurposeWalkthrough(app)...)
+	if nearby := persistenceAutomationNearbyNamesLine(app.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceAppServiceExplanation(app models.PersistenceAppService) string {
+	lines := []string{"- " + persistenceAppServiceHostBullet(app)}
+	if persistenceCapabilityStatus(app.CapabilitySteps, "create or reuse app service") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceAppServiceVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceAppServiceHostWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceAppServiceDeploymentPathBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "set or reuse deployment path") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceAppServiceVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceAppServiceDeploymentPathWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceAppServiceConfigBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "change app settings or identity attachment") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceAppServiceVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceAppServiceConfigWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceAppServiceCodeBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "deploy or replace application code") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceAppServiceVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceAppServiceCodeWalkthrough(app)...)
+
+	lines = append(lines, "- "+persistenceAppServiceExposureBullet(app))
+	if persistenceCapabilityStatus(app.CapabilitySteps, "expose or reuse HTTP/HTTPS entry path") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceAppServiceVisibilityLines(app), app.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceAppServiceExposureWalkthrough(app)...)
+
+	lines = append(lines,
+		"- This App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth.",
+		"- Because the app stays deployed, reachable, and trusted until changed, this remains reusable App Service persistence even after the original session is gone.",
+	)
+	if nearby := persistenceAutomationNearbyNamesLine(app.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceWebJobsExplanation(job models.PersistenceWebJob) string {
+	lines := []string{"- " + persistenceWebJobsHostBullet(job)}
+	if persistenceCapabilityStatus(job.CapabilitySteps, "create or reuse parent app service") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceWebJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceWebJobsHostWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceWebJobsPackageBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "add or replace webjob package") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceWebJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceWebJobsPackageWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceWebJobsModeBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "set or reuse webjob mode") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceWebJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceWebJobsModeWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceWebJobsExecutionContextBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "reuse inherited app execution context") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceWebJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceWebJobsExecutionContextWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceWebJobsRerunBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "leave or repurpose rerun path") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceWebJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceWebJobsRerunWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceWebJobsRepurposeBullet(job))
+	lines = append(lines, persistenceWebJobsRepurposeWalkthrough(job)...)
+	if nearby := persistenceWebJobNearbyNamesLine(job.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceTruncatedWalkthrough(lines []string, visibilityLines []string, nearbyNames []string) string {
+	for _, line := range visibilityLines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	if nearby := persistenceAutomationNearbyNamesLine(nearbyNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceVisibilityFallbackLines(
+	state string,
+	execution string,
+	stateCapability string,
+	revisitCapability string,
+	defaultLine string,
+) []string {
+	switch {
+	case state != "" && state != "none visible" && execution != "" && execution != "none visible":
+		return []string{
+			"  Visibility still shows " + state + ".",
+			"  Visible execution context here is " + execution + ".",
+			"  That is enough to judge whether " + stateCapability,
+		}
+	case state != "" && state != "none visible":
+		return []string{
+			"  Visibility still shows " + state + ".",
+			"  That is enough to judge whether " + stateCapability,
+		}
+	case execution != "" && execution != "none visible":
+		return []string{
+			"  Visible execution context here is " + execution + ".",
+			"  That is enough to judge whether " + revisitCapability,
+		}
+	default:
+		return []string{defaultLine}
+	}
+}
+
+func renderPersistenceWalkthrough(lines []string) string {
+	formatted := make([]string, 0, len(lines)+8)
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "- ") {
+			if len(formatted) > 0 {
+				formatted = append(formatted, "")
+			}
+			formatted = append(formatted, line)
+			continue
+		}
+		if strings.HasPrefix(line, "  ") {
+			formatted = append(formatted, "   "+strings.TrimPrefix(line, "  "))
+			continue
+		}
+		formatted = append(formatted, line)
+	}
+	return strings.Join(formatted, "\n")
+}
+
+func persistenceFunctionsHostBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "create or modify function app") {
+	case "yes":
+		return "Current identity can create a new Function App or reuse this existing Function App."
+	default:
+		return "Current identity does not yet have a proven path to create a new Function App or reuse this existing Function App."
+	}
+}
+
+func persistenceFunctionsHostWalkthrough(app models.PersistenceFunctionApp) []string {
+	return []string{
+		"  The Function App is the Azure-side host for function code, app settings, identity, trigger configuration, and the deployed package.",
+	}
+}
+
+func persistenceFunctionsCodeBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "deploy or replace code") {
+	case "yes":
+		return "Current identity can deploy or replace the function package Azure will load in this Function App."
+	default:
+		return "Current identity does not yet have a proven path to deploy or replace the function package Azure would load in this Function App."
+	}
+}
+
+func persistenceFunctionsCodeWalkthrough(app models.PersistenceFunctionApp) []string {
+	if persistenceCapabilityStatus(app.CapabilitySteps, "deploy or replace code") != "yes" {
+		return []string{"  The current read path does not yet tie Function App control to a defended deploy path here."}
+	}
+
+	lines := []string{
+		"  Because the current identity already controls this Function App, zip deploy, publish, or package replacement are part of the defended Functions persistence path here.",
+		"  Common deploy paths here include ZIP package deployment, pipeline deployment, run-from-package, or local project publish.",
+	}
+	if deployment := strings.TrimSpace(valueOrEmpty(app.CurrentState.Deployment)); deployment != "" {
+		for _, item := range strings.Split(deployment, ";") {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			lines = append(lines, "  Visible deployment posture includes "+trimmed+".")
+		}
+	}
+	if app.CurrentState.RunFromPackage != nil && *app.CurrentState.RunFromPackage {
+		lines = append(lines, "  Run-from-package is already enabled.")
+	}
+	if value := strings.TrimSpace(valueOrEmpty(app.CurrentState.AzureWebJobsStorageValueType)); value != "" {
+		lines = append(lines, "  AzureWebJobsStorage is "+value+".")
+	}
+	return lines
+}
+
+func persistenceFunctionsExecutionContextBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "attach or reuse exec ctx") {
+	case "yes":
+		return "Current identity can attach or reuse execution context for this Function App."
+	default:
+		return "Current identity does not yet have a proven path to attach or reuse execution context for this Function App."
+	}
+}
+
+func persistenceFunctionsConfigBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "change app settings or deployment config") {
+	case "yes":
+		return "Current identity can change app settings, identity attachment, and deployment configuration for this Function App."
+	default:
+		return "Current identity does not yet have a proven path to change app settings, identity attachment, or deployment configuration for this Function App."
+	}
+}
+
+func persistenceFunctionsTriggerBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "repurpose trigger posture") {
+	case "yes":
+		if strings.TrimSpace(valueOrEmpty(app.CurrentState.Hostname)) != "" || strings.EqualFold(valueOrEmpty(app.CurrentState.PublicNetworkAccess), "Enabled") {
+			return "Current identity can repurpose this Function App's trigger exposure so Azure has a way to run it again later, including HTTP-style externally reachable entrypoints."
+		}
+		return "Current identity can repurpose this Function App's trigger posture so Azure has a way to run it again later."
+	default:
+		return "Current identity does not yet have a proven path to repurpose this Function App's trigger posture."
+	}
+}
+
+func persistenceFunctionsTriggerWalkthrough(app models.PersistenceFunctionApp) []string {
+	if len(app.CurrentState.TriggerTypes) == 0 && len(app.CurrentState.VisibleFunctions) == 0 {
+		return []string{
+			"  Common trigger paths here include HTTP, timer, queue, Service Bus, or storage/event-driven execution.",
+			"  The current collector now asks Azure for child functions, but no per-function trigger detail was confirmed from the current read path here.",
+		}
+	}
+
+	lines := []string{}
+	if len(app.CurrentState.TriggerTypes) > 0 {
+		lines = append(lines, "  Visible child functions here show "+persistenceJoinedOrNone(app.CurrentState.TriggerTypes)+" trigger paths.")
+	}
+	if len(app.CurrentState.VisibleFunctions) > 0 {
+		lines = append(lines, "  Current visible functions include "+persistenceFunctionsVisibleFunctionSummary(app.CurrentState.VisibleFunctions)+".")
+	}
+	if detail := persistenceFunctionsTriggerBoundaryLine(app.CurrentState.VisibleFunctions); detail != "" {
+		lines = append(lines, detail)
+	}
+	lines = append(lines, "  The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.")
+	lines = append(lines, "  That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.")
+	return lines
+}
+
+func persistenceFunctionsEnableBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "restart or enable function host") {
+	case "yes":
+		return "Current identity can restart or enable the Function App so Azure is ready to run it again when the trigger path is hit."
+	default:
+		return "Current identity does not yet have a proven path to restart or enable this Function App for later trigger-driven execution."
+	}
+}
+
+func persistenceFunctionsEnableWalkthrough(app models.PersistenceFunctionApp) []string {
+	return []string{
+		"  Once the package is in place and the Function App is active, Azure can invoke it whenever the trigger condition is met.",
+	}
+}
+
+func persistenceFunctionsRepurposeBullet(app models.PersistenceFunctionApp) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "create or modify function app") {
+	case "yes":
+		return "Current identity can repurpose an existing Function App instead of creating a new one."
+	default:
+		return "Current identity does not yet have a proven path to repurpose this existing Function App."
+	}
+}
+
+func persistenceFunctionsRepurposeWalkthrough(app models.PersistenceFunctionApp) []string {
+	return []string{
+		"  Reusing an existing Function App can blend in better than standing up a brand-new serverless entrypoint.",
+	}
+}
+
+func persistenceFunctionsVisibilityLines(app models.PersistenceFunctionApp) []string {
+	state := strings.TrimSpace(persistenceFunctionsInventoryState(app))
+	execution := strings.TrimSpace(persistenceFunctionsInventoryExecutionContext(app))
+	return persistenceVisibilityFallbackLines(
+		state,
+		execution,
+		"this Function App already has trigger exposure, deployment signals, or reuse value if stronger control is obtained later.",
+		"this Function App is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this Function App exists, even though the current identity does not yet have a proven write path here.",
+	)
+}
+
+func persistenceAppServiceHostBullet(app models.PersistenceAppService) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "create or reuse app service") {
+	case "yes":
+		return "Current identity can create a new App Service app or reuse this existing app."
+	default:
+		return "Current identity does not yet have a proven path to create a new App Service app or reuse this existing app."
+	}
+}
+
+func persistenceAppServiceHostWalkthrough(app models.PersistenceAppService) []string {
+	return []string{
+		"  The App Service app is the Azure-side host that keeps the web workload deployed, configurable, identity-backed, and reachable over time.",
+	}
+}
+
+func persistenceAppServiceDeploymentPathBullet(app models.PersistenceAppService) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "set or reuse deployment path") {
+	case "yes":
+		return "Current identity can set or reuse the deployment path this App Service will load."
+	default:
+		return "Current identity does not yet have a proven path to set or reuse the deployment path this App Service will load."
+	}
+}
+
+func persistenceAppServiceDeploymentPathWalkthrough(app models.PersistenceAppService) []string {
+	lines := []string{
+		"  This is distinct from the application content itself: it is the trust path Azure uses to decide where code arrives from.",
+	}
+	if deployment := strings.TrimSpace(valueOrEmpty(app.CurrentState.Deployment)); deployment != "" {
+		lines = append(lines, "  Visible deployment signals here include "+deployment+".")
+	}
+	return lines
+}
+
+func persistenceAppServiceConfigBullet(app models.PersistenceAppService) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "change app settings or identity attachment") {
+	case "yes":
+		return "Current identity can change app settings and attach or reuse managed identity for this App Service."
+	default:
+		return "Current identity does not yet have a proven path to change app settings or attach or reuse managed identity for this App Service."
+	}
+}
+
+func persistenceAppServiceConfigWalkthrough(app models.PersistenceAppService) []string {
+	lines := []string{
+		"  This is the execution-power layer for App Service: settings, connection strings, and workload identity shape what the deployed app can reach later.",
+	}
+	configParts := []string{}
+	if count := intPtrString(app.CurrentState.AppSettingsCount); count != "" {
+		configParts = append(configParts, count+" app setting(s)")
+	}
+	if count := intPtrString(app.CurrentState.KeyVaultReferenceCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" Key Vault-backed setting(s)")
+	}
+	if count := intPtrString(app.CurrentState.SensitiveSettingCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" sensitive-looking setting name(s)")
+	}
+	if count := intPtrString(app.CurrentState.ConnectionStringCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" connection string(s)")
+	}
+	if count := intPtrString(app.CurrentState.KeyVaultConnectionStringCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" Key Vault-backed connection string(s)")
+	}
+	if len(app.CurrentState.ConnectionStringTypes) > 0 {
+		configParts = append(configParts, "connection types "+strings.Join(app.CurrentState.ConnectionStringTypes, ", "))
+	}
+	if len(configParts) > 0 {
+		lines = append(lines, "  Visible config posture here includes "+strings.Join(configParts, ", ")+".")
+	}
+	if len(app.CurrentState.VisibleSensitiveSettingNames) > 0 {
+		quoted := make([]string, 0, len(app.CurrentState.VisibleSensitiveSettingNames))
+		for _, item := range app.CurrentState.VisibleSensitiveSettingNames {
+			quoted = append(quoted, "`"+item+"`")
+		}
+		lines = append(lines, "  Visible sensitive-looking setting names include "+renderNaturalJoin(quoted)+".")
+	}
+	if app.CurrentIdentityContext != nil && strings.TrimSpace(app.CurrentIdentityContext.Summary) != "" {
+		lines = append(lines, "  "+app.CurrentIdentityContext.Summary)
+	}
+	if ctx := app.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
+		lines = append(lines, "  "+ctx.Summary)
+	}
+	return lines
+}
+
+func persistenceAppServiceCodeBullet(app models.PersistenceAppService) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "deploy or replace application code") {
+	case "yes":
+		return "Current identity can deploy or replace the application code this App Service will run."
+	default:
+		return "Current identity does not yet have a proven path to deploy or replace the application code this App Service will run."
+	}
+}
+
+func persistenceAppServiceCodeWalkthrough(app models.PersistenceAppService) []string {
+	lines := []string{
+		"  This is the runnable content layer, separate from the deployment path that feeds it.",
+		"  Because the current identity already controls this App Service, package replacement, source-based deployment, or pipeline-backed redeploy are part of the defended App Service persistence path here.",
+	}
+	if app.CurrentState.RunFromPackage != nil {
+		if *app.CurrentState.RunFromPackage {
+			lines = append(lines, "  Run-from-package is already enabled.")
+		} else {
+			lines = append(lines, "  Run-from-package is not currently enabled.")
+		}
+	}
+	return lines
+}
+
+func persistenceAppServiceExposureBullet(app models.PersistenceAppService) string {
+	switch persistenceCapabilityStatus(app.CapabilitySteps, "expose or reuse HTTP/HTTPS entry path") {
+	case "yes":
+		return "Current identity can expose or reuse this app's HTTP or HTTPS entry path so it remains reachable later."
+	default:
+		return "Current identity does not yet have a proven path to expose or reuse this app's HTTP or HTTPS entry path."
+	}
+}
+
+func persistenceAppServiceExposureWalkthrough(app models.PersistenceAppService) []string {
+	lines := []string{
+		"  App Service re-entry is usually the app's reachable HTTP or HTTPS path, not a background process on a VM.",
+	}
+	if hostname := strings.TrimSpace(valueOrEmpty(app.CurrentState.Hostname)); hostname != "" {
+		lines = append(lines, "  Visible hostname here is `"+hostname+"`.")
+	}
+	postureParts := []string{}
+	if network := strings.TrimSpace(valueOrEmpty(app.CurrentState.PublicNetworkAccess)); network != "" {
+		postureParts = append(postureParts, "public network access "+network)
+	}
+	if app.CurrentState.HTTPSOnly != nil {
+		if *app.CurrentState.HTTPSOnly {
+			postureParts = append(postureParts, "HTTPS-only enabled")
+		} else {
+			postureParts = append(postureParts, "HTTPS-only disabled")
+		}
+	}
+	if tls := strings.TrimSpace(valueOrEmpty(app.CurrentState.MinTLSVersion)); tls != "" {
+		postureParts = append(postureParts, "TLS "+tls)
+	}
+	if len(postureParts) > 0 {
+		lines = append(lines, "  Visible entry posture includes "+strings.Join(postureParts, ", ")+".")
+	}
+	return lines
+}
+
+func persistenceAppServiceVisibilityLines(app models.PersistenceAppService) []string {
+	state := strings.TrimSpace(persistenceAppServiceInventoryState(app))
+	execution := strings.TrimSpace(persistenceAppServiceInventoryExecutionContext(app))
+	return persistenceVisibilityFallbackLines(
+		state,
+		execution,
+		"this App Service already has deployment path, configuration power, or reuse value if stronger control is obtained later.",
+		"this App Service is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this App Service exists, even though the current identity does not yet have a proven write path here.",
+	)
+}
+
+func persistenceWebJobsHostBullet(job models.PersistenceWebJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "create or reuse parent app service") {
+	case "yes":
+		return "Current identity can create or reuse the parent App Service host that carries this WebJob."
+	default:
+		return "Current identity does not yet have a proven path to create or reuse the parent App Service host that carries this WebJob."
+	}
+}
+
+func persistenceWebJobsHostWalkthrough(job models.PersistenceWebJob) []string {
+	return []string{
+		"  WebJobs run alongside the existing web, API, or mobile app path in that App Service instead of replacing the main endpoint.",
+	}
+}
+
+func persistenceWebJobsPackageBullet(job models.PersistenceWebJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "add or replace webjob package") {
+	case "yes":
+		return "Current identity can add or replace the WebJob script or executable this App Service keeps deployed."
+	default:
+		return "Current identity does not yet have a proven path to add or replace the WebJob script or executable this App Service keeps deployed."
+	}
+}
+
+func persistenceWebJobsPackageWalkthrough(job models.PersistenceWebJob) []string {
+	lines := []string{
+		"  This is the durable WebJob content layer, separate from the parent app's main web route.",
+	}
+	if command := strings.TrimSpace(valueOrEmpty(job.CurrentState.RunCommand)); command != "" {
+		lines = append(lines, "  Visible run command here is `"+command+"`.")
+	}
+	return lines
+}
+
+func persistenceWebJobsModeBullet(job models.PersistenceWebJob) string {
+	modeLabel := persistenceWebJobModePhrase(job.CurrentState.Mode)
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "set or reuse webjob mode") {
+	case "yes":
+		return "Current identity can leave this WebJob on a " + modeLabel + " that Kudu and the App Service runtime can discover and run again later."
+	default:
+		return "Current identity does not yet have a proven path to leave this WebJob on a " + modeLabel + " the platform can discover and run again later."
+	}
+}
+
+func persistenceWebJobsModeWalkthrough(job models.PersistenceWebJob) []string {
+	lines := []string{
+		"  This is the WebJobs-specific control point: the deployed job path plus its mode tells the platform how it comes back later.",
+	}
+	mode := strings.TrimSpace(job.CurrentState.Mode)
+	if mode != "" {
+		lines = append(lines, "  Visible mode here is "+mode+".")
+	}
+	if trigger := strings.TrimSpace(valueOrEmpty(job.CurrentState.LatestRunTrigger)); trigger != "" {
+		lines = append(lines, "  Latest visible trigger here is "+trigger+".")
+	}
+	if schedule := strings.TrimSpace(valueOrEmpty(job.CurrentState.ScheduleExpression)); schedule != "" {
+		lines = append(lines, "  Visible schedule expression here is `"+schedule+"`.")
+	}
+	if job.CurrentState.SchedulerLogsURL != nil && strings.TrimSpace(*job.CurrentState.SchedulerLogsURL) != "" {
+		lines = append(lines, "  Scheduler log visibility is already present for this rerun path.")
+	}
+	lines = append(lines, "  Kudu and the App Service runtime discover the job from the deployed WebJobs path and run it again according to that mode.")
+	return lines
+}
+
+func persistenceWebJobsExecutionContextBullet(job models.PersistenceWebJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "reuse inherited app execution context") {
+	case "yes":
+		return "Current identity can reuse the parent App Service execution context this WebJob inherits."
+	default:
+		return "Current identity does not yet have a proven path to reuse the parent App Service execution context this WebJob inherits."
+	}
+}
+
+func persistenceWebJobsExecutionContextWalkthrough(job models.PersistenceWebJob) []string {
+	lines := []string{
+		"  This is the inherited power layer for WebJobs: managed identity, app settings, and connection material come from the parent App Service.",
+	}
+	configParts := []string{}
+	if count := intPtrString(job.CurrentState.ParentAppSettingsCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" parent app setting(s)")
+	}
+	if count := intPtrString(job.CurrentState.ParentKeyVaultReferenceCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" Key Vault-backed setting(s)")
+	}
+	if count := intPtrString(job.CurrentState.ParentConnectionStringCount); count != "" && count != "0" {
+		configParts = append(configParts, count+" connection string(s)")
+	}
+	if len(configParts) > 0 {
+		lines = append(lines, "  Visible inherited app context here includes "+strings.Join(configParts, ", ")+".")
+	}
+	if job.CurrentIdentityContext != nil && strings.TrimSpace(job.CurrentIdentityContext.Summary) != "" {
+		lines = append(lines, "  "+job.CurrentIdentityContext.Summary)
+	}
+	if ctx := job.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
+		lines = append(lines, "  "+ctx.Summary)
+	}
+	return lines
+}
+
+func persistenceWebJobsRerunBullet(job models.PersistenceWebJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "leave or repurpose rerun path") {
+	case "yes":
+		return "As long as the job stays deployed, that rerun path can bring it back later without relying on the main web endpoint."
+	default:
+		return "Current identity does not yet have a proven path to leave this rerun path in place for later WebJob execution."
+	}
+}
+
+func persistenceWebJobsRerunWalkthrough(job models.PersistenceWebJob) []string {
+	lines := []string{}
+	switch strings.ToLower(strings.TrimSpace(job.CurrentState.Mode)) {
+	case "continuous":
+		lines = append(lines, "  Continuous mode means the job stays on a background execution path inside the parent app.")
+	case "scheduled":
+		lines = append(lines, "  Scheduled mode means the job comes back when that scheduled rerun path fires again.")
+	case "triggered/manual":
+		lines = append(lines, "  Triggered/manual mode means the job comes back through that trigger path instead of the main web route.")
+	default:
+		lines = append(lines, "  The rerun story here comes from the job mode and the platform path that discovers it again later.")
+	}
+	postureParts := []string{}
+	if hostname := strings.TrimSpace(valueOrEmpty(job.CurrentState.ParentHostname)); hostname != "" {
+		postureParts = append(postureParts, "parent hostname `"+hostname+"`")
+	}
+	if network := strings.TrimSpace(valueOrEmpty(job.CurrentState.ParentPublicNetworkAccess)); network != "" {
+		postureParts = append(postureParts, "public network access "+network)
+	}
+	if len(postureParts) > 0 {
+		lines = append(lines, "  Visible parent-app posture includes "+strings.Join(postureParts, ", ")+".")
+	}
+	return lines
+}
+
+func persistenceWebJobsRepurposeBullet(job models.PersistenceWebJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "create or reuse parent app service") {
+	case "yes":
+		return "This remains reusable background persistence until the job package, mode, or parent app context is changed."
+	default:
+		return "This WebJob is still visible background execution, but the current identity does not yet have a proven path to repurpose it here."
+	}
+}
+
+func persistenceWebJobsRepurposeWalkthrough(job models.PersistenceWebJob) []string {
+	return []string{
+		"  The operator story here is the parent App Service plus the deployed WebJob plus the rerun mode the platform will keep honoring later.",
+	}
+}
+
+func persistenceWebJobsVisibilityLines(job models.PersistenceWebJob) []string {
+	state := strings.TrimSpace(persistenceWebJobsInventoryState(job))
+	execution := strings.TrimSpace(persistenceWebJobsInventoryExecutionContext(job))
+	return persistenceVisibilityFallbackLines(
+		state,
+		execution,
+		"this WebJob already has rerun posture, inherited app power, or reuse value if stronger control is obtained later.",
+		"this WebJob is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this WebJob exists, even though the current identity does not yet have a proven write path here.",
+	)
 }
 
 func persistenceLogicAppWorkflowBullet(workflow models.PersistenceLogicAppWorkflow) string {
@@ -343,6 +1248,17 @@ func persistenceLogicAppDefinitionBullet(workflow models.PersistenceLogicAppWork
 	default:
 		return "Current identity does not yet have a proven path to change the stored workflow definition here."
 	}
+}
+
+func persistenceWebJobNearbyNamesLine(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	quoted := make([]string, 0, len(names))
+	for _, name := range names {
+		quoted = append(quoted, "`"+name+"`")
+	}
+	return "Nearby maintenance- or sync-themed WebJob names visible from the current environment include " + renderNaturalJoin(quoted) + "."
 }
 
 func persistenceLogicAppExecutionContextBullet(workflow models.PersistenceLogicAppWorkflow) string {
@@ -405,7 +1321,7 @@ func persistenceRoleContextLine(context *models.PersistenceRoleContext) string {
 	if len(context.RoleNames) > 0 {
 		return fmt.Sprintf("`%s` with %s", context.Name, renderNaturalJoin(context.RoleNames))
 	}
-	return fmt.Sprintf("`%s` with no confirmed Azure role context", context.Name)
+	return fmt.Sprintf("`%s` with no Azure role-assignment rows found for its principal ID", context.Name)
 }
 
 func persistenceRoleContextLabel(context models.PersistenceRoleContext) string {
@@ -631,6 +1547,784 @@ func persistenceLogicAppCombinedStillUnmapped(workflows []models.PersistenceLogi
 		}
 	}
 	return items
+}
+
+func persistenceFunctionsLeadApp(apps []models.PersistenceFunctionApp) models.PersistenceFunctionApp {
+	lead := apps[0]
+	for _, candidate := range apps[1:] {
+		if persistenceFunctionsRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
+func persistenceAppServiceLeadApp(apps []models.PersistenceAppService) models.PersistenceAppService {
+	lead := apps[0]
+	for _, candidate := range apps[1:] {
+		if persistenceAppServiceRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
+func persistenceWebJobsLeadJob(jobs []models.PersistenceWebJob) models.PersistenceWebJob {
+	lead := jobs[0]
+	for _, candidate := range jobs[1:] {
+		if persistenceWebJobsRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
+func persistenceAppServiceRanksBefore(left, right models.PersistenceAppService) bool {
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	leftPublic := strings.EqualFold(valueOrEmpty(left.CurrentState.PublicNetworkAccess), "Enabled") || strings.TrimSpace(valueOrEmpty(left.CurrentState.Hostname)) != ""
+	rightPublic := strings.EqualFold(valueOrEmpty(right.CurrentState.PublicNetworkAccess), "Enabled") || strings.TrimSpace(valueOrEmpty(right.CurrentState.Hostname)) != ""
+	leftHasDeployment := strings.TrimSpace(valueOrEmpty(left.CurrentState.Deployment)) != ""
+	rightHasDeployment := strings.TrimSpace(valueOrEmpty(right.CurrentState.Deployment)) != ""
+	leftDeploymentScore := len(strings.TrimSpace(valueOrEmpty(left.CurrentState.Deployment)))
+	rightDeploymentScore := len(strings.TrimSpace(valueOrEmpty(right.CurrentState.Deployment)))
+	leftConfigCount := intPtrValue(left.CurrentState.AppSettingsCount) + intPtrValue(left.CurrentState.ConnectionStringCount)
+	rightConfigCount := intPtrValue(right.CurrentState.AppSettingsCount) + intPtrValue(right.CurrentState.ConnectionStringCount)
+	switch {
+	case leftPublic != rightPublic:
+		return leftPublic
+	case leftHasDeployment != rightHasDeployment:
+		return leftHasDeployment
+	case leftDeploymentScore != rightDeploymentScore:
+		return leftDeploymentScore > rightDeploymentScore
+	case leftConfigCount != rightConfigCount:
+		return leftConfigCount > rightConfigCount
+	case leftHasExecRole != rightHasExecRole:
+		return leftHasExecRole
+	default:
+		return left.Name < right.Name
+	}
+}
+
+func persistenceWebJobsRanksBefore(left, right models.PersistenceWebJob) bool {
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	leftHostname := strings.TrimSpace(valueOrEmpty(left.CurrentState.ParentHostname)) != ""
+	rightHostname := strings.TrimSpace(valueOrEmpty(right.CurrentState.ParentHostname)) != ""
+	leftCommand := strings.TrimSpace(valueOrEmpty(left.CurrentState.RunCommand)) != ""
+	rightCommand := strings.TrimSpace(valueOrEmpty(right.CurrentState.RunCommand)) != ""
+	leftModeRank := persistenceWebJobModeRank(left.CurrentState.Mode)
+	rightModeRank := persistenceWebJobModeRank(right.CurrentState.Mode)
+	switch {
+	case leftHasExecRole != rightHasExecRole:
+		return leftHasExecRole
+	case leftModeRank != rightModeRank:
+		return leftModeRank < rightModeRank
+	case leftCommand != rightCommand:
+		return leftCommand
+	case leftHostname != rightHostname:
+		return leftHostname
+	default:
+		return left.Name < right.Name
+	}
+}
+
+func persistenceWebJobModeRank(mode string) int {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "continuous":
+		return 0
+	case "scheduled":
+		return 1
+	case "triggered/manual":
+		return 2
+	default:
+		return 3
+	}
+}
+
+func persistenceAppServiceInventoryRows(apps []models.PersistenceAppService) [][]string {
+	rows := make([][]string, 0, len(apps))
+	for _, app := range apps {
+		rows = append(rows, []string{
+			app.Name,
+			app.ResourceGroup,
+			persistenceAppServiceInventoryState(app),
+			persistenceAppServiceInventoryExecutionContext(app),
+		})
+	}
+	return rows
+}
+
+func persistenceWebJobsInventoryRows(jobs []models.PersistenceWebJob) [][]string {
+	rows := make([][]string, 0, len(jobs))
+	for _, job := range jobs {
+		rows = append(rows, []string{
+			job.Name,
+			job.CurrentState.ParentAppName,
+			persistenceWebJobsInventoryState(job),
+			persistenceWebJobsInventoryExecutionContext(job),
+		})
+	}
+	return rows
+}
+
+func persistenceAppServiceInventoryState(app models.PersistenceAppService) string {
+	parts := []string{}
+	if state := strings.TrimSpace(valueOrEmpty(app.CurrentState.State)); state != "" {
+		parts = append(parts, state)
+	}
+	if hostname := strings.TrimSpace(valueOrEmpty(app.CurrentState.Hostname)); hostname != "" {
+		parts = append(parts, "hostname "+hostname)
+	}
+	if runtime := strings.TrimSpace(valueOrEmpty(app.CurrentState.Runtime)); runtime != "" {
+		parts = append(parts, runtime)
+	}
+	if deployment := strings.TrimSpace(valueOrEmpty(app.CurrentState.Deployment)); deployment != "" {
+		parts = append(parts, deployment)
+	}
+	configParts := []string{}
+	if count := intPtrValue(app.CurrentState.AppSettingsCount); count > 0 {
+		configParts = append(configParts, fmt.Sprintf("settings=%d", count))
+	}
+	if count := intPtrValue(app.CurrentState.KeyVaultReferenceCount); count > 0 {
+		configParts = append(configParts, fmt.Sprintf("kv=%d", count))
+	}
+	if count := intPtrValue(app.CurrentState.ConnectionStringCount); count > 0 {
+		configParts = append(configParts, fmt.Sprintf("conn=%d", count))
+	}
+	if len(configParts) > 0 {
+		parts = append(parts, strings.Join(configParts, "; "))
+	}
+	if network := strings.TrimSpace(valueOrEmpty(app.CurrentState.PublicNetworkAccess)); network != "" {
+		parts = append(parts, "public "+network)
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceAppServiceInventoryExecutionContext(app models.PersistenceAppService) string {
+	if ctx := app.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return persistenceRoleContextLabel(*ctx)
+		}
+		return persistenceRoleContextLine(ctx)
+	}
+	if len(app.ExecutionContextOptions) > 0 {
+		return strings.Join(app.ExecutionContextOptions, ", ")
+	}
+	return "none visible"
+}
+
+func persistenceWebJobsInventoryState(job models.PersistenceWebJob) string {
+	parts := []string{}
+	if mode := strings.TrimSpace(job.CurrentState.Mode); mode != "" {
+		parts = append(parts, mode)
+	}
+	if status := strings.TrimSpace(valueOrEmpty(job.CurrentState.Status)); status != "" {
+		parts = append(parts, "status "+status)
+	}
+	if trigger := strings.TrimSpace(valueOrEmpty(job.CurrentState.LatestRunTrigger)); trigger != "" {
+		parts = append(parts, "latest trigger "+trigger)
+	}
+	if schedule := strings.TrimSpace(valueOrEmpty(job.CurrentState.ScheduleExpression)); schedule != "" {
+		parts = append(parts, "schedule "+schedule)
+	}
+	if command := strings.TrimSpace(valueOrEmpty(job.CurrentState.RunCommand)); command != "" {
+		parts = append(parts, "run command visible")
+	}
+	if hostname := strings.TrimSpace(valueOrEmpty(job.CurrentState.ParentHostname)); hostname != "" {
+		parts = append(parts, "parent hostname "+hostname)
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceWebJobsInventoryExecutionContext(job models.PersistenceWebJob) string {
+	if ctx := job.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return persistenceRoleContextLabel(*ctx)
+		}
+		return persistenceRoleContextLine(ctx)
+	}
+	if len(job.ExecutionContextOptions) > 0 {
+		return strings.Join(job.ExecutionContextOptions, ", ")
+	}
+	return "none visible"
+}
+
+func persistenceAppServiceCombinedStillUnmapped(apps []models.PersistenceAppService) []string {
+	items := []string{}
+	seen := map[string]struct{}{}
+	for _, app := range apps {
+		for _, item := range app.StillUnmapped {
+			if _, ok := seen[item]; ok {
+				continue
+			}
+			seen[item] = struct{}{}
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+func persistenceWebJobsCombinedStillUnmapped(jobs []models.PersistenceWebJob) []string {
+	items := []string{}
+	seen := map[string]struct{}{}
+	for _, job := range jobs {
+		for _, item := range job.StillUnmapped {
+			if _, ok := seen[item]; ok {
+				continue
+			}
+			seen[item] = struct{}{}
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+func persistenceWebJobModePhrase(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "continuous":
+		return "continuous path"
+	case "scheduled":
+		return "scheduled path"
+	case "triggered/manual":
+		return "triggered or manual path"
+	default:
+		return "rerun path"
+	}
+}
+
+func persistenceFunctionsRanksBefore(left, right models.PersistenceFunctionApp) bool {
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	leftPublic := strings.EqualFold(valueOrEmpty(left.CurrentState.PublicNetworkAccess), "Enabled") || strings.TrimSpace(valueOrEmpty(left.CurrentState.Hostname)) != ""
+	rightPublic := strings.EqualFold(valueOrEmpty(right.CurrentState.PublicNetworkAccess), "Enabled") || strings.TrimSpace(valueOrEmpty(right.CurrentState.Hostname)) != ""
+	leftHasDeployment := strings.TrimSpace(valueOrEmpty(left.CurrentState.Deployment)) != ""
+	rightHasDeployment := strings.TrimSpace(valueOrEmpty(right.CurrentState.Deployment)) != ""
+	switch {
+	case leftHasExecRole != rightHasExecRole:
+		return leftHasExecRole
+	case leftPublic != rightPublic:
+		return leftPublic
+	case leftHasDeployment != rightHasDeployment:
+		return leftHasDeployment
+	default:
+		return left.Name < right.Name
+	}
+}
+
+func persistenceFunctionsInventoryRows(apps []models.PersistenceFunctionApp) [][]string {
+	rows := make([][]string, 0, len(apps))
+	for _, app := range apps {
+		rows = append(rows, []string{
+			app.Name,
+			app.ResourceGroup,
+			persistenceFunctionsInventoryState(app),
+			persistenceFunctionsInventoryExecutionContext(app),
+		})
+	}
+	return rows
+}
+
+func persistenceFunctionsInventoryState(app models.PersistenceFunctionApp) string {
+	parts := []string{}
+	if state := strings.TrimSpace(valueOrEmpty(app.CurrentState.State)); state != "" {
+		parts = append(parts, state)
+	}
+	if strings.TrimSpace(valueOrEmpty(app.CurrentState.Hostname)) != "" {
+		parts = append(parts, "hostname visible")
+	}
+	if runtime := strings.TrimSpace(valueOrEmpty(app.CurrentState.Runtime)); runtime != "" {
+		parts = append(parts, runtime)
+	}
+	if deployment := strings.TrimSpace(valueOrEmpty(app.CurrentState.Deployment)); deployment != "" {
+		parts = append(parts, deployment)
+	}
+	if network := strings.TrimSpace(valueOrEmpty(app.CurrentState.PublicNetworkAccess)); network != "" {
+		parts = append(parts, "public "+network)
+	}
+	if len(app.CurrentState.TriggerTypes) > 0 {
+		parts = append(parts, "triggers="+strings.Join(app.CurrentState.TriggerTypes, ", "))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceFunctionsInventoryExecutionContext(app models.PersistenceFunctionApp) string {
+	if ctx := app.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return persistenceRoleContextLabel(*ctx)
+		}
+		return persistenceRoleContextLine(ctx)
+	}
+	if len(app.ExecutionContextOptions) > 0 {
+		return strings.Join(app.ExecutionContextOptions, ", ")
+	}
+	return "none visible"
+}
+
+func persistenceFunctionsCombinedStillUnmapped(apps []models.PersistenceFunctionApp) []string {
+	items := []string{}
+	seen := map[string]struct{}{}
+	for _, app := range apps {
+		for _, item := range app.StillUnmapped {
+			if _, ok := seen[item]; ok {
+				continue
+			}
+			seen[item] = struct{}{}
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+func persistenceFunctionsBoundarySections(apps []models.PersistenceFunctionApp) ([]string, []string) {
+	defaultItems := []string{}
+	currentGapItems := []string{}
+	seenDefault := map[string]struct{}{}
+	seenGap := map[string]struct{}{}
+	for _, item := range persistenceFunctionsCombinedStillUnmapped(apps) {
+		if strings.HasPrefix(item, "attached user-assigned identities are visible on this Function App") {
+			if _, ok := seenGap[item]; ok {
+				continue
+			}
+			seenGap[item] = struct{}{}
+			currentGapItems = append(currentGapItems, item)
+			continue
+		}
+		if _, ok := seenDefault[item]; ok {
+			continue
+		}
+		seenDefault[item] = struct{}{}
+		defaultItems = append(defaultItems, item)
+	}
+	return defaultItems, currentGapItems
+}
+
+func persistenceAzureMLExplanation(workspace models.PersistenceAzureMLWorkspace) string {
+	lines := []string{}
+	add := func(bullet string, detail []string) bool {
+		if bullet == "" {
+			return false
+		}
+		lines = append(lines, bullet)
+		lines = append(lines, detail...)
+		return true
+	}
+
+	if !add(persistenceAzureMLWorkspaceBullet(workspace), persistenceAzureMLWorkspaceWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLComputeBullet(workspace), persistenceAzureMLComputeWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLCodeBullet(workspace), persistenceAzureMLCodeWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLExecutionContextBullet(workspace), persistenceAzureMLExecutionContextWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLScheduleBullet(workspace), persistenceAzureMLScheduleWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLEndpointBullet(workspace), persistenceAzureMLEndpointWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if !add(persistenceAzureMLRepurposeBullet(workspace), persistenceAzureMLRepurposeWalkthrough(workspace)) {
+		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
+		return renderPersistenceWalkthrough(lines)
+	}
+	if nearby := persistenceAutomationNearbyNamesLine(workspace.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceAzureMLWorkspaceBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify workspace") {
+	case "yes":
+		return "- Current identity can create a new Azure ML workspace or reuse this existing workspace."
+	case "not proven":
+		return "- Current identity does not have a proven path to create or modify this Azure ML workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLWorkspaceWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	return []string{
+		"  This is the Azure ML object you would reuse instead of standing up a new ML path from scratch.",
+	}
+}
+
+func persistenceAzureMLComputeBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "attach or reuse compute") {
+	case "yes":
+		return "- Current identity can attach or reuse Azure ML compute for this workspace, including long-lived instances or cluster-backed execution."
+	case "not proven":
+		return "- Current identity does not have a proven path to attach or reuse Azure ML compute in this workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLComputeWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	detail := []string{
+		"  Compute is the runtime side of Azure ML that gives saved notebooks, jobs, or pipelines a place to run later.",
+		"  Long-lived compute instances can stay behind, while cluster-backed execution can launch saved jobs or pipelines again when Azure ML re-triggers them.",
+	}
+	return detail
+}
+
+func persistenceAzureMLCodeBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "add or modify jobs or pipelines") {
+	case "yes":
+		return "- Current identity can add or modify Azure ML jobs or pipelines that hold stored execution logic this workspace can run later."
+	case "not proven":
+		return "- Current identity does not have a proven path to add or modify Azure ML jobs or pipelines in this workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLCodeWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	detail := []string{
+		"  In Azure ML, persistence can live in saved notebooks, jobs, pipelines, scheduled jobs, and environment definitions.",
+		"  Those are the stored execution surfaces that can remain in the workspace even when no host is persistently compromised.",
+	}
+	return detail
+}
+
+func persistenceAzureMLScheduleBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify schedule") {
+	case "yes":
+		return "- Current identity can create or modify Azure ML schedules so this workspace can run again later."
+	case "not proven":
+		return "- Current identity does not have a proven path to create or modify Azure ML schedules in this workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLScheduleWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	detail := []string{}
+	if len(workspace.CurrentState.ScheduleTriggerTypes) > 0 {
+		detail = append(detail, "  Visible schedule trigger types here include "+strings.Join(workspace.CurrentState.ScheduleTriggerTypes, ", ")+".")
+	} else {
+		detail = append(detail, "  Schedules are the clearest Azure-native re-entry anchor in Azure ML when jobs or pipelines need to run again later.")
+	}
+	detail = append(detail, "  A saved schedule can re-run that stored execution path later on the attached compute without requiring a compromised host to stay resident.")
+	return detail
+}
+
+func persistenceAzureMLEndpointBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "expose or reuse endpoint") {
+	case "yes":
+		return "- Current identity can expose or reuse Azure ML online endpoints as a serving or externally reachable re-entry path."
+	case "not proven":
+		return "- Current identity does not have a proven path to expose or reuse Azure ML online endpoints in this workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLEndpointWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	detail := []string{}
+	if len(workspace.CurrentState.EndpointAuthModes) > 0 || len(workspace.CurrentState.EndpointPublicAccess) > 0 {
+		parts := []string{}
+		if len(workspace.CurrentState.EndpointAuthModes) > 0 {
+			parts = append(parts, "auth "+strings.Join(workspace.CurrentState.EndpointAuthModes, ", "))
+		}
+		if len(workspace.CurrentState.EndpointPublicAccess) > 0 {
+			parts = append(parts, "public access "+strings.Join(workspace.CurrentState.EndpointPublicAccess, ", "))
+		}
+		detail = append(detail, "  Visible endpoint posture here includes "+strings.Join(parts, "; ")+".")
+	}
+	detail = append(detail, "  API-driven or endpoint-driven paths are another way Azure ML can be re-entered later, separate from saved schedules.")
+	return detail
+}
+
+func persistenceAzureMLExecutionContextBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "attach or reuse exec ctx") {
+	case "yes":
+		return "- Current identity can attach or reuse execution context for this Azure ML workspace."
+	case "not proven":
+		return "- Current identity does not have a proven path to attach or reuse execution context for this Azure ML workspace from current RBAC evidence."
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLExecutionContextWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	detail := []string{
+		"  When a notebook, job, or pipeline runs later, it executes with the attached identity plus the linked workspace resources Azure ML will use at runtime.",
+		"  That execution context determines what Azure actions, storage access, and downstream calls the re-triggered path can actually make.",
+	}
+	if len(workspace.ExecutionContextOptions) > 0 {
+		detail = append(detail, "  Linked workspace context here already includes "+strings.Join(workspace.ExecutionContextOptions, ", ")+".")
+	}
+	if context := workspace.CurrentState.StrongestVisibleExecutionContext; context != nil {
+		detail = append(detail, "  "+context.Summary)
+	}
+	return detail
+}
+
+func persistenceAzureMLRepurposeBullet(workspace models.PersistenceAzureMLWorkspace) string {
+	switch persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify workspace") {
+	case "yes":
+		return "- Current identity can repurpose an existing Azure ML workspace instead of standing up a brand-new ML control path."
+	case "not proven":
+		return ""
+	default:
+		return ""
+	}
+}
+
+func persistenceAzureMLRepurposeWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
+	return []string{
+		"  Reusing an existing Azure ML workspace can blend in better than creating a new ML runtime surface from scratch.",
+		"  The persistence story here is the workspace plus compute plus stored code and re-entry paths that can all remain in place for later execution.",
+	}
+}
+
+func persistenceAzureMLVisibilityLine(workspace models.PersistenceAzureMLWorkspace) string {
+	state := strings.TrimSpace(persistenceAzureMLInventoryState(workspace))
+	if state == "" {
+		return ""
+	}
+	return "- Current scope still shows Azure ML runtime posture here: " + state + "."
+}
+
+func persistenceAzureMLLeadWorkspace(workspaces []models.PersistenceAzureMLWorkspace) models.PersistenceAzureMLWorkspace {
+	lead := workspaces[0]
+	for _, candidate := range workspaces[1:] {
+		if persistenceAzureMLRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
+func persistenceAzureMLRanksBefore(left, right models.PersistenceAzureMLWorkspace) bool {
+	leftRank := persistenceAzureMLClassificationRank(left.CurrentState.Classification)
+	rightRank := persistenceAzureMLClassificationRank(right.CurrentState.Classification)
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	if leftRank != rightRank {
+		return leftRank < rightRank
+	}
+	if leftHasExecRole != rightHasExecRole {
+		return leftHasExecRole
+	}
+	if intPtrValue(left.CurrentState.ScheduleCount) != intPtrValue(right.CurrentState.ScheduleCount) {
+		return intPtrValue(left.CurrentState.ScheduleCount) > intPtrValue(right.CurrentState.ScheduleCount)
+	}
+	if intPtrValue(left.CurrentState.JobCount) != intPtrValue(right.CurrentState.JobCount) {
+		return intPtrValue(left.CurrentState.JobCount) > intPtrValue(right.CurrentState.JobCount)
+	}
+	if intPtrValue(left.CurrentState.ComputeCount) != intPtrValue(right.CurrentState.ComputeCount) {
+		return intPtrValue(left.CurrentState.ComputeCount) > intPtrValue(right.CurrentState.ComputeCount)
+	}
+	if intPtrValue(left.CurrentState.EndpointCount) != intPtrValue(right.CurrentState.EndpointCount) {
+		return intPtrValue(left.CurrentState.EndpointCount) > intPtrValue(right.CurrentState.EndpointCount)
+	}
+	return left.Name < right.Name
+}
+
+func persistenceAzureMLClassificationRank(classification string) int {
+	switch classification {
+	case "execution-capable":
+		return 0
+	case "supporting-persistence-context":
+		return 1
+	default:
+		return 2
+	}
+}
+
+func persistenceAzureMLInventoryRows(workspaces []models.PersistenceAzureMLWorkspace) [][]string {
+	rows := make([][]string, 0, len(workspaces))
+	for _, workspace := range workspaces {
+		rows = append(rows, []string{
+			workspace.Name,
+			workspace.ResourceGroup,
+			persistenceAzureMLInventoryState(workspace),
+			persistenceAzureMLInventoryExecutionContext(workspace),
+		})
+	}
+	return rows
+}
+
+func persistenceAzureMLInventoryState(workspace models.PersistenceAzureMLWorkspace) string {
+	parts := []string{}
+	if classification := strings.TrimSpace(workspace.CurrentState.Classification); classification != "" {
+		parts = append(parts, classification)
+	}
+	if len(workspace.CurrentState.ComputeTypes) > 0 {
+		parts = append(parts, "compute="+strings.Join(workspace.CurrentState.ComputeTypes, ","))
+	} else if count := intPtrString(workspace.CurrentState.ComputeCount); count != "" && count != "0" {
+		parts = append(parts, "compute "+count)
+	}
+	if count := intPtrString(workspace.CurrentState.JobCount); count != "" && count != "0" {
+		parts = append(parts, "jobs "+count)
+	}
+	if count := intPtrString(workspace.CurrentState.ScheduleCount); count != "" && count != "0" {
+		parts = append(parts, "schedules "+count)
+	}
+	if count := intPtrString(workspace.CurrentState.EndpointCount); count != "" && count != "0" {
+		parts = append(parts, "endpoints "+count)
+	}
+	if len(workspace.CurrentState.EndpointPublicAccess) > 0 {
+		parts = append(parts, "endpoint public "+strings.Join(workspace.CurrentState.EndpointPublicAccess, ","))
+	}
+	if network := strings.TrimSpace(valueOrEmpty(workspace.CurrentState.PublicNetworkAccess)); network != "" {
+		parts = append(parts, "workspace public "+network)
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceAzureMLInventoryExecutionContext(workspace models.PersistenceAzureMLWorkspace) string {
+	if ctx := workspace.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return persistenceRoleContextLabel(*ctx)
+		}
+		return persistenceRoleContextLine(ctx)
+	}
+	if len(workspace.ExecutionContextOptions) > 0 {
+		return strings.Join(workspace.ExecutionContextOptions, ", ")
+	}
+	return "-"
+}
+
+func persistenceAzureMLCombinedStillUnmapped(workspaces []models.PersistenceAzureMLWorkspace) []string {
+	seen := map[string]struct{}{}
+	items := []string{}
+	for _, workspace := range workspaces {
+		for _, item := range workspace.StillUnmapped {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			items = append(items, trimmed)
+		}
+	}
+	return items
+}
+
+func persistenceAzureMLBoundarySections(workspaces []models.PersistenceAzureMLWorkspace) ([]string, []string) {
+	defaultItems := []string{}
+	currentGapItems := []string{}
+	for _, item := range persistenceAzureMLCombinedStillUnmapped(workspaces) {
+		if strings.Contains(item, "current output does not yet resolve") {
+			currentGapItems = append(currentGapItems, item)
+			continue
+		}
+		defaultItems = append(defaultItems, item)
+	}
+	return defaultItems, currentGapItems
+}
+
+func persistenceFunctionsVisibleFunctionSummary(values []models.FunctionChildAsset) string {
+	parts := make([]string, 0, len(values))
+	for _, value := range values {
+		name := strings.TrimSpace(value.Name)
+		if name == "" {
+			continue
+		}
+		details := []string{}
+		if value.TriggerType != nil && strings.TrimSpace(*value.TriggerType) != "" {
+			details = append(details, *value.TriggerType)
+		}
+		if value.IsDisabled != nil && *value.IsDisabled {
+			details = append(details, "disabled")
+		}
+		if len(details) > 0 {
+			name += " [" + strings.Join(details, "; ") + "]"
+		}
+		parts = append(parts, name)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func persistenceFunctionsTriggerBoundaryLine(values []models.FunctionChildAsset) string {
+	httpVisible := false
+	httpWithInvokeURL := false
+	httpWithAuthLevel := false
+	internalTriggers := []string{}
+	for _, value := range values {
+		triggerType := strings.TrimSpace(valueOrEmpty(value.TriggerType))
+		switch {
+		case strings.EqualFold(triggerType, "HTTP"):
+			httpVisible = true
+			if strings.TrimSpace(valueOrEmpty(value.InvokeURLTemplate)) != "" {
+				httpWithInvokeURL = true
+			}
+			if authLevel := strings.TrimSpace(mapStringValueFromAny(value.Config, "authLevel")); authLevel != "" {
+				httpWithAuthLevel = true
+			}
+		case triggerType != "":
+			internalTriggers = append(internalTriggers, triggerType)
+		}
+	}
+
+	parts := []string{}
+	if httpVisible {
+		httpDetail := "  HTTP-triggered functions are visible from management-plane metadata"
+		if httpWithInvokeURL {
+			httpDetail += ", including an invoke URL template"
+		}
+		if httpWithAuthLevel {
+			httpDetail += " and visible auth-level metadata"
+		}
+		httpDetail += "."
+		parts = append(parts, httpDetail)
+	}
+	if len(internalTriggers) > 0 {
+		parts = append(parts, "  Timer, queue, Service Bus, or other event-driven triggers are visible from bindings, but they are not the same as a directly callable public entrypoint.")
+	}
+	return strings.Join(parts, "\n")
+}
+
+func mapStringValueFromAny(values map[string]any, key string) string {
+	rawBindings, ok := values["bindings"].([]any)
+	if !ok {
+		return ""
+	}
+	for _, raw := range rawBindings {
+		binding, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		rawType, ok := binding["type"].(string)
+		if !ok || !strings.EqualFold(strings.TrimSpace(rawType), "httpTrigger") {
+			continue
+		}
+		rawValue, ok := binding[key].(string)
+		if !ok {
+			continue
+		}
+		if value := strings.TrimSpace(rawValue); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func renderNaturalJoin(values []string) string {

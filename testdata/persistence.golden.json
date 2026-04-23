@@ -22,10 +22,23 @@
   "selected_surface": null,
   "surfaces": [
     {
+      "surface": "app-service",
+      "state": "implemented",
+      "summary": "Review App Service for deployment path, configuration power, code replacement, and reachable re-entry posture.",
+      "operator_question": "How far can current access take me in App Service before I hit the permission boundary between app control, deployment/config control, and later HTTP-backed reuse?",
+      "backing_commands": [
+        "app-services",
+        "env-vars",
+        "managed-identities",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
       "surface": "automation",
       "state": "implemented",
-      "summary": "Walk the current identity through the end-to-end Azure Automation steps that can store runnable code and make Azure invoke it again later.",
-      "operator_question": "Given the current identity, how far can I go in Azure Automation to create, modify, publish, and trigger automation that Azure will run again later?",
+      "summary": "Review Azure Automation for reusable code, execution context, and trigger paths.",
+      "operator_question": "How far can current access take me in Azure Automation before I hit a permission boundary?",
       "backing_commands": [
         "automation",
         "permissions",
@@ -33,12 +46,48 @@
       ]
     },
     {
+      "surface": "azure-ml",
+      "state": "implemented",
+      "summary": "Review Azure ML for reusable compute, job, schedule, endpoint, and identity paths.",
+      "operator_question": "How far can current access take me in Azure ML before I hit a permission boundary?",
+      "backing_commands": [
+        "azure-ml",
+        "managed-identities",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "functions",
+      "state": "implemented",
+      "summary": "Review Function Apps for reusable code, identity, and trigger paths.",
+      "operator_question": "How far can current access take me in Azure Functions before I hit a permission boundary?",
+      "backing_commands": [
+        "functions",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
       "surface": "logic-apps",
       "state": "implemented",
-      "summary": "Walk the current identity through the Logic Apps workflow steps that can leave Azure waiting for the next request, schedule, or event to run the workflow again.",
-      "operator_question": "Given the current identity, how far can I go in Azure Logic Apps to create, modify, trigger, and repurpose workflows that Azure can run again later?",
+      "summary": "Review Logic Apps for reusable workflow and trigger paths.",
+      "operator_question": "How far can current access take me in Azure Logic Apps before I hit a permission boundary?",
       "backing_commands": [
         "logic-apps",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "webjobs",
+      "state": "implemented",
+      "summary": "Review App Service WebJobs for reusable background code, mode, inherited app context, and rerun paths.",
+      "operator_question": "How far can current access take me in App Service WebJobs before I hit the permission boundary between parent app control, WebJob content, rerun mode, and inherited execution context?",
+      "backing_commands": [
+        "webjobs",
+        "app-services",
+        "managed-identities",
         "permissions",
         "rbac"
       ]

@@ -155,6 +155,19 @@ var commandContracts = map[string]CommandContract{
 			"metadata",
 		},
 	},
+	"webjobs": {
+		Name:             "webjobs",
+		Section:          "compute",
+		Status:           StatusImplemented,
+		Model:            "WebJobsOutput",
+		OperatorQuestion: "Which WebJobs expose the clearest background execution, rerun mode, and inherited App Service context for operator follow-up?",
+		TopLevelFields: []string{
+			"findings",
+			"issues",
+			"metadata",
+			"webjobs",
+		},
+	},
 	"azure-ml": {
 		Name:             "azure-ml",
 		Section:          "workflow",

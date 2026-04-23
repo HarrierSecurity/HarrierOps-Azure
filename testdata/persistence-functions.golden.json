@@ -1,0 +1,234 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "functions",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Function Apps for reusable code, identity, and trigger paths.",
+  "backing_commands": [
+    "functions",
+    "permissions",
+    "rbac"
+  ],
+  "function_apps": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+      "function_app": "func-orders",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or modify function app",
+          "api_surface": "Microsoft.Web/sites",
+          "status": "yes"
+        },
+        {
+          "action": "deploy or replace code",
+          "api_surface": "zip deploy / run-from-package / publish",
+          "status": "yes"
+        },
+        {
+          "action": "attach or reuse exec ctx",
+          "api_surface": "function identity / app settings",
+          "status": "yes"
+        },
+        {
+          "action": "change app settings or deployment config",
+          "api_surface": "app settings / site config",
+          "status": "yes"
+        },
+        {
+          "action": "repurpose trigger posture",
+          "api_surface": "HTTP, timer, queue, or event trigger",
+          "status": "yes"
+        },
+        {
+          "action": "restart or enable function host",
+          "api_surface": "site state / restart action",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "Key Vault-backed settings",
+        "AzureWebJobsStorage=plain-text"
+      ],
+      "current_state": {
+        "state": "Running",
+        "hostname": "func-orders.azurewebsites.net",
+        "public_network_access": "Enabled",
+        "runtime": "PYTHON|3.11; functions=~4",
+        "deployment": "storage=plain-text; kv-refs=1",
+        "identity_type": "SystemAssigned, UserAssigned",
+        "always_on": true,
+        "azure_webjobs_storage_value_type": "plain-text",
+        "key_vault_reference_count": 1,
+        "trigger_types": [
+          "HTTP",
+          "timer",
+          "Service Bus"
+        ],
+        "visible_functions": [
+          {
+            "binding_types": [
+              "httpTrigger",
+              "http"
+            ],
+            "bindings": [
+              {
+                "direction": "in",
+                "name": "req",
+                "type": "httpTrigger"
+              },
+              {
+                "direction": "out",
+                "name": "$return",
+                "type": "http"
+              }
+            ],
+            "config": {
+              "bindings": [
+                {
+                  "authLevel": "function",
+                  "direction": "in",
+                  "methods": [
+                    "post"
+                  ],
+                  "name": "req",
+                  "route": "orders/webhook",
+                  "type": "httpTrigger"
+                },
+                {
+                  "direction": "out",
+                  "name": "$return",
+                  "type": "http"
+                }
+              ]
+            },
+            "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/OrdersWebhook",
+            "invoke_url_template": "https://func-orders.azurewebsites.net/api/orders/webhook",
+            "is_disabled": false,
+            "language": "Python",
+            "name": "OrdersWebhook",
+            "trigger_type": "HTTP"
+          },
+          {
+            "binding_types": [
+              "timerTrigger"
+            ],
+            "bindings": [
+              {
+                "direction": "in",
+                "name": "timer",
+                "type": "timerTrigger"
+              }
+            ],
+            "config": {
+              "bindings": [
+                {
+                  "direction": "in",
+                  "name": "timer",
+                  "schedule": "0 0 * * * *",
+                  "type": "timerTrigger"
+                }
+              ]
+            },
+            "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/NightlyReconcile",
+            "is_disabled": false,
+            "language": "Python",
+            "name": "NightlyReconcile",
+            "trigger_type": "timer"
+          },
+          {
+            "binding_types": [
+              "serviceBusTrigger",
+              "queue"
+            ],
+            "bindings": [
+              {
+                "direction": "in",
+                "name": "message",
+                "type": "serviceBusTrigger"
+              },
+              {
+                "direction": "out",
+                "name": "outQueue",
+                "type": "queue"
+              }
+            ],
+            "config": {
+              "bindings": [
+                {
+                  "connection": "ServiceBusConnection",
+                  "direction": "in",
+                  "name": "message",
+                  "queueName": "orders-incoming",
+                  "type": "serviceBusTrigger"
+                },
+                {
+                  "connection": "StorageConnection",
+                  "direction": "out",
+                  "name": "outQueue",
+                  "queueName": "orders-processed",
+                  "type": "queue"
+                }
+              ]
+            },
+            "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders/functions/BusReconcile",
+            "is_disabled": true,
+            "language": "Python",
+            "name": "BusReconcile",
+            "trigger_type": "Service Bus"
+          }
+        ],
+        "strongest_visible_execution_context": {
+          "name": "ua-orders",
+          "kind": "function-app-execution-context",
+          "principal_id": "cece2222-2222-2222-2222-222222222222",
+          "identity_type": "UserAssigned",
+          "role_names": [
+            "Owner"
+          ],
+          "scope_ids": [
+            "/subscriptions/22222222-2222-2222-2222-222222222222"
+          ],
+          "summary": "The strongest visible execution context here is the attached user-assigned identity `ua-orders`, which already holds Owner at subscription scope."
+        }
+      },
+      "still_unmapped": [
+        "the current default collector does not perform data-plane validation of function keys, caller auth, upstream bus or storage access, or other runtime-side restrictions behind the visible management-plane trigger metadata",
+        "the current command does not retrieve deployed function packages or project contents, so operator intent is not inferred from code here",
+        "the current command does not infer downstream resource actions, secret usage, or service connections without reading deployed code or exercising the function path"
+      ],
+      "summary": "Current identity can repurpose Function App 'func-orders' as reusable Azure Functions persistence, visible child functions already show HTTP, timer, Service Bus trigger paths, and the strongest visible execution context already carries Azure control.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+        "cccc2222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-orders",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/serverfarms/asp-functions"
+      ]
+    }
+  ],
+  "issues": []
+}

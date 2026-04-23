@@ -25,8 +25,12 @@ var (
 type persistenceSurfaceBuilder func(context.Context, providers.Provider, func() time.Time, Request, contracts.PersistenceSurfaceContract) (any, error)
 
 var persistenceSurfaceBuilders = map[string]persistenceSurfaceBuilder{
-	"automation": buildPersistenceAutomationOutput,
-	"logic-apps": buildPersistenceLogicAppsOutput,
+	"automation":  buildPersistenceAutomationOutput,
+	"app-service": buildPersistenceAppServiceOutput,
+	"azure-ml":    buildPersistenceAzureMLOutput,
+	"functions":   buildPersistenceFunctionsOutput,
+	"logic-apps":  buildPersistenceLogicAppsOutput,
+	"webjobs":     buildPersistenceWebJobsOutput,
 }
 
 func persistenceHandler(provider providers.Provider, now func() time.Time) Handler {
@@ -127,34 +131,15 @@ func buildPersistenceAutomationOutput(
 		stringPtrValue(permissions.Metadata.TenantID),
 	)
 
-	permissionsByPrincipal := make(map[string]models.PermissionRow, len(permissions.Permissions))
-	currentIdentity := models.PermissionRow{}
-	currentIdentityVisible := false
-	for _, permission := range permissions.Permissions {
-		if permission.PrincipalID == "" {
-			continue
-		}
-		permissionsByPrincipal[permission.PrincipalID] = permission
-		if permission.IsCurrentIdentity && !currentIdentityVisible {
-			currentIdentity = permission
-			currentIdentityVisible = true
-		}
-	}
-
-	currentIdentityAssignments := make([]models.RoleAssignment, 0)
-	for _, assignment := range rbac.RoleAssignments {
-		if currentIdentityVisible && assignment.PrincipalID == currentIdentity.PrincipalID {
-			currentIdentityAssignments = append(currentIdentityAssignments, assignment)
-		}
-	}
+	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
 
 	accounts := make([]models.PersistenceAutomationAccount, 0, len(automation.AutomationAccounts))
 	for _, account := range automation.AutomationAccounts {
-		control, controlOK := persistenceAutomationControl(account.ID, currentIdentityAssignments)
-		currentContext := persistenceCurrentIdentityContext(currentIdentity, control, controlOK)
+		control, controlOK := persistenceAutomationControl(account.ID, evidence.currentIdentityAssignments)
+		currentContext := persistenceCurrentIdentityContext(evidence.currentIdentity, control, controlOK)
 		capabilitySteps := persistenceAutomationCapabilitySteps(control, controlOK)
 		executionOptions := persistenceAutomationExecutionContextOptions(account)
-		strongestContext, strongestContextHasAzureControl := persistenceStrongestExecutionContext(account, permissionsByPrincipal)
+		strongestContext, strongestContextHasAzureControl := persistenceAutomationExecutionContext(account, evidence.permissionsByPrincipal, evidence.assignmentsByPrincipal)
 		nearbyNames := persistenceAutomationNearbyNames(automation.AutomationAccounts, account.Name)
 		stillUnmapped := persistenceAutomationStillUnmapped(account)
 
@@ -166,7 +151,7 @@ func buildPersistenceAutomationOutput(
 			CapabilitySteps:         capabilitySteps,
 			CurrentIdentityContext:  currentContext,
 			ExecutionContextOptions: executionOptions,
-			CurrentState: models.PersistenceAutomationState{
+			CurrentState: models.PersistenceAutomationAccountState{
 				RunbookCount:                     account.RunbookCount,
 				PublishedRunbookCount:            account.PublishedRunbookCount,
 				PublishedRunbookNames:            append([]string{}, account.PublishedRunbookNames...),
@@ -224,7 +209,7 @@ func persistenceCurrentIdentityContext(
 		roleNames = append(roleNames, currentIdentity.AllRoleNames...)
 	}
 	scopeIDs := append([]string{}, currentIdentity.ScopeIDs...)
-	summary := "Current foothold identity is visible, but no direct Automation-control role is confirmed here yet."
+	summary := "Current foothold identity is visible, but no direct resource-control role is confirmed here yet."
 	if controlOK {
 		summary = fmt.Sprintf("Current foothold `%s` already holds %s.", name, control.RoleName)
 		role := strings.TrimSpace(strings.SplitN(control.RoleName, " at ", 2)[0])
@@ -289,46 +274,33 @@ func persistenceAutomationExecutionContextOptions(account models.AutomationAccou
 	return dedupeStrings(options)
 }
 
-func persistenceStrongestExecutionContext(
+func persistenceAutomationExecutionContext(
 	account models.AutomationAccountAsset,
 	permissionsByPrincipal map[string]models.PermissionRow,
+	assignmentsByPrincipal map[string][]models.RoleAssignment,
 ) (*models.PersistenceRoleContext, bool) {
-	if account.PrincipalID == nil || strings.TrimSpace(*account.PrincipalID) == "" {
-		return nil, false
-	}
-	permission, ok := permissionsByPrincipal[*account.PrincipalID]
-	if !ok {
-		name := firstNonEmpty(account.Name+"-identity", "automation identity")
-		return &models.PersistenceRoleContext{
-			Name:         name,
-			Kind:         "automation-execution-context",
-			PrincipalID:  account.PrincipalID,
-			IdentityType: account.IdentityType,
-			RoleNames:    []string{},
-			ScopeIDs:     []string{},
-			Summary:      fmt.Sprintf("Automation identity `%s` is visible here, but no matching Azure role context is confirmed from current scope.", name),
-		}, false
-	}
-
-	name := firstNonEmpty(permission.DisplayName, account.Name+"-identity")
-	roleNames := append([]string{}, permission.HighImpactRoles...)
-	if len(roleNames) == 0 {
-		roleNames = append(roleNames, permission.AllRoleNames...)
-	}
-	roleSummary := persistenceRoleSummary(roleNames, permission.ScopeIDs)
-	summary := fmt.Sprintf("The strongest visible execution context here is the Automation Account identity `%s`, which already holds %s.", name, roleSummary)
-	if !permission.Privileged {
-		summary = fmt.Sprintf("Automation identity `%s` is visible here, but no high-impact Azure role assignments are confirmed from current scope.", name)
-	}
-	return &models.PersistenceRoleContext{
-		Name:         name,
-		Kind:         "automation-execution-context",
-		PrincipalID:  account.PrincipalID,
-		IdentityType: account.IdentityType,
-		RoleNames:    dedupeStrings(roleNames),
-		ScopeIDs:     dedupeStrings(permission.ScopeIDs),
-		Summary:      summary,
-	}, permission.Privileged
+	context, carriesAzureControl, _ := persistencePrincipalRoleContext(persistencePrincipalRoleContextOptions{
+		fallbackName:           firstNonEmpty(account.Name+"-identity", "automation identity"),
+		kind:                   "automation-execution-context",
+		principalID:            account.PrincipalID,
+		identityType:           account.IdentityType,
+		permissionsByPrincipal: permissionsByPrincipal,
+		assignmentsByPrincipal: assignmentsByPrincipal,
+		resolvedSummary: func(name string, roleSummary string) string {
+			return fmt.Sprintf("The strongest visible execution context here is the Automation Account identity `%s`, which already holds %s.", name, roleSummary)
+		},
+		lowerImpactSummary: func(name string) string {
+			return fmt.Sprintf("Automation identity `%s` is visible here, but only lower-impact Azure role assignments are visible from current scope.", name)
+		},
+		unresolvedPrivilegedSummary: func(name string, roleSummary string) string {
+			return fmt.Sprintf("The strongest visible execution context here is the Automation Account identity `%s`, which already holds %s.", name, roleSummary)
+		},
+		noAssignmentsSummary: func(name string) string {
+			return fmt.Sprintf("Automation identity `%s` is visible here, but no Azure role-assignment rows are found for its principal ID.", name)
+		},
+		rbacOnlyCarriesAzureControl: true,
+	})
+	return context, carriesAzureControl
 }
 
 func persistenceRoleSummary(roleNames []string, scopeIDs []string) string {
