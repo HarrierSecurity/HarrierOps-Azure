@@ -1,0 +1,39 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[resourcehijacking] Automation resource hijacking means trusted runbooks, schedules, webhooks, identities, or worker context can be repurposed as ordinary operations automation.
+Automation resourcehijacking capability
+
+╭─────────────────────────────────────────────┬──────────────────────────────────────────────────┬──────────────────────╮
+│ action                                      │ api surface                                      │ status               │
+├─────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────────────┤
+│ select trusted automation account           │ Microsoft.Automation/automationAccounts          │ visible posture only │
+│ edit published runbook                      │ Microsoft.Automation/automationAccounts/runbooks │ yes                  │
+│ reuse schedule or webhook trigger           │ job schedules and webhooks                       │ yes                  │
+│ reuse automation identity or worker context │ automation account identity and hybrid workers   │ yes                  │
+│ blend as maintenance automation             │ automation account configuration                 │ visible posture only │
+╰─────────────────────────────────────────────┴──────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible Automation takeover path. The inventory below lists the other visible accounts without repeating the same narrative.
+
+Operator read
+account "aa-hybrid-prod" ranks 5/5 for Automation resource-hijack posture; 6 published runbook(s); 5 job schedule(s); 2 webhook(s); current identity can modify Automation posture from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible Automation account or runbook write control.
+Downstream effect: published runbook posture, trigger posture, and automation identity are visible; current identity has visible Automation account or runbook write control
+First boundary: this is Automation management-plane posture, not runbook script proof, job-output proof, or hybrid worker host proof.
+Posture: 6 published runbook(s); runbook types PowerShell, Python3; schedule or webhook trigger posture; managed identity posture; hybrid worker posture; consequence types run-recurring-execution, reintroduce-config, consume-secret-backed-deployment-material.
+
+Visible Automation Accounts
+account        | rank | runbooks | job schedules | webhooks | current identity
+
+aa-hybrid-prod | 5/5  | 6        | 5             | 2        | automation write
+aa-lab-quiet   | 3/5  | 1        | 1             | 0        | automation write
+
+
+Not collected by default
+item                          | classification | reason
+
+runbook script content        | recon safety   | The live helper reports safe runbook type and trigger posture by default; content-derived command/resource clues require a narrower review path and raw script bodies are not printed.
+secure asset values           | recon safety   | Automation credentials, certificates, connections, and encrypted variables are not safe default output.
+job output and status history | proof boundary | Management-plane posture cannot prove a changed runbook executed or what it produced.
+hybrid worker host state      | proof boundary | Automation account posture cannot prove guest-side host impact without worker or host evidence.
+activity history              | API/noise      | Broad Automation history pulls are not needed for default posture and should be a narrow follow-up for timing or actor proof.

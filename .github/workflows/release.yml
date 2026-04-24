@@ -33,8 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           go build -o /tmp/ho-azure ./cmd/azurefox
-          /tmp/ho-azure help >/dev/null
-          AZUREFOX_PROVIDER=static /tmp/ho-azure whoami --output json >/dev/null
+          scripts/release_smoke_unix.sh /tmp/ho-azure
 
   build:
     runs-on: ubuntu-latest
@@ -111,6 +110,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout smoke script
+        uses: actions/checkout@v6
+
       - name: Download Linux amd64 artifact
         uses: actions/download-artifact@v8
         with:
@@ -124,8 +126,7 @@ jobs:
           tar -xzf dist/ho-azure-linux-amd64.tar.gz -C extracted
           binary="./extracted/ho-azure-linux-amd64/ho-azure"
           chmod +x "$binary"
-          "$binary" help >/dev/null
-          AZUREFOX_PROVIDER=static "$binary" whoami --output json >/dev/null
+          scripts/release_smoke_unix.sh "$binary"
 
   verify-linux-x64-containers:
     name: Verify ${{ matrix.target_name }} runtime
@@ -160,15 +161,19 @@ jobs:
           set -euo pipefail
           binary_path="${PWD}/extracted/ho-azure-linux-amd64/ho-azure"
           chmod +x "$binary_path"
-          docker run --rm \
-            -v "$binary_path:/usr/local/bin/ho-azure:ro" \
-            --entrypoint /usr/local/bin/ho-azure \
-            "${{ matrix.image }}" help >/dev/null
-          docker run --rm \
-            -e AZUREFOX_PROVIDER=static \
-            -v "$binary_path:/usr/local/bin/ho-azure:ro" \
-            --entrypoint /usr/local/bin/ho-azure \
-            "${{ matrix.image }}" whoami --output json >/dev/null
+          smoke_container() {
+            env_args="$1"
+            shift
+            docker run --rm \
+              $env_args \
+              -v "$binary_path:/usr/local/bin/ho-azure:ro" \
+              --entrypoint /usr/local/bin/ho-azure \
+              "${{ matrix.image }}" "$@" >/dev/null
+          }
+          smoke_container "" help
+          smoke_container "-e AZUREFOX_PROVIDER=static" whoami --output json
+          smoke_container "-e AZUREFOX_PROVIDER=static" chains credential-path --output json
+          smoke_container "-e AZUREFOX_PROVIDER=static" persistence automation --output json
 
   verify-ubuntu-arm64:
     name: Verify Ubuntu LTS arm64 runtime
@@ -178,6 +183,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout smoke script
+        uses: actions/checkout@v6
+
       - name: Download Linux arm64 artifact
         uses: actions/download-artifact@v8
         with:
@@ -191,8 +199,7 @@ jobs:
           tar -xzf dist/ho-azure-linux-arm64.tar.gz -C extracted
           binary="./extracted/ho-azure-linux-arm64/ho-azure"
           chmod +x "$binary"
-          "$binary" help >/dev/null
-          AZUREFOX_PROVIDER=static "$binary" whoami --output json >/dev/null
+          scripts/release_smoke_unix.sh "$binary"
 
   verify-windows-x64:
     name: Verify Windows x64 runtime
@@ -218,9 +225,14 @@ jobs:
           & $binary help | Out-Null
           $env:AZUREFOX_PROVIDER = "static"
           & $binary whoami --output json | Out-Null
+          & $binary chains credential-path --output json | Out-Null
+          & $binary persistence automation --output json | Out-Null
+          & $binary evasion dcr --output json | Out-Null
+          & $binary resourcehijacking api-mgmt --output json | Out-Null
+          & $binary pathmasking relay --output json | Out-Null
 
-  publish-release-containers:
-    name: Publish ${{ matrix.target_name }} release container
+  publish-release-container:
+    name: Publish Linux multi-arch release container
     runs-on: ubuntu-latest
     needs:
       - build
@@ -231,16 +243,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target_name: Debian stable x64
-            flavor: debian
-            base_image: debian:stable-slim
-          - target_name: Kali rolling x64
-            flavor: kali
-            base_image: kalilinux/kali-rolling
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -249,32 +251,49 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: release-linux-amd64
-          path: dist
+          path: dist/amd64
+
+      - name: Download Linux arm64 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: release-linux-arm64
+          path: dist/arm64
 
       - name: Prepare container build context
         run: |
           set -euo pipefail
-          context_dir="${RUNNER_TEMP}/container-${{ matrix.flavor }}"
+          context_dir="${RUNNER_TEMP}/container-linux"
           mkdir -p "$context_dir"
-          tar -xzf dist/ho-azure-linux-amd64.tar.gz -C "$context_dir"
-          cp "$context_dir/ho-azure-linux-amd64/ho-azure" "$context_dir/ho-azure"
+          tar -xzf dist/amd64/ho-azure-linux-amd64.tar.gz -C "$context_dir"
+          tar -xzf dist/arm64/ho-azure-linux-arm64.tar.gz -C "$context_dir"
+          cp "$context_dir/ho-azure-linux-amd64/ho-azure" "$context_dir/ho-azure-amd64"
+          cp "$context_dir/ho-azure-linux-arm64/ho-azure" "$context_dir/ho-azure-arm64"
           cp packaging/container/Dockerfile.release-linux "$context_dir/Dockerfile"
-          chmod +x "$context_dir/ho-azure"
+          chmod +x "$context_dir/ho-azure-amd64" "$context_dir/ho-azure-arm64"
           echo "CONTEXT_DIR=$context_dir" >> "$GITHUB_ENV"
 
-      - name: Build and smoke-test release container
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and smoke-test local amd64 release container
         run: |
           set -euo pipefail
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          image="ghcr.io/${owner}/ho-azure-${{ matrix.flavor }}"
+          image="ghcr.io/${owner}/ho-azure"
           version_tag="${GITHUB_REF_NAME}"
           docker build \
-            --build-arg BASE_IMAGE=${{ matrix.base_image }} \
-            -t "${image}:${version_tag}" \
-            -t "${image}:latest" \
+            --platform linux/amd64 \
+            --build-arg BASE_IMAGE=debian:stable-slim \
+            --build-arg TARGETARCH=amd64 \
+            -t "${image}:local-amd64-smoke" \
             "$CONTEXT_DIR"
-          docker run --rm "${image}:${version_tag}" help >/dev/null
-          docker run --rm -e AZUREFOX_PROVIDER=static "${image}:${version_tag}" whoami --output json >/dev/null
+          docker run --rm "${image}:local-amd64-smoke" help >/dev/null
+          for command in "whoami --output json" "chains credential-path --output json" "persistence automation --output json" "evasion dcr --output json" "resourcehijacking api-mgmt --output json" "pathmasking relay --output json"; do
+            docker run --rm -e AZUREFOX_PROVIDER=static "${image}:local-amd64-smoke" $command >/dev/null
+          done
           echo "IMAGE_NAME=$image" >> "$GITHUB_ENV"
           echo "IMAGE_TAG=$version_tag" >> "$GITHUB_ENV"
 
@@ -288,8 +307,45 @@ jobs:
       - name: Push release container
         run: |
           set -euo pipefail
-          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
-          docker push "${IMAGE_NAME}:latest"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg BASE_IMAGE=debian:stable-slim \
+            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+            -t "${IMAGE_NAME}:latest" \
+            --push \
+            "$CONTEXT_DIR"
+
+      - name: Smoke-test pushed release container
+        run: |
+          set -euo pipefail
+          for platform in linux/amd64 linux/arm64; do
+            docker run --rm --platform "$platform" "${IMAGE_NAME}:${IMAGE_TAG}" help >/dev/null
+            for command in "whoami --output json" "chains credential-path --output json" "persistence automation --output json" "evasion dcr --output json" "resourcehijacking api-mgmt --output json" "pathmasking relay --output json"; do
+              docker run --rm --platform "$platform" -e AZUREFOX_PROVIDER=static "${IMAGE_NAME}:${IMAGE_TAG}" $command >/dev/null
+            done
+          done
+
+      - name: Verify public container pull and run
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io || true
+          for attempt in 1 2 3 4 5; do
+            manifest="$(docker manifest inspect "${IMAGE_NAME}:${IMAGE_TAG}" 2>/dev/null || true)"
+            if echo "$manifest" | grep -Fq '"architecture": "amd64"' \
+              && echo "$manifest" | grep -Fq '"architecture": "arm64"'; then
+              for platform in linux/amd64 linux/arm64; do
+                docker run --rm --pull=always --platform "$platform" "${IMAGE_NAME}:${IMAGE_TAG}" help >/dev/null
+                for command in "whoami --output json" "chains credential-path --output json" "persistence automation --output json" "evasion dcr --output json" "resourcehijacking api-mgmt --output json" "pathmasking relay --output json"; do
+                  docker run --rm --pull=always --platform "$platform" -e AZUREFOX_PROVIDER=static "${IMAGE_NAME}:${IMAGE_TAG}" $command >/dev/null
+                done
+              done
+              exit 0
+            fi
+            echo "Multi-arch container manifest is not publicly readable yet; retrying (${attempt}/5)."
+            sleep 6
+          done
+          echo "Container ${IMAGE_NAME}:${IMAGE_TAG} is not publicly pullable/runnable as linux/amd64 and linux/arm64 without GHCR authentication." >&2
+          exit 1
 
   github-release:
     runs-on: ubuntu-latest
@@ -299,7 +355,7 @@ jobs:
       - verify-linux-x64-containers
       - verify-ubuntu-arm64
       - verify-windows-x64
-      - publish-release-containers
+      - publish-release-container
     permissions:
       contents: write
     steps:
@@ -330,30 +386,33 @@ jobs:
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           release_header_file="$(mktemp)"
           generated_notes_file="$(mktemp)"
+          notes_body_file="$(mktemp)"
           final_notes_file="$(mktemp)"
 
           cat >"$release_header_file" <<EOF
-          ## Runtime-verified containers
+          ## Containers
 
-          - Debian stable x64: \`docker pull ghcr.io/${owner}/ho-azure-debian:${GITHUB_REF_NAME}\`
-          - Kali rolling x64: \`docker pull ghcr.io/${owner}/ho-azure-kali:${GITHUB_REF_NAME}\`
+          This release includes a runtime-verified Linux OCI image for quick container use:
 
-          These OCI images are built from the released Linux amd64 artifact and smoke-tested with \`ho-azure help\` plus \`AZUREFOX_PROVIDER=static ho-azure whoami --output json\`.
+          - [Linux multi-arch package](https://github.com/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/package/ho-azure): \`docker pull ghcr.io/${owner}/ho-azure:${GITHUB_REF_NAME}\`
+
+          The image publishes a multi-arch manifest for \`linux/amd64\` and \`linux/arm64\`. The release workflow verifies the image starts on both platforms and can run \`ho-azure help\` plus static-provider smoke checks for \`whoami\`, \`chains credential-path\`, \`persistence automation\`, \`evasion dcr\`, \`resourcehijacking api-mgmt\`, and \`pathmasking relay\`.
 
           EOF
 
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
             gh release view "${GITHUB_REF_NAME}" --json body --jq .body >"$generated_notes_file"
-            if grep -Fq "## Runtime-verified containers" "$generated_notes_file"; then
-              gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --verify-tag
-            else
-              cat "$release_header_file" "$generated_notes_file" >"$final_notes_file"
-              gh release edit "${GITHUB_REF_NAME}" \
-                --title "${GITHUB_REF_NAME}" \
-                --notes-file "$final_notes_file" \
-                --verify-tag
-            fi
+            awk '
+              /^## Containers$/ || /^## Runtime-verified containers$/ { skip=1; next }
+              skip && /^## / { skip=0 }
+              !skip { print }
+            ' "$generated_notes_file" >"$notes_body_file"
+            cat "$release_header_file" "$notes_body_file" >"$final_notes_file"
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file "$final_notes_file" \
+              --verify-tag
           else
             gh api \
               -X POST \
@@ -367,3 +426,58 @@ jobs:
               --title "${GITHUB_REF_NAME}" \
               --verify-tag
           fi
+
+  dispatch-stable-homebrew-tap:
+    name: Dispatch stable Homebrew tap update
+    runs-on: ubuntu-latest
+    needs:
+      - github-release
+    permissions:
+      contents: read
+    steps:
+      - name: Resolve release source
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          source_url="https://github.com/HarrierSecurity/HarrierOps-Azure/archive/refs/tags/${RELEASE_TAG}.tar.gz"
+          curl -L --fail "$source_url" -o /tmp/ho-azure-source.tar.gz
+          sha256="$(sha256sum /tmp/ho-azure-source.tar.gz | awk '{print $1}')"
+          {
+            echo "version=$RELEASE_TAG"
+            echo "source_url=$source_url"
+            echo "sha256=$sha256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch stable tap update
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_REPO_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SOURCE_URL: ${{ steps.meta.outputs.source_url }}
+          SHA256: ${{ steps.meta.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TOKEN" ]; then
+            echo "missing secret HOMEBREW_TAP_REPO_TOKEN" >&2
+            exit 1
+          fi
+
+          json_payload="$(cat <<EOF
+          {
+            "event_type": "ho_azure_release",
+            "client_payload": {
+              "version": "${VERSION}",
+              "source_url": "${SOURCE_URL}",
+              "sha256": "${SHA256}"
+            }
+          }
+          EOF
+          )"
+
+          curl -L --fail-with-body \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            https://api.github.com/repos/HarrierSecurity/homebrew-ho-azure/dispatches \
+            -d "$json_payload"

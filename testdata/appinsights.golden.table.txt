@@ -1,0 +1,29 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[appinsights] Reviewing Application Insights components and instrumented app settings for visible sampling, filtering, and logging posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure appinsights
+
+╭────────────────┬─────────────┬───────────────────────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────╮
+│ target         │ kind        │ sampling                                                                              │ filtering                                                  │ logging                                                 │
+├────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+│ app-public-api │ AppService  │ ApplicationInsights__Sampling__Percentage=25                                          │ ApplicationInsights__TelemetryProcessor__HealthCheckFilter │ Logging__ApplicationInsights__LogLevel__Default=Warning │
+│ func-orders    │ FunctionApp │ AzureFunctionsJobHost__logging__applicationInsights__samplingSettings__isEnabled=true │ none visible                                               │ none visible                                            │
+╰────────────────┴─────────────┴───────────────────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────╯
+
+Takeaway: 1 component(s) and 2 instrumented target(s) visible; 2 target(s) show sampling clues and 1 show filtering clues.
+
+Components
+component     | resource group | ingestion    | workspace
+
+ai-public-api | rg-monitor     | LogAnalytics | law-soc-prod
+
+Not collected by default
+item                  | classification  | reason
+
+setting values        | recon safety    | Default output uses setting names as posture clues and does not print instrumentation keys or connection strings.
+code-level processors | proof boundary  | Telemetry processor bodies usually live in source code or binaries, outside management-plane posture.
+true unsampled count  | proof boundary  | Current posture cannot prove how many events were dropped or retained.
+host.json body        | collector issue | Function sampling can live in host.json; this helper only uses visible app setting names by default.
+detector failure      | proof boundary  | The command does not inspect detections, so it cannot claim a rule missed activity.

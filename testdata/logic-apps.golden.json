@@ -27,6 +27,9 @@
       "identity_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
       ],
+      "trigger_count": 1,
+      "action_count": 2,
+      "branch_count": 1,
       "trigger_types": [
         "request"
       ],
@@ -35,10 +38,19 @@
         "automation",
         "external-http"
       ],
+      "connector_references": [],
+      "parameter_names": [
+        "automationAccountName",
+        "runbookName"
+      ],
+      "downstream_resource_references": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod"
+      ],
       "summary": "Request trigger is visible from workflow definition, so this Logic App already looks like a callable re-entry path. Workflow uses managed identity (SystemAssigned), and visible actions touch Azure Automation and external HTTP destinations.",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
-        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod"
       ]
     },
     {
@@ -52,6 +64,9 @@
       "platform": "Consumption",
       "state": "Enabled",
       "identity_ids": null,
+      "trigger_count": 1,
+      "action_count": 2,
+      "branch_count": 1,
       "trigger_types": [
         "recurrence"
       ],
@@ -61,6 +76,13 @@
         "storage",
         "connector"
       ],
+      "connector_references": [
+        "azureblob"
+      ],
+      "parameter_names": [
+        "storageAccountName"
+      ],
+      "downstream_resource_references": [],
       "summary": "Recurrence is visible from workflow definition (Day/1), so Azure already has a durable schedule for this workflow. Visible downstream actions touch storage and connector-backed service paths, but no workflow identity is exposed from the current read path.",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-nightly-sync"
@@ -83,6 +105,9 @@
       "identity_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
       ],
+      "trigger_count": 1,
+      "action_count": 2,
+      "branch_count": 1,
       "trigger_types": [
         "api-connection"
       ],
@@ -91,10 +116,18 @@
         "function",
         "messaging"
       ],
+      "connector_references": [
+        "eventgrid"
+      ],
+      "parameter_names": [],
+      "downstream_resource_references": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"
+      ],
       "summary": "Visible trigger and action posture suggest workflow-driven execution, but the current definition does not yet show a durable request or recurrence trigger. Workflow uses a user-assigned managed identity and visibly reaches Azure Functions and messaging paths.",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
-        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"
       ]
     }
   ]

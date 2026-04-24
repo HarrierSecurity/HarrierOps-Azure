@@ -1,0 +1,25 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[diagnostic-settings] Reviewing resource diagnostic settings for selected categories, metrics, destinations, and visible telemetry export posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure diagnostic-settings
+
+╭────────────┬───────────────────────────────────┬──────────────┬──────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ source     │ type                              │ settings     │ destinations │ categories                                                                                                                    │
+├────────────┼───────────────────────────────────┼──────────────┼──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ kv-prod    │ Microsoft.KeyVault/vaults         │ 1 visible    │ logAnalytics │ enabled: AllMetrics; not exported by visible setting: AuditEvent; supported not exported: AuditEvent; high-signal: AuditEvent │
+│ stdataprod │ Microsoft.Storage/storageAccounts │ 1 visible    │ eventHubs    │ enabled: StorageRead, StorageWrite; supported not exported: StorageDelete                                                     │
+│ app-prod   │ Microsoft.Web/sites               │ none visible │ none visible │ supported not exported: AppServiceConsoleLogs, AppServiceHTTPLogs                                                             │
+╰────────────┴───────────────────────────────────┴──────────────┴──────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 source(s) visible; 2 have diagnostic settings, 2 show partial category posture, and 1 route to non-Log Analytics destinations.
+
+Not collected by default
+item                              | classification   | reason
+
+unsupported category proof        | proof boundary   | When Azure rejects category catalog reads for a source type, the helper reports a collection issue instead of treating omitted categories as unsupported.
+activity-log history              | API/noise        | Change timing and actor proof require history collection, which is not needed for the default posture view.
+sink contents                     | proof boundary   | Log Analytics, Storage, Event Hub, or partner sink contents are data/content evidence, not management-plane posture.
+detector wiring                   | proof boundary   | The command does not inspect Sentinel or defender rule dependencies, so it cannot claim a detection failed.
+expected SOC destination baseline | scope/sequencing | Destination drift needs an expected sink model before the tool can call the current sink wrong.

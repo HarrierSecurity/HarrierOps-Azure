@@ -1,0 +1,265 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "evasion",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "evasion",
+  "surface": "appinsights",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Application Insights components and instrumented app settings for visible sampling, filtering, and logging posture clues.",
+  "backing_commands": [
+    "appinsights",
+    "permissions",
+    "rbac"
+  ],
+  "targets": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api",
+      "target": "app-public-api",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "disruption_rank": 5,
+      "disruption_reason": "filtering and sampling posture clues are both visible; current identity has visible app configuration write control",
+      "capability_steps": [
+        {
+          "action": "change instrumentation posture",
+          "api_surface": "Microsoft.Web/sites/config/write",
+          "status": "yes",
+          "downstream_effect": "Changes app settings that can control Application Insights instrumentation behavior.",
+          "boundary": "Does not read code-level instrumentation bodies."
+        },
+        {
+          "action": "choose telemetry target",
+          "api_surface": "Application Insights component and app settings",
+          "status": "yes",
+          "downstream_effect": "Selects the instrumented app or function where telemetry is shaped.",
+          "boundary": "A visible setting name is a posture clue, not proof of emitted telemetry."
+        },
+        {
+          "action": "configure sampling",
+          "api_surface": "sampling app settings or SDK/OpenTelemetry config clues",
+          "status": "yes",
+          "downstream_effect": "Can reduce retained request, dependency, trace, or exception examples while dashboards remain alive.",
+          "boundary": "Does not prove true unsampled event count."
+        },
+        {
+          "action": "configure filtering or logging level",
+          "api_surface": "filter, processor, or logging-level setting clues",
+          "status": "yes",
+          "downstream_effect": "Can narrow selected telemetry types before investigators query Application Insights.",
+          "boundary": "Does not prove filtered events occurred."
+        },
+        {
+          "action": "preserve app-side config",
+          "api_surface": "stored app settings",
+          "status": "yes",
+          "downstream_effect": "The instrumentation posture remains as normal application configuration until changed.",
+          "boundary": "Change timing and author require history."
+        },
+        {
+          "action": "blend as observability tuning",
+          "api_surface": "app setting names and component posture",
+          "status": "visible posture only",
+          "downstream_effect": "Common cover stories include cost control, health-check filtering, privacy, and performance tuning.",
+          "boundary": "Cover story is not an intent claim."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "app config write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible app configuration write control."
+      },
+      "current_state": {
+        "kind": "AppService",
+        "instrumentation_clues": [
+          "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        ],
+        "sampling_clues": [
+          "ApplicationInsights__Sampling__Percentage=25"
+        ],
+        "filtering_clues": [
+          "ApplicationInsights__TelemetryProcessor__HealthCheckFilter"
+        ],
+        "logging_level_clues": [
+          "Logging__ApplicationInsights__LogLevel__Default=Warning"
+        ],
+        "visible_telemetry_types": [
+          "traces"
+        ],
+        "posture": "filtering clue(s) visible; sampling clue(s) visible; logging-level clue(s) visible"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "setting values",
+          "classification": "recon safety",
+          "reason": "Default output uses setting names as posture clues and does not print instrumentation keys or connection strings."
+        },
+        {
+          "name": "code-level processors",
+          "classification": "proof boundary",
+          "reason": "Telemetry processor bodies usually live in source code or binaries, outside management-plane posture."
+        },
+        {
+          "name": "host.json body",
+          "classification": "collector issue",
+          "reason": "Function sampling can live in host.json; this helper only uses visible app setting names by default."
+        },
+        {
+          "name": "true unsampled count",
+          "classification": "proof boundary",
+          "reason": "Current posture cannot prove how many events were dropped or retained."
+        },
+        {
+          "name": "detector failure",
+          "classification": "proof boundary",
+          "reason": "The command does not inspect detections, so it cannot claim a rule missed activity."
+        }
+      ],
+      "summary": "target \"app-public-api\" ranks 5/5 for Application Insights truth-disruption posture; 1 filtering clue(s); 1 sampling clue(s); current identity can modify app configuration from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders",
+      "target": "func-orders",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "disruption_rank": 3,
+      "disruption_reason": "sampling posture clues can reduce retained event examples; current identity has visible app configuration write control",
+      "capability_steps": [
+        {
+          "action": "change instrumentation posture",
+          "api_surface": "Microsoft.Web/sites/config/write",
+          "status": "yes",
+          "downstream_effect": "Changes app settings that can control Application Insights instrumentation behavior.",
+          "boundary": "Does not read code-level instrumentation bodies."
+        },
+        {
+          "action": "choose telemetry target",
+          "api_surface": "Application Insights component and app settings",
+          "status": "yes",
+          "downstream_effect": "Selects the instrumented app or function where telemetry is shaped.",
+          "boundary": "A visible setting name is a posture clue, not proof of emitted telemetry."
+        },
+        {
+          "action": "configure sampling",
+          "api_surface": "sampling app settings or SDK/OpenTelemetry config clues",
+          "status": "yes",
+          "downstream_effect": "Can reduce retained request, dependency, trace, or exception examples while dashboards remain alive.",
+          "boundary": "Does not prove true unsampled event count."
+        },
+        {
+          "action": "configure filtering or logging level",
+          "api_surface": "filter, processor, or logging-level setting clues",
+          "status": "yes",
+          "downstream_effect": "Can narrow selected telemetry types before investigators query Application Insights.",
+          "boundary": "Does not prove filtered events occurred."
+        },
+        {
+          "action": "preserve app-side config",
+          "api_surface": "stored app settings",
+          "status": "yes",
+          "downstream_effect": "The instrumentation posture remains as normal application configuration until changed.",
+          "boundary": "Change timing and author require history."
+        },
+        {
+          "action": "blend as observability tuning",
+          "api_surface": "app setting names and component posture",
+          "status": "visible posture only",
+          "downstream_effect": "Common cover stories include cost control, health-check filtering, privacy, and performance tuning.",
+          "boundary": "Cover story is not an intent claim."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "app config write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible app configuration write control."
+      },
+      "current_state": {
+        "kind": "FunctionApp",
+        "instrumentation_clues": [
+          "APPINSIGHTS_INSTRUMENTATIONKEY"
+        ],
+        "sampling_clues": [
+          "AzureFunctionsJobHost__logging__applicationInsights__samplingSettings__isEnabled=true"
+        ],
+        "filtering_clues": [],
+        "logging_level_clues": [],
+        "visible_telemetry_types": [],
+        "posture": "sampling clue(s) visible"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "setting values",
+          "classification": "recon safety",
+          "reason": "Default output uses setting names as posture clues and does not print instrumentation keys or connection strings."
+        },
+        {
+          "name": "code-level processors",
+          "classification": "proof boundary",
+          "reason": "Telemetry processor bodies usually live in source code or binaries, outside management-plane posture."
+        },
+        {
+          "name": "host.json body",
+          "classification": "collector issue",
+          "reason": "Function sampling can live in host.json; this helper only uses visible app setting names by default."
+        },
+        {
+          "name": "true unsampled count",
+          "classification": "proof boundary",
+          "reason": "Current posture cannot prove how many events were dropped or retained."
+        },
+        {
+          "name": "detector failure",
+          "classification": "proof boundary",
+          "reason": "The command does not inspect detections, so it cannot claim a rule missed activity."
+        }
+      ],
+      "summary": "target \"func-orders\" ranks 3/5 for Application Insights truth-disruption posture; 1 sampling clue(s); current identity can modify app configuration from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/components/ai-public-api",
+      "name": "ai-public-api",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "kind": "web",
+      "application_type": "web",
+      "workspace_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod",
+      "ingestion_mode": "LogAnalytics",
+      "summary": "Application Insights component \"ai-public-api\" is visible in eastus.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/components/ai-public-api"
+      ]
+    }
+  ],
+  "issues": []
+}

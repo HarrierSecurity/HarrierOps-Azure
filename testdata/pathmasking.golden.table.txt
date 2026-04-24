@@ -1,0 +1,15 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[pathmasking] Walking the current identity through Azure-native relay, proxy, and workflow surfaces that can blur caller-to-target paths.
+ho-azure pathmasking
+
+╭────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ surface    │ summary                                                                                                                                              │
+├────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ api-mgmt   │ Review API Management services for gateway, backend, hostname, subscription, and named-value posture that can mask the true public-to-backend path.  │
+│ logic-apps │ Review Logic Apps for request, schedule, connector, HTTP action, and identity posture that can relay activity through trusted integration workflows. │
+│ relay      │ Review Azure Relay namespaces and Hybrid Connections for cloud rendezvous points that can blur the path to private listeners or internal services.   │
+╰────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 pathmasking surface(s) available; run a surface to rank visible posture by path ambiguity and attribution-blur value.

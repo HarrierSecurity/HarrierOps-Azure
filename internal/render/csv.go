@@ -64,6 +64,51 @@ func persistenceCSVRenderer(payload any) (string, error) {
 	}
 }
 
+func evasionCSVRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.EvasionOverviewOutput:
+		return evasionOverviewCSV(out)
+	case models.EvasionDCROutput:
+		return evasionDCRCSV(out)
+	case models.EvasionDiagnosticSettingsOutput:
+		return evasionDiagnosticSettingsCSV(out)
+	case models.EvasionAppInsightsOutput:
+		return evasionAppInsightsCSV(out)
+	default:
+		return "", fmt.Errorf("unexpected payload type for evasion: %T", payload)
+	}
+}
+
+func resourceHijackingCSVRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.ResourceHijackingOverviewOutput:
+		return resourceHijackingOverviewCSV(out)
+	case models.ResourceHijackingAPIMOutput:
+		return resourceHijackingAPIMCSV(out)
+	case models.ResourceHijackingAutomationOutput:
+		return resourceHijackingAutomationCSV(out)
+	case models.ResourceHijackingLogicAppsOutput:
+		return resourceHijackingLogicAppsCSV(out)
+	default:
+		return "", fmt.Errorf("unexpected payload type for resourcehijacking: %T", payload)
+	}
+}
+
+func pathMaskingCSVRenderer(payload any) (string, error) {
+	switch out := payload.(type) {
+	case models.PathMaskingOverviewOutput:
+		return pathMaskingOverviewCSV(out)
+	case models.PathMaskingAPIMOutput:
+		return pathMaskingAPIMCSV(out)
+	case models.PathMaskingLogicAppsOutput:
+		return pathMaskingLogicAppsCSV(out)
+	case models.PathMaskingRelayOutput:
+		return pathMaskingRelayCSV(out)
+	default:
+		return "", fmt.Errorf("unexpected payload type for pathmasking: %T", payload)
+	}
+}
+
 func encodeCSV(headers []string, rows [][]string) (string, error) {
 	buffer := &bytes.Buffer{}
 	writer := csv.NewWriter(buffer)
@@ -145,6 +190,9 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 			intPtrString(account.RunbookCount),
 			intPtrString(account.PublishedRunbookCount),
 			jsonStringSlice(account.PublishedRunbookNames),
+			jsonStringSlice(account.RunbookTypes),
+			jsonStringSlice(account.RunbookCommandClues),
+			jsonStringSlice(account.RunbookResourceClues),
 			intPtrString(account.ScheduleCount),
 			jsonStringSlice(account.ScheduleDefinitions),
 			intPtrString(account.JobScheduleCount),
@@ -187,6 +235,9 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 		"runbook_count",
 		"published_runbook_count",
 		"published_runbook_names",
+		"runbook_types",
+		"runbook_command_clues",
+		"runbook_resource_clues",
 		"schedule_count",
 		"schedule_definitions",
 		"job_schedule_count",
@@ -213,6 +264,532 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 		"summary",
 		"related_ids",
 	}, rows)
+}
+
+func dcrCSV(payload models.DCROutput) (string, error) {
+	rows := make([][]string, 0, len(payload.DCRs))
+	for _, dcr := range payload.DCRs {
+		rows = append(rows, []string{
+			dcr.ID,
+			dcr.Name,
+			dcr.ResourceGroup,
+			dcr.Location,
+			valueOrEmpty(dcr.Kind),
+			valueOrEmpty(dcr.Description),
+			valueOrEmpty(dcr.DataCollectionEndpointID),
+			jsonStringSlice(dcr.DataSourceTypes),
+			jsonStringSlice(dcr.Streams),
+			jsonStringSlice(dcr.HighSignalStreams),
+			jsonStringSlice(dcr.DestinationTypes),
+			intString(dcr.TransformationCount),
+			intString(dcr.AssociationCount),
+			jsonValue(dcr.DataSources),
+			jsonValue(dcr.DataFlows),
+			jsonValue(dcr.Destinations),
+			jsonValue(dcr.Associations),
+			dcr.Summary,
+			jsonStringSlice(dcr.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"name",
+		"resource_group",
+		"location",
+		"kind",
+		"description",
+		"data_collection_endpoint_id",
+		"data_source_types",
+		"streams",
+		"high_signal_streams",
+		"destination_types",
+		"transformation_count",
+		"association_count",
+		"data_sources",
+		"data_flows",
+		"destinations",
+		"associations",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func diagnosticSettingsCSV(payload models.DiagnosticSettingsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Sources))
+	for _, source := range payload.Sources {
+		rows = append(rows, []string{
+			source.ID,
+			source.Name,
+			source.Type,
+			source.ResourceGroup,
+			source.Location,
+			intString(source.DiagnosticSettingCount),
+			boolString(source.HasDiagnosticSettings),
+			boolString(source.HasPartialLogPosture),
+			boolString(source.HasHighSignalLogPosture),
+			boolString(source.HasNonWorkspaceDestination),
+			jsonStringSlice(source.EnabledCategories),
+			jsonStringSlice(source.DisabledCategories),
+			jsonStringSlice(source.SupportedCategories),
+			jsonStringSlice(source.NotExportedSupported),
+			boolString(source.SupportedCategoryCatalog),
+			jsonStringSlice(source.CategoryGroups),
+			jsonStringSlice(source.HighSignalCategories),
+			jsonStringSlice(source.DestinationTypes),
+			jsonValue(source.DiagnosticSettings),
+			source.Summary,
+			jsonStringSlice(source.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"name",
+		"type",
+		"resource_group",
+		"location",
+		"diagnostic_setting_count",
+		"has_diagnostic_settings",
+		"has_partial_log_posture",
+		"has_high_signal_log_posture",
+		"has_non_workspace_destination",
+		"enabled_categories",
+		"disabled_categories",
+		"supported_categories",
+		"not_exported_supported_categories",
+		"supported_category_catalog",
+		"category_groups",
+		"high_signal_categories",
+		"destination_types",
+		"diagnostic_settings",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func monitoringSinksCSV(payload models.MonitoringSinksOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Sinks))
+	for _, sink := range payload.Sinks {
+		rows = append(rows, []string{
+			sink.ID,
+			sink.Name,
+			sink.Kind,
+			sink.ResourceType,
+			sink.ResourceGroup,
+			sink.Location,
+			sink.VisibilitySource,
+			boolPtrString(sink.SentinelEnabled),
+			intString(sink.ReferenceCount),
+			jsonValue(sink.References),
+			sink.Summary,
+			jsonStringSlice(sink.RelatedIDs),
+		})
+	}
+
+	return encodeCSV([]string{
+		"id",
+		"name",
+		"kind",
+		"resource_type",
+		"resource_group",
+		"location",
+		"visibility_source",
+		"sentinel_enabled",
+		"reference_count",
+		"references",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func appInsightsCSV(payload models.AppInsightsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Targets))
+	for _, target := range payload.Targets {
+		rows = append(rows, []string{
+			target.ID,
+			target.Name,
+			target.Kind,
+			target.ResourceGroup,
+			target.Location,
+			jsonStringSlice(target.InstrumentationClues),
+			jsonStringSlice(target.SamplingClues),
+			jsonStringSlice(target.FilteringClues),
+			jsonStringSlice(target.LoggingLevelClues),
+			jsonStringSlice(target.VisibleTelemetryTypes),
+			target.Summary,
+			jsonStringSlice(target.RelatedIDs),
+		})
+	}
+	return encodeCSV([]string{
+		"id",
+		"name",
+		"kind",
+		"resource_group",
+		"location",
+		"instrumentation_clues",
+		"sampling_clues",
+		"filtering_clues",
+		"logging_level_clues",
+		"visible_telemetry_types",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func relayCSV(payload models.RelayOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.Namespaces))
+	for _, namespace := range payload.Namespaces {
+		rows = append(rows, []string{
+			namespace.ID,
+			namespace.Name,
+			namespace.ResourceGroup,
+			valueOrEmpty(namespace.Location),
+			valueOrEmpty(namespace.SKUName),
+			valueOrEmpty(namespace.ProvisioningState),
+			valueOrEmpty(namespace.ServiceBusEndpoint),
+			intPtrString(namespace.HybridConnectionCount),
+			intPtrString(namespace.AuthorizationRuleCount),
+			relayHybridConnectionNames(namespace.HybridConnections),
+			relayListenerSummary(namespace),
+			relayAppServiceAttachmentNames(namespace.HybridConnections),
+			namespace.Summary,
+			jsonStringSlice(namespace.RelatedIDs),
+		})
+	}
+	return encodeCSV([]string{
+		"id",
+		"namespace",
+		"resource_group",
+		"location",
+		"sku_name",
+		"provisioning_state",
+		"service_bus_endpoint",
+		"hybrid_connection_count",
+		"authorization_rule_count",
+		"hybrid_connections",
+		"listeners",
+		"app_service_attachments",
+		"summary",
+		"related_ids",
+	}, rows)
+}
+
+func relayHybridConnectionNames(connections []models.RelayHybridConnectionAsset) string {
+	values := make([]string, 0, len(connections))
+	for _, connection := range connections {
+		values = append(values, connection.Name)
+	}
+	return jsonStringSlice(values)
+}
+
+func relayAppServiceAttachmentNames(connections []models.RelayHybridConnectionAsset) string {
+	values := make([]string, 0, len(connections))
+	for _, connection := range connections {
+		for _, app := range connection.AppServiceAttachments {
+			values = append(values, connection.Name+"->"+app)
+		}
+	}
+	return jsonStringSlice(values)
+}
+
+func evasionOverviewCSV(payload models.EvasionOverviewOutput) (string, error) {
+	return familyOverviewCSV(payload.Surfaces)
+}
+
+func familyOverviewCSV(surfaces []models.FamilySurfaceDescriptor) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.FamilySurfaceDescriptor]{
+		{header: "surface", value: func(surface models.FamilySurfaceDescriptor) string { return surface.Surface }},
+		{header: "state", value: func(surface models.FamilySurfaceDescriptor) string { return surface.State }},
+		{header: "summary", value: func(surface models.FamilySurfaceDescriptor) string { return surface.Summary }},
+		{header: "operator_question", value: func(surface models.FamilySurfaceDescriptor) string { return surface.OperatorQuestion }},
+		{header: "backing_commands", value: func(surface models.FamilySurfaceDescriptor) string { return jsonStringSlice(surface.BackingCommands) }},
+	}, surfaces)
+}
+
+func evasionDCRCSV(payload models.EvasionDCROutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.EvasionDCR]{
+		{"id", func(dcr models.EvasionDCR) string { return dcr.ID }},
+		{"dcr", func(dcr models.EvasionDCR) string { return dcr.Name }},
+		{"resource_group", func(dcr models.EvasionDCR) string { return dcr.ResourceGroup }},
+		{"location", func(dcr models.EvasionDCR) string { return dcr.Location }},
+		{"disruption_rank", func(dcr models.EvasionDCR) string { return intString(dcr.DisruptionRank) }},
+		{"disruption_reason", func(dcr models.EvasionDCR) string { return dcr.DisruptionReason }},
+		{"capability_steps", func(dcr models.EvasionDCR) string { return jsonValue(dcr.CapabilitySteps) }},
+		{"current_identity_summary", func(dcr models.EvasionDCR) string {
+			return familyRoleSummary(dcr.CurrentIdentityContext)
+		}},
+		{"current_state", func(dcr models.EvasionDCR) string { return jsonValue(dcr.CurrentState) }},
+		{"not_collected_by_default", func(dcr models.EvasionDCR) string {
+			return jsonValue(dcr.NotCollectedByDefault)
+		}},
+		{"summary", func(dcr models.EvasionDCR) string { return dcr.Summary }},
+		{"related_ids", func(dcr models.EvasionDCR) string { return jsonStringSlice(dcr.RelatedIDs) }},
+	}, payload.DCRs)
+}
+
+func evasionDiagnosticSettingsCSV(payload models.EvasionDiagnosticSettingsOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.EvasionDiagnosticSettingsSource]{
+		{"id", func(source models.EvasionDiagnosticSettingsSource) string { return source.ID }},
+		{"source", func(source models.EvasionDiagnosticSettingsSource) string { return source.Name }},
+		{"resource_group", func(source models.EvasionDiagnosticSettingsSource) string { return source.ResourceGroup }},
+		{"location", func(source models.EvasionDiagnosticSettingsSource) string { return source.Location }},
+		{"disruption_rank", func(source models.EvasionDiagnosticSettingsSource) string {
+			return intString(source.DisruptionRank)
+		}},
+		{"disruption_reason", func(source models.EvasionDiagnosticSettingsSource) string {
+			return source.DisruptionReason
+		}},
+		{"capability_steps", func(source models.EvasionDiagnosticSettingsSource) string {
+			return jsonValue(source.CapabilitySteps)
+		}},
+		{"current_identity_summary", func(source models.EvasionDiagnosticSettingsSource) string {
+			return familyRoleSummary(source.CurrentIdentityContext)
+		}},
+		{"current_state", func(source models.EvasionDiagnosticSettingsSource) string { return jsonValue(source.CurrentState) }},
+		{"not_collected_by_default", func(source models.EvasionDiagnosticSettingsSource) string {
+			return jsonValue(source.NotCollectedByDefault)
+		}},
+		{"summary", func(source models.EvasionDiagnosticSettingsSource) string { return source.Summary }},
+		{"related_ids", func(source models.EvasionDiagnosticSettingsSource) string {
+			return jsonStringSlice(source.RelatedIDs)
+		}},
+	}, payload.Sources)
+}
+
+func evasionAppInsightsCSV(payload models.EvasionAppInsightsOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.EvasionAppInsightsTarget]{
+		{"id", func(target models.EvasionAppInsightsTarget) string { return target.ID }},
+		{"target", func(target models.EvasionAppInsightsTarget) string { return target.Name }},
+		{"resource_group", func(target models.EvasionAppInsightsTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.EvasionAppInsightsTarget) string { return target.Location }},
+		{"disruption_rank", func(target models.EvasionAppInsightsTarget) string {
+			return intString(target.DisruptionRank)
+		}},
+		{"disruption_reason", func(target models.EvasionAppInsightsTarget) string { return target.DisruptionReason }},
+		{"capability_steps", func(target models.EvasionAppInsightsTarget) string { return jsonValue(target.CapabilitySteps) }},
+		{"current_identity_summary", func(target models.EvasionAppInsightsTarget) string {
+			return familyRoleSummary(target.CurrentIdentityContext)
+		}},
+		{"current_state", func(target models.EvasionAppInsightsTarget) string { return jsonValue(target.CurrentState) }},
+		{"not_collected_by_default", func(target models.EvasionAppInsightsTarget) string {
+			return jsonValue(target.NotCollectedByDefault)
+		}},
+		{"summary", func(target models.EvasionAppInsightsTarget) string { return target.Summary }},
+		{"related_ids", func(target models.EvasionAppInsightsTarget) string { return jsonStringSlice(target.RelatedIDs) }},
+	}, payload.Targets)
+}
+
+func resourceHijackingOverviewCSV(payload models.ResourceHijackingOverviewOutput) (string, error) {
+	return familyOverviewCSV(payload.Surfaces)
+}
+
+func resourceHijackingAPIMCSV(payload models.ResourceHijackingAPIMOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.ResourceHijackingAPIMTarget]{
+		{"id", func(target models.ResourceHijackingAPIMTarget) string { return target.ID }},
+		{"api_management_service", func(target models.ResourceHijackingAPIMTarget) string { return target.Name }},
+		{"resource_group", func(target models.ResourceHijackingAPIMTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.ResourceHijackingAPIMTarget) string { return valueOrEmpty(target.Location) }},
+		{"takeover_rank", func(target models.ResourceHijackingAPIMTarget) string {
+			return fmt.Sprintf("%d", target.TakeoverRank)
+		}},
+		{"takeover_reason", func(target models.ResourceHijackingAPIMTarget) string { return target.TakeoverReason }},
+		{"gateway_hostnames", func(target models.ResourceHijackingAPIMTarget) string {
+			return jsonStringSlice(target.CurrentState.GatewayHostnames)
+		}},
+		{"backend_hostnames", func(target models.ResourceHijackingAPIMTarget) string {
+			return jsonStringSlice(target.CurrentState.BackendHostnames)
+		}},
+		{"api_count", func(target models.ResourceHijackingAPIMTarget) string {
+			return intPtrString(target.CurrentState.APICount)
+		}},
+		{"active_subscription_count", func(target models.ResourceHijackingAPIMTarget) string {
+			return intPtrString(target.CurrentState.ActiveSubscriptionCount)
+		}},
+		{"current_identity", func(target models.ResourceHijackingAPIMTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.ResourceHijackingAPIMTarget) string { return target.Summary }},
+		{"related_ids", func(target models.ResourceHijackingAPIMTarget) string { return jsonStringSlice(target.RelatedIDs) }},
+	}, payload.Targets)
+}
+
+func resourceHijackingAutomationCSV(payload models.ResourceHijackingAutomationOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.ResourceHijackingAutomationTarget]{
+		{"id", func(target models.ResourceHijackingAutomationTarget) string { return target.ID }},
+		{"automation_account", func(target models.ResourceHijackingAutomationTarget) string { return target.Name }},
+		{"resource_group", func(target models.ResourceHijackingAutomationTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.ResourceHijackingAutomationTarget) string { return valueOrEmpty(target.Location) }},
+		{"takeover_rank", func(target models.ResourceHijackingAutomationTarget) string {
+			return fmt.Sprintf("%d", target.TakeoverRank)
+		}},
+		{"takeover_reason", func(target models.ResourceHijackingAutomationTarget) string { return target.TakeoverReason }},
+		{"published_runbook_count", func(target models.ResourceHijackingAutomationTarget) string {
+			return intPtrString(target.CurrentState.PublishedRunbookCount)
+		}},
+		{"published_runbook_names", func(target models.ResourceHijackingAutomationTarget) string {
+			return jsonStringSlice(target.CurrentState.PublishedRunbookNames)
+		}},
+		{"job_schedule_count", func(target models.ResourceHijackingAutomationTarget) string {
+			return intPtrString(target.CurrentState.JobScheduleCount)
+		}},
+		{"webhook_count", func(target models.ResourceHijackingAutomationTarget) string {
+			return intPtrString(target.CurrentState.WebhookCount)
+		}},
+		{"hybrid_worker_group_count", func(target models.ResourceHijackingAutomationTarget) string {
+			return intPtrString(target.CurrentState.HybridWorkerGroupCount)
+		}},
+		{"identity_type", func(target models.ResourceHijackingAutomationTarget) string {
+			return valueOrEmpty(target.CurrentState.IdentityType)
+		}},
+		{"current_identity", func(target models.ResourceHijackingAutomationTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.ResourceHijackingAutomationTarget) string { return target.Summary }},
+		{"related_ids", func(target models.ResourceHijackingAutomationTarget) string {
+			return jsonStringSlice(target.RelatedIDs)
+		}},
+	}, payload.Targets)
+}
+
+func resourceHijackingLogicAppsCSV(payload models.ResourceHijackingLogicAppsOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.ResourceHijackingLogicAppTarget]{
+		{"id", func(target models.ResourceHijackingLogicAppTarget) string { return target.ID }},
+		{"logic_app", func(target models.ResourceHijackingLogicAppTarget) string { return target.Name }},
+		{"resource_group", func(target models.ResourceHijackingLogicAppTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.ResourceHijackingLogicAppTarget) string { return valueOrEmpty(target.Location) }},
+		{"takeover_rank", func(target models.ResourceHijackingLogicAppTarget) string {
+			return fmt.Sprintf("%d", target.TakeoverRank)
+		}},
+		{"takeover_reason", func(target models.ResourceHijackingLogicAppTarget) string { return target.TakeoverReason }},
+		{"trigger_types", func(target models.ResourceHijackingLogicAppTarget) string {
+			return jsonStringSlice(target.CurrentState.TriggerTypes)
+		}},
+		{"externally_callable_request_trigger", func(target models.ResourceHijackingLogicAppTarget) string {
+			return boolString(target.CurrentState.ExternallyCallableRequestTrigger)
+		}},
+		{"recurrence_summary", func(target models.ResourceHijackingLogicAppTarget) string {
+			return valueOrEmpty(target.CurrentState.RecurrenceSummary)
+		}},
+		{"downstream_action_kinds", func(target models.ResourceHijackingLogicAppTarget) string {
+			return jsonStringSlice(target.CurrentState.DownstreamActionKinds)
+		}},
+		{"identity_type", func(target models.ResourceHijackingLogicAppTarget) string {
+			return valueOrEmpty(target.CurrentState.IdentityType)
+		}},
+		{"current_identity", func(target models.ResourceHijackingLogicAppTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.ResourceHijackingLogicAppTarget) string { return target.Summary }},
+		{"related_ids", func(target models.ResourceHijackingLogicAppTarget) string {
+			return jsonStringSlice(target.RelatedIDs)
+		}},
+	}, payload.Targets)
+}
+
+func pathMaskingOverviewCSV(payload models.PathMaskingOverviewOutput) (string, error) {
+	return familyOverviewCSV(payload.Surfaces)
+}
+
+func pathMaskingAPIMCSV(payload models.PathMaskingAPIMOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.PathMaskingAPIMTarget]{
+		{"id", func(target models.PathMaskingAPIMTarget) string { return target.ID }},
+		{"api_management_service", func(target models.PathMaskingAPIMTarget) string { return target.Name }},
+		{"resource_group", func(target models.PathMaskingAPIMTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.PathMaskingAPIMTarget) string { return valueOrEmpty(target.Location) }},
+		{"masking_rank", func(target models.PathMaskingAPIMTarget) string {
+			return fmt.Sprintf("%d", target.MaskingRank)
+		}},
+		{"masking_reason", func(target models.PathMaskingAPIMTarget) string { return target.MaskingReason }},
+		{"gateway_hostnames", func(target models.PathMaskingAPIMTarget) string {
+			return jsonStringSlice(target.CurrentState.GatewayHostnames)
+		}},
+		{"backend_hostnames", func(target models.PathMaskingAPIMTarget) string {
+			return jsonStringSlice(target.CurrentState.BackendHostnames)
+		}},
+		{"api_count", func(target models.PathMaskingAPIMTarget) string {
+			return intPtrString(target.CurrentState.APICount)
+		}},
+		{"subscription_count", func(target models.PathMaskingAPIMTarget) string {
+			return intPtrString(target.CurrentState.SubscriptionCount)
+		}},
+		{"current_identity", func(target models.PathMaskingAPIMTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.PathMaskingAPIMTarget) string { return target.Summary }},
+		{"related_ids", func(target models.PathMaskingAPIMTarget) string { return jsonStringSlice(target.RelatedIDs) }},
+	}, payload.Targets)
+}
+
+func pathMaskingLogicAppsCSV(payload models.PathMaskingLogicAppsOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.PathMaskingLogicAppTarget]{
+		{"id", func(target models.PathMaskingLogicAppTarget) string { return target.ID }},
+		{"logic_app", func(target models.PathMaskingLogicAppTarget) string { return target.Name }},
+		{"resource_group", func(target models.PathMaskingLogicAppTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.PathMaskingLogicAppTarget) string { return valueOrEmpty(target.Location) }},
+		{"masking_rank", func(target models.PathMaskingLogicAppTarget) string {
+			return fmt.Sprintf("%d", target.MaskingRank)
+		}},
+		{"masking_reason", func(target models.PathMaskingLogicAppTarget) string { return target.MaskingReason }},
+		{"trigger_types", func(target models.PathMaskingLogicAppTarget) string {
+			return jsonStringSlice(target.CurrentState.TriggerTypes)
+		}},
+		{"externally_callable_request_trigger", func(target models.PathMaskingLogicAppTarget) string {
+			return boolString(target.CurrentState.ExternallyCallableRequestTrigger)
+		}},
+		{"recurrence_summary", func(target models.PathMaskingLogicAppTarget) string {
+			return valueOrEmpty(target.CurrentState.RecurrenceSummary)
+		}},
+		{"downstream_action_kinds", func(target models.PathMaskingLogicAppTarget) string {
+			return jsonStringSlice(target.CurrentState.DownstreamActionKinds)
+		}},
+		{"identity_type", func(target models.PathMaskingLogicAppTarget) string {
+			return valueOrEmpty(target.CurrentState.IdentityType)
+		}},
+		{"current_identity", func(target models.PathMaskingLogicAppTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.PathMaskingLogicAppTarget) string { return target.Summary }},
+		{"related_ids", func(target models.PathMaskingLogicAppTarget) string {
+			return jsonStringSlice(target.RelatedIDs)
+		}},
+	}, payload.Targets)
+}
+
+func pathMaskingRelayCSV(payload models.PathMaskingRelayOutput) (string, error) {
+	return encodeCSVColumns([]csvColumn[models.PathMaskingRelayTarget]{
+		{"id", func(target models.PathMaskingRelayTarget) string { return target.ID }},
+		{"relay_namespace", func(target models.PathMaskingRelayTarget) string { return target.Name }},
+		{"resource_group", func(target models.PathMaskingRelayTarget) string { return target.ResourceGroup }},
+		{"location", func(target models.PathMaskingRelayTarget) string { return valueOrEmpty(target.Location) }},
+		{"masking_rank", func(target models.PathMaskingRelayTarget) string {
+			return fmt.Sprintf("%d", target.MaskingRank)
+		}},
+		{"masking_reason", func(target models.PathMaskingRelayTarget) string { return target.MaskingReason }},
+		{"service_bus_endpoint", func(target models.PathMaskingRelayTarget) string {
+			return valueOrEmpty(target.CurrentState.ServiceBusEndpoint)
+		}},
+		{"hybrid_connection_count", func(target models.PathMaskingRelayTarget) string {
+			return intPtrString(target.CurrentState.HybridConnectionCount)
+		}},
+		{"hybrid_connection_names", func(target models.PathMaskingRelayTarget) string {
+			return jsonStringSlice(target.CurrentState.HybridConnectionNames)
+		}},
+		{"authorization_rule_count", func(target models.PathMaskingRelayTarget) string {
+			return intPtrString(target.CurrentState.AuthorizationRuleCount)
+		}},
+		{"listener_summary", func(target models.PathMaskingRelayTarget) string {
+			return target.CurrentState.ListenerSummary
+		}},
+		{"app_service_attachments", func(target models.PathMaskingRelayTarget) string {
+			return jsonStringSlice(target.CurrentState.AppServiceAttachments)
+		}},
+		{"current_identity", func(target models.PathMaskingRelayTarget) string {
+			return familyRoleControlLabel(target.CurrentIdentityContext)
+		}},
+		{"summary", func(target models.PathMaskingRelayTarget) string { return target.Summary }},
+		{"related_ids", func(target models.PathMaskingRelayTarget) string { return jsonStringSlice(target.RelatedIDs) }},
+	}, payload.Targets)
 }
 
 func eventGridCSV(payload models.EventGridOutput) (string, error) {
@@ -354,10 +931,16 @@ func logicAppsCSV(payload models.LogicAppsOutput) (string, error) {
 			valueOrEmpty(workflow.PrincipalID),
 			valueOrEmpty(workflow.ClientID),
 			jsonStringSlice(workflow.IdentityIDs),
+			intString(workflow.TriggerCount),
+			intString(workflow.ActionCount),
+			intString(workflow.BranchCount),
 			jsonStringSlice(workflow.TriggerTypes),
 			boolString(workflow.ExternallyCallableRequestTrigger),
 			valueOrEmpty(workflow.RecurrenceSummary),
 			jsonStringSlice(workflow.DownstreamActionKinds),
+			jsonStringSlice(workflow.ConnectorReferences),
+			jsonStringSlice(workflow.ParameterNames),
+			jsonStringSlice(workflow.DownstreamResourceReferences),
 			workflow.Summary,
 			jsonStringSlice(workflow.RelatedIDs),
 		})
@@ -379,10 +962,16 @@ func logicAppsCSV(payload models.LogicAppsOutput) (string, error) {
 		"principal_id",
 		"client_id",
 		"identity_ids",
+		"trigger_count",
+		"action_count",
+		"branch_count",
 		"trigger_types",
 		"externally_callable_request_trigger",
 		"recurrence_summary",
 		"downstream_action_kinds",
+		"connector_references",
+		"parameter_names",
+		"downstream_resource_references",
 		"summary",
 		"related_ids",
 	}, rows)

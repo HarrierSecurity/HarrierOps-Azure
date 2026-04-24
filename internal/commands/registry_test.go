@@ -47,3 +47,39 @@ func TestPersistenceSurfaceBuildersCoverImplementedSurfaces(t *testing.T) {
 		}
 	}
 }
+
+func TestEvasionSurfaceBuildersCoverImplementedSurfaces(t *testing.T) {
+	for _, surfaceName := range contracts.EvasionSurfaceNames() {
+		surface, ok := contracts.EvasionSurface(surfaceName)
+		if !ok || surface.Status != contracts.StatusImplemented {
+			continue
+		}
+		if evasionSurfaceBuilders[surfaceName] == nil {
+			t.Fatalf("expected implemented evasion surface %q to have a builder", surfaceName)
+		}
+	}
+}
+
+func TestResourceHijackingSurfaceBuildersCoverImplementedSurfaces(t *testing.T) {
+	for _, surfaceName := range contracts.ResourceHijackingSurfaceNames() {
+		surface, ok := contracts.ResourceHijackingSurface(surfaceName)
+		if !ok || surface.Status != contracts.StatusImplemented {
+			continue
+		}
+		if resourceHijackingSurfaceBuilders[surfaceName] == nil {
+			t.Fatalf("expected implemented resourcehijacking surface %q to have a builder", surfaceName)
+		}
+	}
+}
+
+func TestPathMaskingSurfaceBuildersCoverImplementedSurfaces(t *testing.T) {
+	for _, surfaceName := range contracts.PathMaskingSurfaceNames() {
+		surface, ok := contracts.PathMaskingSurface(surfaceName)
+		if !ok || surface.Status != contracts.StatusImplemented {
+			continue
+		}
+		if pathMaskingSurfaceBuilders[surfaceName] == nil {
+			t.Fatalf("expected implemented pathmasking surface %q to have a builder", surfaceName)
+		}
+	}
+}

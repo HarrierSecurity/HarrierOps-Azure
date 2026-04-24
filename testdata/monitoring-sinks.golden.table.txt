@@ -1,0 +1,23 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[monitoring-sinks] Reviewing visible and declared monitoring destinations that DCRs and diagnostic settings can route telemetry toward.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure monitoring-sinks
+
+╭──────────────┬───────────┬──────────────────────┬────────┬──────────╮
+│ sink         │ kind      │ visible from         │ routes │ sentinel │
+├──────────────┼───────────┼──────────────────────┼────────┼──────────┤
+│ send         │ eventHubs │ declared destination │ 2      │ unknown  │
+│ law-soc-prod │ sentinel  │ resource inventory   │ 2      │ visible  │
+│ stdataprod   │ storage   │ resource inventory   │ 0      │ unknown  │
+╰──────────────┴───────────┴──────────────────────┴────────┴──────────╯
+
+Takeaway: 3 visible or declared monitoring sink(s); 2 referenced by DCR or diagnostic-settings routes; kinds: eventHubs, sentinel, storage.
+
+Not collected by default
+item                  | classification | reason
+
+expected SOC baseline | proof boundary | Visible sinks and declared telemetry routes do not prove which sink defenders expect.
+sink contents         | proof boundary | The helper does not query Log Analytics, Storage, Event Hub, or partner sink contents.
+detector wiring       | proof boundary | Sentinel enablement is posture only; rule dependencies and alert behavior are not inspected.

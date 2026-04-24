@@ -20,6 +20,7 @@ Azure Functions capability
 - Current identity can deploy or replace the function package Azure will load in this Function App.
    Because the current identity already controls this Function App, zip deploy, publish, or package replacement are part of the defended Functions persistence path here.
    Common deploy paths here include ZIP package deployment, pipeline deployment, run-from-package, or local project publish.
+   The Function App can exist without meaningful deployed logic; the package or project is the runnable payload Azure loads when a trigger fires.
    Visible deployment posture includes storage=plain-text.
    Visible deployment posture includes kv-refs=1.
    AzureWebJobsStorage is plain-text.
@@ -30,7 +31,7 @@ Azure Functions capability
    HTTP-triggered functions are visible from management-plane metadata, including an invoke URL template and visible auth-level metadata.
    Timer, queue, Service Bus, or other event-driven triggers are visible from bindings, but they are not the same as a directly callable public entrypoint.
    The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.
-   That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.
+   That includes function keys or caller auth actually in hand, upstream Service Bus, queue, storage, or binding access, and any runtime-side restriction beyond the visible trigger metadata.
 
 - Current identity can change app settings, identity attachment, and deployment configuration for this Function App.
    This is where runtime behavior, package behavior, and connection material get shaped for this Function App.
@@ -49,7 +50,7 @@ Azure Functions capability
    Reusing an existing Function App can blend in better than standing up a brand-new serverless entrypoint.
 
 Visible Function Apps
-function app | resource group | visible state                                                                                                                          | execution context                           
+function app | resource group | visible state                                                                                                                          | execution context
 
 func-orders  | rg-apps        | Running; hostname visible; PYTHON|3.11; functions=~4; storage=plain-text; kv-refs=1; public Enabled; triggers=HTTP, timer, Service Bus | `ua-orders` with Owner at subscription scope
 

@@ -1,0 +1,37 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[resourcehijacking] APIM resource hijacking means the trusted API gateway can keep answering while backend or routing posture changes behind it.
+APIM resourcehijacking capability
+
+╭─────────────────────────────────────────┬──────────────────────────────────────────┬──────────────────────╮
+│ action                                  │ api surface                              │ status               │
+├─────────────────────────────────────────┼──────────────────────────────────────────┼──────────────────────┤
+│ select trusted gateway                  │ Microsoft.ApiManagement/service          │ visible posture only │
+│ identify backend control point          │ Microsoft.ApiManagement/service/backends │ visible posture only │
+│ change backend or routing policy        │ APIM backend or policy write             │ yes                  │
+│ preserve subscriptions and named values │ APIM subscriptions and named values      │ yes                  │
+│ blend as API operations change          │ APIM service configuration               │ visible posture only │
+╰─────────────────────────────────────────┴──────────────────────────────────────────┴──────────────────────╯
+
+Operator read
+service "apim-edge-01" ranks 5/5 for APIM resource-hijack posture; 2 gateway hostname(s); 1 backend hostname(s); current identity can modify APIM backend or policy posture from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible APIM backend or policy write control.
+Downstream effect: trusted gateway, backend target, and consumer/subscription posture are all visible; current identity has visible APIM backend or policy write control
+First boundary: this is APIM management-plane posture, not policy-body proof, live traffic proof, or backend ownership proof.
+Posture: 2 gateway hostname(s); 1 backend hostname(s); policy controls: backend-routing, conditional-routing, header-auth, request-rewrite; 2 active subscription(s); secret or Key Vault named-value posture.
+
+Visible APIM Services
+service      | rank | gateways                                    | backends                      | active subscriptions | current identity
+
+apim-edge-01 | 5/5  | apim-edge-01.azure-api.net, api.contoso.com | orders-internal.contoso.local | 2                    | APIM backend/policy write
+
+
+Not collected by default
+item               | classification | reason
+
+policy XML bodies  | recon safety   | The flat helper parses safe policy control types, but does not print raw policy XML or named-value expansions.
+named-value values | recon safety   | Default output reports secret and Key Vault named-value counts without printing stored values.
+live request flow  | proof boundary | Management-plane posture cannot prove traffic was routed, captured, or modified.
+backend ownership  | proof boundary | A backend hostname does not prove who controls that endpoint or whether it is reachable.
+activity history   | API/noise      | Broad APIM history pulls are not needed for default posture and should be a narrow follow-up only when timing or actor proof matters.

@@ -1,0 +1,98 @@
+{
+  "sinks": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+      "name": "send",
+      "kind": "eventHubs",
+      "resource_type": "Microsoft.EventHub/namespaces/authorizationRules",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "visibility_source": "declared destination",
+      "references": [
+        {
+          "source_command": "dcr",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+          "source_name": "dcr-ama-migration",
+          "reference_name": "migration-eventhub",
+          "reference_type": "eventHubs",
+          "destination_detail": "monitoring-migration"
+        },
+        {
+          "source_command": "diagnostic-settings",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stdataprod",
+          "source_name": "stdataprod",
+          "reference_name": "archive-storage",
+          "reference_type": "eventHubs",
+          "destination_detail": "monitoring-migration"
+        }
+      ],
+      "reference_count": 2,
+      "summary": "eventHubs sink \"send\" is visible through declared destination; referenced by 2 telemetry route(s).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stdataprod",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod",
+      "name": "law-soc-prod",
+      "kind": "sentinel",
+      "resource_type": "Microsoft.OperationalInsights/workspaces",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "visibility_source": "resource inventory",
+      "sentinel_enabled": true,
+      "references": [
+        {
+          "source_command": "dcr",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+          "source_name": "dcr-prod-host",
+          "reference_name": "soc-workspace",
+          "reference_type": "logAnalytics",
+          "destination_detail": "soc-workspace"
+        },
+        {
+          "source_command": "diagnostic-settings",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-prod",
+          "source_name": "kv-prod",
+          "reference_name": "send-audit",
+          "reference_type": "logAnalytics",
+          "destination_detail": "Dedicated"
+        }
+      ],
+      "reference_count": 2,
+      "summary": "sentinel sink \"law-soc-prod\" is visible through resource inventory; Sentinel appears enabled; referenced by 2 telemetry route(s).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-sec/providers/Microsoft.KeyVault/vaults/kv-prod"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stdataprod",
+      "name": "stdataprod",
+      "kind": "storage",
+      "resource_type": "Microsoft.Storage/storageAccounts",
+      "resource_group": "rg-data",
+      "location": "eastus",
+      "visibility_source": "resource inventory",
+      "references": null,
+      "reference_count": 0,
+      "summary": "storage sink \"stdataprod\" is visible through resource inventory.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stdataprod"
+      ]
+    }
+  ],
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "monitoring-sinks",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  }
+}

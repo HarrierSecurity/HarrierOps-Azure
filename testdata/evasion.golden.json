@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "evasion",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "evasion",
+  "command_state": "implemented",
+  "current_behavior": "Grouped evasion walkthroughs. Use `ho-azure evasion` or `ho-azure evasion help` to list surfaces, then `ho-azure evasion \u003csurface\u003e` to run an implemented surface.",
+  "planned_input_modes": [
+    "live"
+  ],
+  "preferred_artifact_order": [
+    "loot",
+    "json"
+  ],
+  "selected_surface": null,
+  "surfaces": [
+    {
+      "surface": "appinsights",
+      "state": "implemented",
+      "summary": "Review Application Insights components and instrumented app settings for visible sampling, filtering, and logging posture clues.",
+      "operator_question": "How far can current access take me through visible Application Insights instrumentation, sampling, filtering, and logging-level levers before the proof boundary moves into code, runtime, or telemetry content?",
+      "backing_commands": [
+        "appinsights",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "dcr",
+      "state": "implemented",
+      "summary": "Review Data Collection Rules for collection, stream, destination, association, and transformation posture that can quietly reshape monitoring truth.",
+      "operator_question": "How far can current access take me through DCR collection, routing, association, and transformation levers before the proof boundary moves into runtime logs or agent state?",
+      "backing_commands": [
+        "dcr",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "diagnostic-settings",
+      "state": "implemented",
+      "summary": "Review diagnostic settings for source resources, exported categories, metrics, destinations, and visible telemetry-routing posture.",
+      "operator_question": "How far can current access take me through diagnostic setting category and destination levers before the proof boundary moves into sink contents, history, or detector wiring?",
+      "backing_commands": [
+        "diagnostic-settings",
+        "permissions",
+        "rbac"
+      ]
+    }
+  ],
+  "issues": []
+}

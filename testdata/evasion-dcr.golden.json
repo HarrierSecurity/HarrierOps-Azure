@@ -1,0 +1,362 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "evasion",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "evasion",
+  "surface": "dcr",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Data Collection Rules for collection, stream, destination, association, and transformation posture that can quietly reshape monitoring truth.",
+  "backing_commands": [
+    "dcr",
+    "permissions",
+    "rbac"
+  ],
+  "monitoring_sinks": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod",
+      "name": "law-soc-prod",
+      "kind": "logAnalytics",
+      "resource_type": "Microsoft.OperationalInsights/workspaces",
+      "resource_group": "rg-monitor",
+      "location": "",
+      "visibility_source": "declared destination",
+      "references": [
+        {
+          "source_command": "dcr",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+          "source_name": "dcr-prod-host",
+          "reference_name": "soc-workspace",
+          "reference_type": "logAnalytics",
+          "destination_detail": "soc-workspace"
+        }
+      ],
+      "reference_count": 1,
+      "summary": "logAnalytics sink \"law-soc-prod\" is visible through declared destination; referenced by 1 telemetry route(s).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+      "name": "send",
+      "kind": "eventHubs",
+      "resource_type": "Microsoft.EventHub/namespaces",
+      "resource_group": "rg-monitor",
+      "location": "",
+      "visibility_source": "declared destination",
+      "references": [
+        {
+          "source_command": "dcr",
+          "source_resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+          "source_name": "dcr-ama-migration",
+          "reference_name": "migration-eventhub",
+          "reference_type": "eventHubs",
+          "destination_detail": "monitoring-migration"
+        }
+      ],
+      "reference_count": 1,
+      "summary": "eventHubs sink \"send\" is visible through declared destination; referenced by 1 telemetry route(s).",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration"
+      ]
+    }
+  ],
+  "dcrs": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+      "dcr": "dcr-prod-host",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "disruption_rank": 5,
+      "disruption_reason": "transformations can alter selected high-signal data while collection remains configured; current identity has visible rule and association write control",
+      "capability_steps": [
+        {
+          "action": "choose or create DCR",
+          "api_surface": "Microsoft.Insights/dataCollectionRules/write",
+          "status": "yes",
+          "downstream_effect": "Sets the Azure Monitor object that can define collection, data flows, destinations, and transform posture.",
+          "boundary": "Does not prove a monitored agent has applied the rule."
+        },
+        {
+          "action": "associate monitored scope",
+          "api_surface": "Microsoft.Insights/dataCollectionRuleAssociations/write",
+          "status": "yes",
+          "downstream_effect": "Selects which visible resource scope receives the DCR collection and routing posture.",
+          "boundary": "Does not prove runtime agent state or log arrival."
+        },
+        {
+          "action": "select data sources and streams",
+          "api_surface": "dataSources / dataFlows.streams",
+          "status": "yes",
+          "downstream_effect": "Controls which telemetry classes are collected, including host and security-adjacent streams when present.",
+          "boundary": "Ranks by visible stream value only; missing expected streams require a defended baseline."
+        },
+        {
+          "action": "configure data flows and transformations",
+          "api_surface": "dataFlows.transformKql",
+          "status": "yes",
+          "downstream_effect": "Can filter or reshape selected records before storage while the pipeline still appears configured.",
+          "boundary": "Prints only transform presence, fingerprint, and length; it does not print transformKql or infer intent."
+        },
+        {
+          "action": "select destinations",
+          "api_surface": "destinations / dataFlows.destinations",
+          "status": "yes",
+          "downstream_effect": "Chooses where collected data goes, which can preserve logging while moving it away from a SOC workspace.",
+          "boundary": "Does not claim destination drift without an expected destination model."
+        },
+        {
+          "action": "save or re-associate rule",
+          "api_surface": "DCR write plus association write",
+          "status": "yes",
+          "downstream_effect": "Makes the Azure-side collection posture durable as management-plane configuration.",
+          "boundary": "Persistence here means Azure configuration remains until changed; runtime application is not proven."
+        },
+        {
+          "action": "shape defender truth",
+          "api_surface": "streams, dataFlows, destinations, transformKql",
+          "status": "yes",
+          "downstream_effect": "Visible levers can narrow collection, reroute telemetry, or transform records without a full logging disablement.",
+          "boundary": "Does not claim malicious filtering or downstream detector failure from posture alone."
+        },
+        {
+          "action": "preserve Azure-side config",
+          "api_surface": "stored DCR and association resources",
+          "status": "yes",
+          "downstream_effect": "The changed rule or association can remain in place like normal monitoring migration, cost, or schema configuration.",
+          "boundary": "History, author, and timing require activity-log evidence not collected here by default."
+        },
+        {
+          "action": "blend as monitoring change",
+          "api_surface": "DCR metadata and ARM posture",
+          "status": "visible posture only",
+          "downstream_effect": "Common cover stories include AMA migration, workspace consolidation, cost control, schema normalization, and noise reduction.",
+          "boundary": "Cover story is an administrative explanation, not a claim of benign or malicious intent."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "DCR + association write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible DCR write control and association write control."
+      },
+      "current_state": {
+        "data_source_types": [
+          "syslog",
+          "windowsEventLogs"
+        ],
+        "streams": [
+          "Microsoft-Syslog",
+          "Microsoft-WindowsEvent"
+        ],
+        "high_signal_streams": [
+          "Microsoft-WindowsEvent",
+          "Microsoft-Syslog"
+        ],
+        "destination_types": [
+          "logAnalytics"
+        ],
+        "association_targets": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01"
+        ],
+        "transformation_count": 1,
+        "association_count": 1,
+        "transformation_posture": "transformation posture is visible on a DCR with high-signal streams",
+        "destination_posture": "operator-selected destinations visible: logAnalytics"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "transformKql body",
+          "classification": "operational anomaly",
+          "reason": "Presence, length, and fingerprint are enough for posture; printing full transform logic can expose sensitive filtering logic and encourages overclaiming intent."
+        },
+        {
+          "name": "log arrival or missing-record proof",
+          "classification": "proof boundary",
+          "reason": "Management-plane DCR posture cannot prove which records arrived, were dropped, or were later queried from Log Analytics."
+        },
+        {
+          "name": "agent applied-state",
+          "classification": "product-model gap",
+          "reason": "DCR association shows intended scope, not that the Azure Monitor Agent applied the rule on the target at runtime."
+        },
+        {
+          "name": "activity-log history and actor timing",
+          "classification": "API/noise",
+          "reason": "Broad activity-log pulls can be noisy and are not required for the default posture view; use history only when sequencing is explicitly needed."
+        },
+        {
+          "name": "expected SOC destination baseline",
+          "classification": "scope/sequencing",
+          "reason": "Destination drift needs a defended expected-workspace model before the tool can say the current destination is wrong."
+        }
+      ],
+      "summary": "DCR \"dcr-prod-host\" ranks 5/5 for quiet truth-disruption posture; 1 transformation clue(s); high-signal streams: Microsoft-WindowsEvent, Microsoft-Syslog; destinations: logAnalytics; current identity can affect both rule content and association scope from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01/providers/Microsoft.Insights/dataCollectionRuleAssociations/prod-host-association",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+      "dcr": "dcr-ama-migration",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "disruption_rank": 2,
+      "disruption_reason": "destinations can move collected data without disabling collection; current identity has visible rule and association write control",
+      "capability_steps": [
+        {
+          "action": "choose or create DCR",
+          "api_surface": "Microsoft.Insights/dataCollectionRules/write",
+          "status": "yes",
+          "downstream_effect": "Sets the Azure Monitor object that can define collection, data flows, destinations, and transform posture.",
+          "boundary": "Does not prove a monitored agent has applied the rule."
+        },
+        {
+          "action": "associate monitored scope",
+          "api_surface": "Microsoft.Insights/dataCollectionRuleAssociations/write",
+          "status": "yes",
+          "downstream_effect": "Selects which visible resource scope receives the DCR collection and routing posture.",
+          "boundary": "Does not prove runtime agent state or log arrival."
+        },
+        {
+          "action": "select data sources and streams",
+          "api_surface": "dataSources / dataFlows.streams",
+          "status": "yes",
+          "downstream_effect": "Controls which telemetry classes are collected, including host and security-adjacent streams when present.",
+          "boundary": "Ranks by visible stream value only; missing expected streams require a defended baseline."
+        },
+        {
+          "action": "configure data flows and transformations",
+          "api_surface": "dataFlows.transformKql",
+          "status": "yes",
+          "downstream_effect": "Can filter or reshape selected records before storage while the pipeline still appears configured.",
+          "boundary": "Prints only transform presence, fingerprint, and length; it does not print transformKql or infer intent."
+        },
+        {
+          "action": "select destinations",
+          "api_surface": "destinations / dataFlows.destinations",
+          "status": "yes",
+          "downstream_effect": "Chooses where collected data goes, which can preserve logging while moving it away from a SOC workspace.",
+          "boundary": "Does not claim destination drift without an expected destination model."
+        },
+        {
+          "action": "save or re-associate rule",
+          "api_surface": "DCR write plus association write",
+          "status": "yes",
+          "downstream_effect": "Makes the Azure-side collection posture durable as management-plane configuration.",
+          "boundary": "Persistence here means Azure configuration remains until changed; runtime application is not proven."
+        },
+        {
+          "action": "shape defender truth",
+          "api_surface": "streams, dataFlows, destinations, transformKql",
+          "status": "yes",
+          "downstream_effect": "Visible levers can narrow collection, reroute telemetry, or transform records without a full logging disablement.",
+          "boundary": "Does not claim malicious filtering or downstream detector failure from posture alone."
+        },
+        {
+          "action": "preserve Azure-side config",
+          "api_surface": "stored DCR and association resources",
+          "status": "yes",
+          "downstream_effect": "The changed rule or association can remain in place like normal monitoring migration, cost, or schema configuration.",
+          "boundary": "History, author, and timing require activity-log evidence not collected here by default."
+        },
+        {
+          "action": "blend as monitoring change",
+          "api_surface": "DCR metadata and ARM posture",
+          "status": "visible posture only",
+          "downstream_effect": "Common cover stories include AMA migration, workspace consolidation, cost control, schema normalization, and noise reduction.",
+          "boundary": "Cover story is an administrative explanation, not a claim of benign or malicious intent."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "DCR + association write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible DCR write control and association write control."
+      },
+      "current_state": {
+        "data_source_types": [
+          "logFiles",
+          "performanceCounters"
+        ],
+        "streams": [
+          "Custom-AppText_CL",
+          "Microsoft-Perf"
+        ],
+        "high_signal_streams": [],
+        "destination_types": [
+          "eventHubs"
+        ],
+        "association_targets": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch"
+        ],
+        "transformation_count": 0,
+        "association_count": 1,
+        "transformation_posture": "no transformation posture visible",
+        "destination_posture": "operator-selected destinations visible: eventHubs"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "transformKql body",
+          "classification": "operational anomaly",
+          "reason": "Presence, length, and fingerprint are enough for posture; printing full transform logic can expose sensitive filtering logic and encourages overclaiming intent."
+        },
+        {
+          "name": "log arrival or missing-record proof",
+          "classification": "proof boundary",
+          "reason": "Management-plane DCR posture cannot prove which records arrived, were dropped, or were later queried from Log Analytics."
+        },
+        {
+          "name": "agent applied-state",
+          "classification": "product-model gap",
+          "reason": "DCR association shows intended scope, not that the Azure Monitor Agent applied the rule on the target at runtime."
+        },
+        {
+          "name": "activity-log history and actor timing",
+          "classification": "API/noise",
+          "reason": "Broad activity-log pulls can be noisy and are not required for the default posture view; use history only when sequencing is explicitly needed."
+        },
+        {
+          "name": "expected SOC destination baseline",
+          "classification": "scope/sequencing",
+          "reason": "Destination drift needs a defended expected-workspace model before the tool can say the current destination is wrong."
+        }
+      ],
+      "summary": "DCR \"dcr-ama-migration\" ranks 2/5 for quiet truth-disruption posture; destinations: eventHubs; current identity can affect both rule content and association scope from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch/providers/Microsoft.Insights/dataCollectionRuleAssociations/batch-migration-association",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch"
+      ]
+    }
+  ],
+  "issues": []
+}

@@ -109,6 +109,15 @@ func implementedArtifactCases() []artifactCase {
 		explicitArtifactCase("persistence-logic-apps", []string{"persistence", "logic-apps", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-functions", []string{"persistence", "functions", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-webjobs", []string{"persistence", "webjobs", "--output", "json"}, "persistence"),
+		explicitArtifactCase("evasion-appinsights", []string{"evasion", "appinsights", "--output", "json"}, "evasion"),
+		explicitArtifactCase("evasion-dcr", []string{"evasion", "dcr", "--output", "json"}, "evasion"),
+		explicitArtifactCase("evasion-diagnostic-settings", []string{"evasion", "diagnostic-settings", "--output", "json"}, "evasion"),
+		explicitArtifactCase("resourcehijacking-api-mgmt", []string{"resourcehijacking", "api-mgmt", "--output", "json"}, "resourcehijacking"),
+		explicitArtifactCase("resourcehijacking-automation", []string{"resourcehijacking", "automation", "--output", "json"}, "resourcehijacking"),
+		explicitArtifactCase("resourcehijacking-logic-apps", []string{"resourcehijacking", "logic-apps", "--output", "json"}, "resourcehijacking"),
+		explicitArtifactCase("pathmasking-api-mgmt", []string{"pathmasking", "api-mgmt", "--output", "json"}, "pathmasking"),
+		explicitArtifactCase("pathmasking-logic-apps", []string{"pathmasking", "logic-apps", "--output", "json"}, "pathmasking"),
+		explicitArtifactCase("pathmasking-relay", []string{"pathmasking", "relay", "--output", "json"}, "pathmasking"),
 	} {
 		cases = append(cases, extra)
 	}
@@ -350,6 +359,33 @@ func TestPersistenceHelpMatchesOverviewJSON(t *testing.T) {
 	assertMatchesGolden(t, overview, "persistence.golden.json")
 	if overview != helpView {
 		t.Fatalf("expected persistence help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
+	}
+}
+
+func TestEvasionHelpMatchesOverviewJSON(t *testing.T) {
+	overview, _ := runSuccess(t, "evasion", "--output", "json")
+	helpView, _ := runSuccess(t, "evasion", "help", "--output", "json")
+	assertMatchesGolden(t, overview, "evasion.golden.json")
+	if overview != helpView {
+		t.Fatalf("expected evasion help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
+	}
+}
+
+func TestResourceHijackingHelpMatchesOverviewJSON(t *testing.T) {
+	overview, _ := runSuccess(t, "resourcehijacking", "--output", "json")
+	helpView, _ := runSuccess(t, "resourcehijacking", "help", "--output", "json")
+	assertMatchesGolden(t, overview, "resourcehijacking.golden.json")
+	if overview != helpView {
+		t.Fatalf("expected resourcehijacking help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
+	}
+}
+
+func TestPathMaskingHelpMatchesOverviewJSON(t *testing.T) {
+	overview, _ := runSuccess(t, "pathmasking", "--output", "json")
+	helpView, _ := runSuccess(t, "pathmasking", "help", "--output", "json")
+	assertMatchesGolden(t, overview, "pathmasking.golden.json")
+	if overview != helpView {
+		t.Fatalf("expected pathmasking help JSON to match overview\noverview:\n%s\nhelp:\n%s", overview, helpView)
 	}
 }
 

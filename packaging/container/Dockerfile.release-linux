@@ -5,6 +5,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ho-azure /usr/local/bin/ho-azure
+ARG TARGETARCH
+COPY --chmod=755 ho-azure-${TARGETARCH} /usr/local/bin/ho-azure
 
 ENTRYPOINT ["/usr/local/bin/ho-azure"]

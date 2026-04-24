@@ -1,9 +1,9 @@
 name: update homebrew tap
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -15,7 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  dispatch:
+  dispatch-stable:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Resolve release version
@@ -73,7 +74,62 @@ jobs:
           EOF
           )"
 
-          curl -L \
+          curl -L --fail-with-body \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            https://api.github.com/repos/HarrierSecurity/homebrew-ho-azure/dispatches \
+            -d "$json_payload"
+
+  dispatch-preview:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve main snapshot metadata
+        id: meta
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          short_sha="${COMMIT_SHA::7}"
+          version="main-${short_sha}"
+          source_url="https://github.com/HarrierSecurity/HarrierOps-Azure/archive/${COMMIT_SHA}.tar.gz"
+
+          curl -L --fail "$source_url" -o /tmp/ho-azure-main-source.tar.gz
+          sha256="$(sha256sum /tmp/ho-azure-main-source.tar.gz | awk '{print $1}')"
+
+          {
+            echo "version=$version"
+            echo "source_url=$source_url"
+            echo "sha256=$sha256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch preview tap update
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_REPO_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SOURCE_URL: ${{ steps.meta.outputs.source_url }}
+          SHA256: ${{ steps.meta.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TOKEN" ]; then
+            echo "missing secret HOMEBREW_TAP_REPO_TOKEN" >&2
+            exit 1
+          fi
+
+          json_payload="$(cat <<EOF
+          {
+            "event_type": "ho_azure_preview",
+            "client_payload": {
+              "version": "${VERSION}",
+              "source_url": "${SOURCE_URL}",
+              "sha256": "${SHA256}"
+            }
+          }
+          EOF
+          )"
+
+          curl -L --fail-with-body \
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${TOKEN}" \

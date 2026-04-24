@@ -1,0 +1,40 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[pathmasking] Logic Apps path masking means a trusted workflow can act as the visible relay while downstream actions, connectors, or identities carry the real path.
+Logic Apps pathmasking capability
+
+╭──────────────────────────────────┬───────────────────────────────────────────────────────┬──────────────────────╮
+│ action                           │ api surface                                           │ status               │
+├──────────────────────────────────┼───────────────────────────────────────────────────────┼──────────────────────┤
+│ select trusted workflow          │ Microsoft.Logic/workflows                             │ visible posture only │
+│ identify trigger entry point     │ request, recurrence, api-connection, or event trigger │ visible posture only │
+│ map downstream relay actions     │ HTTP, api-connection, or service actions              │ visible posture only │
+│ change workflow route            │ workflow definition                                   │ yes                  │
+│ blend as integration maintenance │ workflow configuration                                │ visible posture only │
+╰──────────────────────────────────┴───────────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible Logic App relay path. The inventory below lists the other visible workflows without repeating the same narrative.
+
+Operator read
+workflow "la-event-router" ranks 5/5 for Logic Apps pathmasking posture; 1 trigger type(s); 2 downstream action kind(s); current identity can change workflow path posture from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible Logic App route or relay workflow write control.
+Downstream effect: request or connector path, downstream action posture, and workflow identity are visible; current identity has visible Logic App route or relay workflow write control
+First boundary: this is Logic App management-plane posture, not run-history proof, connector payload proof, or credential-material proof.
+Posture: trigger types api-connection; downstream actions function, messaging; connector references eventgrid; 1 downstream resource reference(s); managed identity posture.
+
+Visible Logic Apps
+workflow            | rank | triggers       | actions                   | identity       | current identity
+
+la-event-router     | 5/5  | api-connection | function, messaging       | UserAssigned   | workflow write
+la-inbound-redeploy | 5/5  | request        | automation, external-http | SystemAssigned | workflow write
+la-nightly-sync     | 3/5  | recurrence     | storage, connector        |                | workflow write
+
+
+Not collected by default
+item                          | classification  | reason
+
+full workflow definition body | collector issue | The helper reports trigger and downstream action posture but does not print complete workflow JSON by default.
+run history                   | proof boundary  | Management-plane posture cannot prove the workflow ran, succeeded, or carried traffic.
+connector credential values   | recon safety    | Connector secrets and connection credential material are not safe default output.
+payload and response contents | proof boundary  | The command does not inspect trigger payloads, action payloads, or response data.
+workflow change history       | API/noise       | Broad workflow history is not needed for default posture and should stay a narrow follow-up for timing or actor proof.

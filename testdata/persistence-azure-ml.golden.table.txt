@@ -24,6 +24,7 @@ This walkthrough shows the strongest currently visible Azure ML persistence path
 
 - Current identity can add or modify Azure ML jobs or pipelines that hold stored execution logic this workspace can run later.
    In Azure ML, persistence can live in saved notebooks, jobs, pipelines, scheduled jobs, and environment definitions.
+   Notebooks are interactive code surfaces, while jobs and pipelines are the scheduled or triggered execution surfaces.
    Those are the stored execution surfaces that can remain in the workspace even when no host is persistently compromised.
 
 - Current identity can attach or reuse execution context for this Azure ML workspace.
@@ -46,11 +47,11 @@ This walkthrough shows the strongest currently visible Azure ML persistence path
    Nearby maintenance- or schedule-themed names visible from the current environment include `ml-nightly-train`.
 
 Visible Azure ML Workspaces
-workspace        | resource group | visible state                                                                                                                                  | execution context                           
+workspace        | resource group | visible state                                                                                                                                  | execution context
 
 ml-ops-hub       | rg-ml          | execution-capable; compute=ComputeCluster,ComputeInstance; jobs 2; schedules 1; endpoints 1; endpoint public Enabled; workspace public Enabled | `ua-ml-ops` with Owner at subscription scope
-ml-nightly-train | rg-ml          | supporting-persistence-context; schedules 1; workspace public Disabled                                                                         | workspace-linked storage                    
-ml-catalog       | rg-ml          | supporting-context; workspace public Enabled                                                                                                   | workspace-linked storage                    
+ml-nightly-train | rg-ml          | supporting-persistence-context; schedules 1; workspace public Disabled                                                                         | workspace-linked storage
+ml-catalog       | rg-ml          | supporting-context; workspace public Enabled                                                                                                   | workspace-linked storage
 
 
 Not collected by default

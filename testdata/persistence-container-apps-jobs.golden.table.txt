@@ -46,14 +46,15 @@ parallelism=1; secrets=2; registries=ghcr.io.
    Visible execution context here is `system-assigned identity for Container Apps job "nightly-reconcile"`
 with no Azure role-assignment rows found for its principal ID.
    That is enough to judge whether this Container Apps job already has trigger, image, execution-setting, or reuse value if stronger control is obtained later.
+   Higher permissions are required to complete the remaining persistence steps for this path.
 
 Visible Container Apps Jobs
-container apps job | trigger                      | visible state                                                        | execution context                                                      
+container apps job | trigger                      | visible state                                                        | execution context
 
-nightly-reconcile  | Schedule; schedule 0 3 * * * | environment aca-env-prod; 1 image clue(s); command clue visible;     | `system-assigned identity for Container Apps job "nightly-reconcile"`  
-                   |                              | parallelism=1; secrets=2; registries=ghcr.io                         | with no Azure role-assignment rows found for its principal ID          
+nightly-reconcile  | Schedule; schedule 0 3 * * * | environment aca-env-prod; 1 image clue(s); command clue visible;     | `system-assigned identity for Container Apps job "nightly-reconcile"`
+                   |                              | parallelism=1; secrets=2; registries=ghcr.io                         | with no Azure role-assignment rows found for its principal ID
 queue-drain        | Event; 1 event rule(s)       | environment aca-env-internal; 1 image clue(s); command clue visible; | `system-assigned identity for Container Apps job "queue-drain"` with no
-                   |                              | parallelism=2; secrets=1; registries=contoso.azurecr.io              | Azure role-assignment rows found for its principal ID                  
+                   |                              | parallelism=2; secrets=1; registries=contoso.azurecr.io              | Azure role-assignment rows found for its principal ID
 
 
 Not collected by default

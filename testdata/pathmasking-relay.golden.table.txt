@@ -1,0 +1,37 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[pathmasking] Relay path masking means Azure exposes the cloud rendezvous point while the private listener, backend host, and traffic contents stay beyond management-plane proof.
+Relay pathmasking capability
+
+╭────────────────────────────────────────┬─────────────────────────────────────────────────────┬──────────────────────╮
+│ action                                 │ api surface                                         │ status               │
+├────────────────────────────────────────┼─────────────────────────────────────────────────────┼──────────────────────┤
+│ select Relay namespace                 │ Microsoft.Relay/namespaces                          │ visible posture only │
+│ identify Hybrid Connections            │ Microsoft.Relay/namespaces/hybridConnections        │ visible posture only │
+│ review authorization rules             │ Microsoft.Relay/namespaces/authorizationRules       │ visible posture only │
+│ change namespace or connection posture │ Relay namespace and Hybrid Connection configuration │ yes                  │
+│ blend as private connectivity          │ Relay service configuration                         │ visible posture only │
+╰────────────────────────────────────────┴─────────────────────────────────────────────────────┴──────────────────────╯
+
+Operator read
+namespace "relay-hybrid-prod" ranks 5/5 for Relay pathmasking posture; 1 Hybrid Connection(s); 2 authorization rule(s); 1 App Service attachment(s); current identity can change Relay path posture from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible Relay namespace or Hybrid Connection write control.
+Downstream effect: Hybrid Connection, authorization rule, listener-count, and App Service attachment posture are visible; current identity has visible Relay namespace or Hybrid Connection write control
+First boundary: this is Relay management-plane posture, not listener-runtime proof, backend process proof, or traffic-content proof.
+Posture: 1 Hybrid Connection(s); 2 authorization rule(s); listener counts onprem-orders=1; 1 App Service Hybrid Connection attachment(s).
+
+Visible Relay Namespaces
+namespace         | rank | hybrid connections | auth rules | listeners       | current identity
+
+relay-hybrid-prod | 5/5  | 1                  | 2          | onprem-orders=1 | Relay write
+
+
+Not collected by default
+item                          | classification | reason
+
+listener runtime state        | proof boundary | Management-plane posture and listener counts do not prove a current listener process, host, or session.
+backend process and host      | proof boundary | Relay names and endpoints do not identify the private service or process behind the listener.
+traffic contents              | proof boundary | The command does not inspect Relay traffic or payloads.
+authorization keys            | recon safety   | Authorization rules are counted, but key material is not retrieved or printed.
+App Service backend internals | proof boundary | App Service Hybrid Connection attachments can show reachability posture, but they do not identify the private listener host, process, or traffic contents.

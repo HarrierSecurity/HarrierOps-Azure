@@ -46,27 +46,28 @@ forceUpdateTag=2026-04-23T120000Z; provisioning=Succeeded;
 instance=ProvisioningState/succeeded.
    Visible execution context here is `ua-app` with Owner at subscription scope.
    That is enough to judge whether this VM Extension already has handler, source, settings, rerun, or reuse value if stronger control is obtained later.
+   Higher permissions are required to complete the remaining persistence steps for this path.
    Nearby maintenance- or schedule-themed names visible from the current environment include `dependency-agent` and `maintenance-script`.
 
 Visible VM Extensions
-extension          | target                     | visible state                                                            | execution context                                                       
+extension          | target                     | visible state                                                            | execution context
 
-config-bootstrap   | VM=vm-web-01; identities=1 | Microsoft.Compute/CustomScriptExtension 1.10;                            | `ua-app` with Owner at subscription scope                               
-                   |                            | file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net; |                                                                         
-                   |                            | fileUris=2; command clue `public commandToExecute visible;               |                                                                         
-                   |                            | executable=powershell; arguments redacted`; public=commandToExecute,     |                                                                         
-                   |                            | fileUris; protected=yes; suppress-failures=no;                           |                                                                         
-                   |                            | forceUpdateTag=2026-04-23T120000Z; provisioning=Succeeded;               |                                                                         
-                   |                            | instance=ProvisioningState/succeeded                                     |                                                                         
+config-bootstrap   | VM=vm-web-01; identities=1 | Microsoft.Compute/CustomScriptExtension 1.10;                            | `ua-app` with Owner at subscription scope
+                   |                            | file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net; |
+                   |                            | fileUris=2; command clue `public commandToExecute visible;               |
+                   |                            | executable=powershell; arguments redacted`; public=commandToExecute,     |
+                   |                            | fileUris; protected=yes; suppress-failures=no;                           |
+                   |                            | forceUpdateTag=2026-04-23T120000Z; provisioning=Succeeded;               |
+                   |                            | instance=ProvisioningState/succeeded                                     |
 maintenance-script | VMSS=vmss-batch            | Microsoft.Azure.Extensions/CustomScript 2.1;                             | Custom Script-style handler, reachable source clue, public command clue,
-                   |                            | file-hosts=scripts.contoso.internal; fileUris=1; command clue `public    | public settings visible, Key Vault-referenced protected settings, rerun 
-                   |                            | commandToExecute visible; executable=maintenance.sh; arguments           | clues visible                                                           
-                   |                            | redacted`; public=commandToExecute, fileUris; kv-protected=yes;          |                                                                         
-                   |                            | suppress-failures=no; forceUpdateTag=roll-20260423;                      |                                                                         
-                   |                            | provisioning=Succeeded                                                   |                                                                         
-dependency-agent   | VM=vm-web-01; identities=1 | Microsoft.Azure.Monitoring.DependencyAgent/DependencyAgentLinux 9.10;    | `ua-app` with Owner at subscription scope                               
-                   |                            | suppress-failures=no; provisioning=Succeeded;                            |                                                                         
-                   |                            | instance=ProvisioningState/succeeded                                     |                                                                         
+                   |                            | file-hosts=scripts.contoso.internal; fileUris=1; command clue `public    | public settings visible, Key Vault-referenced protected settings, rerun
+                   |                            | commandToExecute visible; executable=maintenance.sh; arguments           | clues visible
+                   |                            | redacted`; public=commandToExecute, fileUris; kv-protected=yes;          |
+                   |                            | suppress-failures=no; forceUpdateTag=roll-20260423;                      |
+                   |                            | provisioning=Succeeded                                                   |
+dependency-agent   | VM=vm-web-01; identities=1 | Microsoft.Azure.Monitoring.DependencyAgent/DependencyAgentLinux 9.10;    | `ua-app` with Owner at subscription scope
+                   |                            | suppress-failures=no; provisioning=Succeeded;                            |
+                   |                            | instance=ProvisioningState/succeeded                                     |
 
 
 Not collected by default

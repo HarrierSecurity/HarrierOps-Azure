@@ -9,6 +9,7 @@ import (
 type Provider interface {
 	AKS(context.Context, string, string) (AksFacts, error)
 	Acr(context.Context, string, string) (AcrFacts, error)
+	AppInsights(context.Context, string, string) (AppInsightsFacts, error)
 	AppCredentials(context.Context, string, string) (AppCredentialsFacts, error)
 	Automation(context.Context, string, string) (AutomationFacts, error)
 	Devops(context.Context, string, string, string) (DevopsFacts, error)
@@ -20,6 +21,8 @@ type Provider interface {
 	ContainerAppsJobs(context.Context, string, string) (ContainerAppsJobsFacts, error)
 	ContainerInstances(context.Context, string, string) (ContainerInstancesFacts, error)
 	Databases(context.Context, string, string) (DatabasesFacts, error)
+	DCR(context.Context, string, string) (DCRFacts, error)
+	DiagnosticSettings(context.Context, string, string) (DiagnosticSettingsFacts, error)
 	Endpoints(context.Context, string, string) (EndpointsFacts, error)
 	EnvVars(context.Context, string, string) (EnvVarsFacts, error)
 	AzureML(context.Context, string, string) (AzureMLFacts, error)
@@ -29,6 +32,7 @@ type Provider interface {
 	KeyVault(context.Context, string, string) (KeyVaultFacts, error)
 	LogicApps(context.Context, string, string) (LogicAppsFacts, error)
 	ManagedIdentities(context.Context, string, string) (ManagedIdentitiesFacts, error)
+	MonitoringSinks(context.Context, string, string) (MonitoringSinksFacts, error)
 	DNS(context.Context, string, string) (DNSFacts, error)
 	NetworkEffective(context.Context, string, string) (NetworkEffectiveFacts, error)
 	NetworkPorts(context.Context, string, string) (NetworkPortsFacts, error)
@@ -40,6 +44,7 @@ type Provider interface {
 	CrossTenant(context.Context, string, string) (CrossTenantFacts, error)
 	AuthPolicies(context.Context, string, string) (AuthPoliciesFacts, error)
 	ResourceTrusts(context.Context, string, string) (ResourceTrustsFacts, error)
+	Relay(context.Context, string, string) (RelayFacts, error)
 	RBAC(context.Context, string, string) (RBACFacts, error)
 	RoleTrusts(context.Context, string, string, models.RoleTrustsMode) (RoleTrustsFacts, error)
 	Storage(context.Context, string, string) (StorageFacts, error)
@@ -131,6 +136,35 @@ type DatabasesFacts struct {
 	Issues          []models.Issue
 }
 
+type DCRFacts struct {
+	TenantID       string
+	SubscriptionID string
+	DCRs           []models.DCRAsset
+	Issues         []models.Issue
+}
+
+type AppInsightsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Components     []models.AppInsightsComponent
+	Targets        []models.AppInsightsAppTarget
+	Issues         []models.Issue
+}
+
+type DiagnosticSettingsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Sources        []models.DiagnosticSettingsSource
+	Issues         []models.Issue
+}
+
+type MonitoringSinksFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Sinks          []models.MonitoringSinkAsset
+	Issues         []models.Issue
+}
+
 type KeyVaultFacts struct {
 	TenantID       string
 	SubscriptionID string
@@ -150,6 +184,13 @@ type ResourceTrustsFacts struct {
 	SubscriptionID string
 	StorageAssets  []models.StorageAsset
 	KeyVaults      []models.KeyVaultAsset
+	Issues         []models.Issue
+}
+
+type RelayFacts struct {
+	TenantID       string
+	SubscriptionID string
+	Namespaces     []models.RelayNamespaceAsset
 	Issues         []models.Issue
 }
 

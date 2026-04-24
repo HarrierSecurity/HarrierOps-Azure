@@ -31,6 +31,12 @@
         "Sync-Secrets",
         "Rotate-Certs"
       ],
+      "runbook_types": [
+        "PowerShell",
+        "Python3"
+      ],
+      "runbook_command_clues": [],
+      "runbook_resource_clues": [],
       "schedule_count": 4,
       "schedule_definitions": [
         "baseline-nightly: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T01:00:00Z; enabled=true",
@@ -94,7 +100,7 @@
       ],
       "missing_execution_path": false,
       "missing_target_mapping": true,
-      "summary": "Automation account 'aa-hybrid-prod' uses managed identity (SystemAssigned). Visible execution shape: 6/7 published runbook(s); 4 schedule(s), 5 job schedule(s), 2 webhook(s); 1 Hybrid Runbook Worker group(s). Secure asset posture: credentials 2, certificates 1, connections 2, variables 5 (4 encrypted).",
+      "summary": "Automation account 'aa-hybrid-prod' uses managed identity (SystemAssigned). Visible execution shape: 6/7 published runbook(s); types PowerShell, Python3; runbook content clues not collected by default; 4 schedule(s), 5 job schedule(s), 2 webhook(s); 1 Hybrid Runbook Worker group(s). Secure asset posture: credentials 2, certificates 1, connections 2, variables 5 (4 encrypted).",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system"
@@ -116,6 +122,11 @@
       "published_runbook_names": [
         "Lab-Maintenance"
       ],
+      "runbook_types": [
+        "PowerShell"
+      ],
+      "runbook_command_clues": [],
+      "runbook_resource_clues": [],
       "schedule_count": 1,
       "schedule_definitions": [
         "lab-maintenance-daily: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T03:00:00Z; enabled=true"
@@ -158,7 +169,7 @@
       ],
       "missing_execution_path": false,
       "missing_target_mapping": true,
-      "summary": "Automation account 'aa-lab-quiet' has no managed identity visible from the current read path. Visible execution shape: 1/2 published runbook(s); 1 schedule(s), 1 job schedule(s), 0 webhook(s); no Hybrid Runbook Worker groups visible. Secure asset posture: credentials 0, certificates 0, connections 1, variables 2 (1 encrypted).",
+      "summary": "Automation account 'aa-lab-quiet' has no managed identity visible from the current read path. Visible execution shape: 1/2 published runbook(s); types PowerShell; runbook content clues not collected by default; 1 schedule(s), 1 job schedule(s), 0 webhook(s); no Hybrid Runbook Worker groups visible. Secure asset posture: credentials 0, certificates 0, connections 1, variables 2 (1 encrypted).",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"
       ]

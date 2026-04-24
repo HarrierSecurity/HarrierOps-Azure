@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "pathmasking",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "pathmasking",
+  "command_state": "implemented",
+  "current_behavior": "Grouped pathmasking walkthroughs. Use `ho-azure pathmasking` or `ho-azure pathmasking help` to list surfaces, then `ho-azure pathmasking \u003csurface\u003e` to run an implemented surface.",
+  "planned_input_modes": [
+    "live"
+  ],
+  "preferred_artifact_order": [
+    "loot",
+    "json"
+  ],
+  "selected_surface": null,
+  "surfaces": [
+    {
+      "surface": "api-mgmt",
+      "state": "implemented",
+      "summary": "Review API Management services for gateway, backend, hostname, subscription, and named-value posture that can mask the true public-to-backend path.",
+      "operator_question": "How far can current access take me through APIM gateway, route, transform, and backend indirection before the proof boundary moves into policy bodies, live traffic, or backend ownership?",
+      "backing_commands": [
+        "api-mgmt",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "logic-apps",
+      "state": "implemented",
+      "summary": "Review Logic Apps for request, schedule, connector, HTTP action, and identity posture that can relay activity through trusted integration workflows.",
+      "operator_question": "Which visible workflows can current access reuse or modify as a trusted relay path before the proof boundary moves into run history, connector payloads, or credential material?",
+      "backing_commands": [
+        "logic-apps",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "relay",
+      "state": "implemented",
+      "summary": "Review Azure Relay namespaces and Hybrid Connections for cloud rendezvous points that can blur the path to private listeners or internal services.",
+      "operator_question": "Which Relay namespaces and Hybrid Connections give current access a visible private-path rendezvous before the proof boundary moves into listener runtime, backend process, or traffic contents?",
+      "backing_commands": [
+        "relay",
+        "permissions",
+        "rbac"
+      ]
+    }
+  ],
+  "issues": []
+}

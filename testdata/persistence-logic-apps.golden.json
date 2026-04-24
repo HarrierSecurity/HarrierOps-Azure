@@ -111,7 +111,8 @@
       "summary": "Current identity can set up Logic App 'la-inbound-redeploy' as durable workflow persistence, and the strongest visible execution context already carries Azure control.",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy",
-        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system"
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-inbound-redeploy/identities/system",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod"
       ]
     },
     {
@@ -283,7 +284,8 @@
       "summary": "Current identity can build or repurpose Logic App 'la-event-router', but the current workflow definition does not yet show a durable request or recurrence trigger.",
       "related_ids": [
         "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workflow/providers/Microsoft.Logic/workflows/la-event-router",
-        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router"
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identity/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-workflow-router",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"
       ]
     }
   ],

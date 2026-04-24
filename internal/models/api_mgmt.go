@@ -29,6 +29,8 @@ type ApiMgmtServiceAsset struct {
 	ActiveSubscriptionCount      *int     `json:"active_subscription_count"`
 	BackendCount                 *int     `json:"backend_count"`
 	BackendHostnames             []string `json:"backend_hostnames"`
+	PolicyCount                  *int     `json:"policy_count"`
+	PolicyControlTypes           []string `json:"policy_control_types"`
 	NamedValueCount              *int     `json:"named_value_count"`
 	NamedValueSecretCount        *int     `json:"named_value_secret_count"`
 	NamedValueKeyVaultCount      *int     `json:"named_value_key_vault_count"`

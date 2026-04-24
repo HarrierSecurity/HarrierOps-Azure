@@ -107,6 +107,9 @@ ho-azure permissions
 | --- | --- |
 | `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control. |
 | `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `app-service`<br>Walks the current identity through App Service deployment, configuration, code replacement, and reachable reuse posture.<br><br>`automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place.<br><br>`azure-ml`<br>Walks the current identity through Azure ML reusable compute, jobs, schedules, endpoints, and identity-backed runtime context.<br><br>`container-apps-jobs`<br>Walks the current identity through Container Apps Jobs stored definitions, trigger mode, image/command clues, execution settings, identity, and rerun posture.<br><br>`functions`<br>Walks the current identity through Function App code, identity, config, and trigger reuse posture.<br><br>`logic-apps`<br>Walks the current identity through Logic Apps workflow control, trigger posture, execution context, and durable workflow reuse paths.<br><br>`vm-extensions`<br>Walks the current identity through Azure-side VM Extension attachment, script or command source, settings posture, VM agent delivery, and rerun paths.<br><br>`webjobs`<br>Walks the current identity through App Service WebJobs background code, mode, inherited app context, and rerun paths. |
+| `evasion`<br>Service-specific evasion walkthroughs that rank visible posture by quiet defender-truth disruption. | `appinsights`<br>Walks the current identity through Application Insights instrumentation, sampling, filtering, and logging-level posture clues without claiming runtime telemetry loss from posture alone.<br><br>`dcr`<br>Walks the current identity through Data Collection Rule collection, stream, destination, association, and transformation levers without claiming log-content loss or detector failure from posture alone.<br><br>`diagnostic-settings`<br>Walks the current identity through source resources, exported categories, metrics, and destination sinks without claiming sink contents or detector failure from posture alone. |
+| `resourcehijacking`<br>Service-specific takeover walkthroughs that rank visible posture by commandeering, redirect, replacement, or repurposing value over existing trusted resources. | `api-mgmt`<br>Walks the current identity through API Management gateway, backend, subscription, named-value, and routing-control posture without claiming live traffic capture or backend ownership from management-plane posture alone.<br><br>`automation`<br>Walks the current identity through Automation runbook, schedule, webhook, identity, hybrid worker, and secure-asset posture without claiming job execution or script output from management-plane posture alone.<br><br>`logic-apps`<br>Walks the current identity through Logic App workflow, trigger, downstream action, connector, and identity posture without claiming run execution or connector data access from management-plane posture alone. |
+| `pathmasking`<br>Service-specific relay/proxy walkthroughs that rank visible posture by path ambiguity and attribution-blur value. | `api-mgmt`<br>Walks the current identity through API Management gateway, backend, hostname, subscription, and route-control posture without claiming live traffic flow or backend ownership from management-plane posture alone.<br><br>`logic-apps`<br>Walks the current identity through Logic App trigger, downstream action, connector, and identity posture that can relay activity through a trusted workflow without claiming run execution or payload access by default.<br><br>`relay`<br>Walks the current identity through Azure Relay namespaces, Hybrid Connections, authorization-rule posture, and listener-count clues without claiming backend process identity or traffic contents from management-plane posture alone. |
 
 ### Flat Commands
 
@@ -116,9 +119,9 @@ ho-azure permissions
 | `identity` | `whoami`, `rbac`, `principals`, `permissions`, `privesc`, `role-trusts`, `lighthouse`, `cross-tenant`, `auth-policies`, `managed-identities` |
 | `config` | `arm-deployments`, `env-vars` |
 | `secrets` | `keyvault`, `tokens-credentials` |
-| `resource` | `automation`, `devops`, `acr`, `api-mgmt`, `databases`, `resource-trusts` |
+| `resource` | `automation`, `devops`, `acr`, `api-mgmt`, `appinsights`, `databases`, `dcr`, `diagnostic-settings`, `monitoring-sinks`, `resource-trusts` |
 | `storage` | `storage` |
-| `network` | `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports` |
+| `network` | `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`, `relay` |
 | `compute` | `workloads`, `app-services`, `functions`, `container-apps`, `container-apps-jobs`, `container-instances`, `aks`, `vms`, `vm-extensions`, `vmss`, `snapshots-disks` |
 
 ## Need A Test Lab?
@@ -326,8 +329,8 @@ Artifact intent:
 
 ## Sections And Grouped Commands
 
-HarrierOps Azure keeps flat standalone commands and also supports grouped execution through `chains`
-and `persistence`.
+HarrierOps Azure keeps flat standalone commands and also supports grouped execution through `chains`,
+`persistence`, `evasion`, `resourcehijacking`, and `pathmasking`.
 
 For narrower current work:
 
@@ -335,18 +338,24 @@ For narrower current work:
 - use `chains` when you want a higher-value grouped answer instead of every source command on its own
 - use `persistence` when you want a service-specific end-to-end persistence walkthrough from the
   current identity
+- use `evasion` when you want a service-specific view of quiet Azure-native truth degradation from
+  the current identity
+- use `resourcehijacking` when you want to know which existing Azure resource can most directly be
+  commandeered, redirected, replaced, or repurposed from the current identity
+- use `pathmasking` when you want to know which Azure-native proxy, relay, or workflow layer most
+  blurs the path between caller, cloud surface, and backend from the current identity
 
 Current section mappings:
 
 - `identity`: `whoami`, `rbac`, `principals`, `permissions`, `privesc`, `role-trusts`, `lighthouse`, `cross-tenant`, `auth-policies`, `managed-identities`
 - `config`: `arm-deployments`, `env-vars`
 - `secrets`: `keyvault`, `tokens-credentials`
-- `resource`: `automation`, `devops`, `acr`, `api-mgmt`, `databases`, `resource-trusts`
+- `resource`: `automation`, `devops`, `acr`, `api-mgmt`, `appinsights`, `databases`, `dcr`, `diagnostic-settings`, `monitoring-sinks`, `resource-trusts`
 - `storage`: `storage`
-- `network`: `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`
+- `network`: `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`, `relay`
 - `compute`: `workloads`, `app-services`, `functions`, `container-apps`, `container-apps-jobs`, `container-instances`, `aks`, `vms`, `vm-extensions`, `vmss`, `snapshots-disks`
 - `core`: `inventory`
-- `orchestration`: `chains`, `persistence`
+- `orchestration`: `chains`, `persistence`, `evasion`, `resourcehijacking`, `pathmasking`
 
 Current `chains` families:
 
@@ -366,6 +375,24 @@ Current `persistence` surfaces:
 - `vm-extensions`
 - `webjobs`
 
+Current `evasion` surfaces:
+
+- `appinsights`
+- `dcr`
+- `diagnostic-settings`
+
+Current `resourcehijacking` surfaces:
+
+- `api-mgmt`
+- `automation`
+- `logic-apps`
+
+Current `pathmasking` surfaces:
+
+- `api-mgmt`
+- `logic-apps`
+- `relay`
+
 ## Help
 
 HarrierOps Azure supports generic and scoped help:
@@ -382,7 +409,8 @@ ho-azure -h permissions
 Command help includes ATT&CK cloud leads as investigation prompts, not proof that a technique
 occurred.
 
-Help also points grouped follow-up toward `chains` and `persistence` where those presets exist.
+Help also points grouped follow-up toward `chains`, `persistence`, `evasion`,
+`resourcehijacking`, and `pathmasking` where those presets exist.
 
 For ad hoc demos or local testing, use a dedicated path like `--outdir ./ho-azure-demo` so
 artifacts do not pile up in the repo root.

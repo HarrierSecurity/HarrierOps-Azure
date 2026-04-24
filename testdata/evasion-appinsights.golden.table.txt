@@ -1,0 +1,40 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[evasion] Application Insights evasion means visible instrumentation, sampling, filtering, and logging-level posture can reduce retained telemetry while the app still emits health signals.
+Application Insights evasion capability
+
+╭──────────────────────────────────────┬─────────────────────────────────────────────────────────┬──────────────────────╮
+│ action                               │ api surface                                             │ status               │
+├──────────────────────────────────────┼─────────────────────────────────────────────────────────┼──────────────────────┤
+│ change instrumentation posture       │ Microsoft.Web/sites/config/write                        │ yes                  │
+│ choose telemetry target              │ Application Insights component and app settings         │ yes                  │
+│ configure sampling                   │ sampling app settings or SDK/OpenTelemetry config clues │ yes                  │
+│ configure filtering or logging level │ filter, processor, or logging-level setting clues       │ yes                  │
+│ preserve app-side config             │ stored app settings                                     │ yes                  │
+│ blend as observability tuning        │ app setting names and component posture                 │ visible posture only │
+╰──────────────────────────────────────┴─────────────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible Application Insights truth-disruption path. The inventory below lists the other visible targets without repeating the same narrative.
+
+Operator read
+target "app-public-api" ranks 5/5 for Application Insights truth-disruption posture; 1 filtering clue(s); 1 sampling clue(s); current identity can modify app configuration from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible app configuration write control.
+Downstream effect: filtering and sampling posture clues are both visible; current identity has visible app configuration write control
+First boundary: this is visible Application Insights and app-setting posture, not code-body proof, runtime proof, or detector-failure proof.
+Posture: filtering clue(s) visible; sampling clue(s) visible; logging-level clue(s) visible.
+
+Visible Targets
+target         | rank | kind        | sampling                                                                              | filtering                                                  | current identity
+
+app-public-api | 5/5  | AppService  | ApplicationInsights__Sampling__Percentage=25                                          | ApplicationInsights__TelemetryProcessor__HealthCheckFilter | app config write
+func-orders    | 3/5  | FunctionApp | AzureFunctionsJobHost__logging__applicationInsights__samplingSettings__isEnabled=true | none visible                                               | app config write
+
+
+Not collected by default
+item                  | classification  | reason
+
+setting values        | recon safety    | Default output uses setting names as posture clues and does not print instrumentation keys or connection strings.
+code-level processors | proof boundary  | Telemetry processor bodies usually live in source code or binaries, outside management-plane posture.
+host.json body        | collector issue | Function sampling can live in host.json; this helper only uses visible app setting names by default.
+true unsampled count  | proof boundary  | Current posture cannot prove how many events were dropped or retained.
+detector failure      | proof boundary  | The command does not inspect detections, so it cannot claim a rule missed activity.

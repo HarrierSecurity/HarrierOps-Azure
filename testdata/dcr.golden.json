@@ -1,0 +1,177 @@
+{
+  "dcrs": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+      "name": "dcr-prod-host",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "description": "Production host collection rule with cost-control transform",
+      "data_sources": [
+        {
+          "name": "windows-security-events",
+          "type": "windowsEventLogs",
+          "streams": [
+            "Microsoft-WindowsEvent"
+          ],
+          "transform_kql_present": false
+        },
+        {
+          "name": "linux-syslog",
+          "type": "syslog",
+          "streams": [
+            "Microsoft-Syslog"
+          ],
+          "transform_kql_present": false
+        }
+      ],
+      "data_flows": [
+        {
+          "streams": [
+            "Microsoft-WindowsEvent"
+          ],
+          "destinations": [
+            "soc-workspace"
+          ],
+          "transform_kql_present": true,
+          "transform_kql_fingerprint": "31c5a1b7dd8e",
+          "transform_kql_length": 84
+        },
+        {
+          "streams": [
+            "Microsoft-Syslog"
+          ],
+          "destinations": [
+            "soc-workspace"
+          ],
+          "transform_kql_present": false
+        }
+      ],
+      "destinations": [
+        {
+          "name": "soc-workspace",
+          "type": "logAnalytics",
+          "resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod",
+          "detail": "soc-workspace"
+        }
+      ],
+      "associations": [
+        {
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01/providers/Microsoft.Insights/dataCollectionRuleAssociations/prod-host-association",
+          "name": "prod-host-association",
+          "target_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+          "data_collection_rule_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+          "description": "Production host association"
+        }
+      ],
+      "data_source_types": [
+        "syslog",
+        "windowsEventLogs"
+      ],
+      "streams": [
+        "Microsoft-Syslog",
+        "Microsoft-WindowsEvent"
+      ],
+      "high_signal_streams": [
+        "Microsoft-WindowsEvent",
+        "Microsoft-Syslog"
+      ],
+      "destination_types": [
+        "logAnalytics"
+      ],
+      "transformation_count": 1,
+      "association_count": 1,
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01/providers/Microsoft.Insights/dataCollectionRuleAssociations/prod-host-association",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-prod-host",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-workload/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod"
+      ],
+      "summary": "DCR \"dcr-prod-host\" has 2 data source(s), 2 data flow(s), 1 destination(s), and 1 association(s); 1 transformation clue(s) present; high-signal streams: Microsoft-WindowsEvent, Microsoft-Syslog; destinations: logAnalytics."
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+      "name": "dcr-ama-migration",
+      "resource_group": "rg-monitor",
+      "location": "eastus",
+      "description": "AMA migration routing for batch fleet",
+      "data_sources": [
+        {
+          "name": "perf-default",
+          "type": "performanceCounters",
+          "streams": [
+            "Microsoft-Perf"
+          ],
+          "transform_kql_present": false
+        },
+        {
+          "name": "custom-text",
+          "type": "logFiles",
+          "streams": [
+            "Custom-AppText_CL"
+          ],
+          "transform_kql_present": false
+        }
+      ],
+      "data_flows": [
+        {
+          "streams": [
+            "Microsoft-Perf",
+            "Custom-AppText_CL"
+          ],
+          "destinations": [
+            "migration-eventhub"
+          ],
+          "transform_kql_present": false
+        }
+      ],
+      "destinations": [
+        {
+          "name": "migration-eventhub",
+          "type": "eventHubs",
+          "resource_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+          "detail": "monitoring-migration"
+        }
+      ],
+      "associations": [
+        {
+          "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch/providers/Microsoft.Insights/dataCollectionRuleAssociations/batch-migration-association",
+          "name": "batch-migration-association",
+          "target_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch",
+          "data_collection_rule_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+          "description": "Batch fleet AMA migration"
+        }
+      ],
+      "data_source_types": [
+        "logFiles",
+        "performanceCounters"
+      ],
+      "streams": [
+        "Custom-AppText_CL",
+        "Microsoft-Perf"
+      ],
+      "high_signal_streams": null,
+      "destination_types": [
+        "eventHubs"
+      ],
+      "transformation_count": 0,
+      "association_count": 1,
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch/providers/Microsoft.Insights/dataCollectionRuleAssociations/batch-migration-association",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-monitor/providers/Microsoft.Insights/dataCollectionRules/dcr-ama-migration",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-compute/providers/Microsoft.Compute/virtualMachineScaleSets/vmss-batch"
+      ],
+      "summary": "DCR \"dcr-ama-migration\" has 2 data source(s), 1 data flow(s), 1 destination(s), and 1 association(s); destinations: eventHubs."
+    }
+  ],
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "dcr",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  }
+}
