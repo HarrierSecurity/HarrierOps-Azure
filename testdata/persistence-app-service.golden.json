@@ -107,8 +107,7 @@
       "still_unmapped": [
         "the current command does not retrieve deployed application packages, repository contents, or source bundles, so operator intent is not inferred from code here",
         "the current command does not replay HTTP traffic or inspect runtime-side request handling, so conclusions stop at visible management-plane exposure posture",
-        "the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone",
-        "this App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth"
+        "the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone"
       ],
       "summary": "Current identity can repurpose App Service 'app-empty-mi' as reusable App Service persistence, and the strongest visible execution context already carries Azure control.",
       "related_ids": [
@@ -209,8 +208,7 @@
       "still_unmapped": [
         "the current command does not retrieve deployed application packages, repository contents, or source bundles, so operator intent is not inferred from code here",
         "the current command does not replay HTTP traffic or inspect runtime-side request handling, so conclusions stop at visible management-plane exposure posture",
-        "the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone",
-        "this App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth"
+        "the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone"
       ],
       "summary": "Current identity can repurpose App Service 'app-public-api' as reusable App Service persistence, with visible deployment, configuration, and reachable-host posture from the current read path.",
       "related_ids": [

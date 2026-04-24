@@ -25,12 +25,14 @@ var (
 type persistenceSurfaceBuilder func(context.Context, providers.Provider, func() time.Time, Request, contracts.PersistenceSurfaceContract) (any, error)
 
 var persistenceSurfaceBuilders = map[string]persistenceSurfaceBuilder{
-	"automation":  buildPersistenceAutomationOutput,
-	"app-service": buildPersistenceAppServiceOutput,
-	"azure-ml":    buildPersistenceAzureMLOutput,
-	"functions":   buildPersistenceFunctionsOutput,
-	"logic-apps":  buildPersistenceLogicAppsOutput,
-	"webjobs":     buildPersistenceWebJobsOutput,
+	"automation":          buildPersistenceAutomationOutput,
+	"app-service":         buildPersistenceAppServiceOutput,
+	"azure-ml":            buildPersistenceAzureMLOutput,
+	"container-apps-jobs": buildPersistenceContainerAppsJobsOutput,
+	"functions":           buildPersistenceFunctionsOutput,
+	"logic-apps":          buildPersistenceLogicAppsOutput,
+	"vm-extensions":       buildPersistenceVMExtensionsOutput,
+	"webjobs":             buildPersistenceWebJobsOutput,
 }
 
 func persistenceHandler(provider providers.Provider, now func() time.Time) Handler {
@@ -156,6 +158,7 @@ func buildPersistenceAutomationOutput(
 				PublishedRunbookCount:            account.PublishedRunbookCount,
 				PublishedRunbookNames:            append([]string{}, account.PublishedRunbookNames...),
 				ScheduleCount:                    account.ScheduleCount,
+				ScheduleDefinitions:              append([]string{}, account.ScheduleDefinitions...),
 				JobScheduleCount:                 account.JobScheduleCount,
 				WebhookCount:                     account.WebhookCount,
 				HybridWorkerGroupCount:           account.HybridWorkerGroupCount,
@@ -319,12 +322,14 @@ func persistenceRoleSummary(roleNames []string, scopeIDs []string) string {
 
 func persistenceAutomationStillUnmapped(account models.AutomationAccountAsset) []string {
 	items := []string{
-		"the exact runbook code, content source, or operator intent behind this Automation surface",
+		"the current command does not retrieve runbook code bodies, runbook package contents, or content source payloads, so operator intent is not inferred from Automation content here",
 	}
 	if account.MissingTargetMapping {
-		items = append(items, "the exact downstream resources, workflows, or credentials this automation path would modify")
+		items = append(items, "the current command does not resolve the exact downstream resources, workflows, or credentials this automation path would modify without reading or executing runbook logic")
 	}
-	items = append(items, "the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata")
+	items = append(items,
+		"the current command does not print webhook URI material, run job history, or runtime-side trigger success, so it does not prove a trigger is reachable or useful at execution time",
+	)
 	return dedupeStrings(items)
 }
 

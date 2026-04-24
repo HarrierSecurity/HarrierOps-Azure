@@ -1,0 +1,63 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] Container Apps Jobs persistence means a stored job definition plus trigger mode plus container image and execution context Azure can run again later, not just another long-running container app revision.
+Container Apps Jobs capability
+
+╭────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┬────────────╮
+│ action                                 │ api surface                                                            │ status     │
+├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┼────────────┤
+│ create or reuse job in environment     │ Microsoft.App/jobs + properties.environmentId                          │ yes        │
+│ point job at image or command          │ properties.template.containers                                         │ yes        │
+│ choose trigger mode                    │ configuration.triggerType / scheduleTriggerConfig / eventTriggerConfig │ yes        │
+│ set execution shape and access posture │ replica settings / secrets / registries / identity                     │ yes        │
+│ deploy or update stored job definition │ Microsoft.App/jobs                                                     │ yes        │
+│ start or rely on later executions      │ manual start / schedule / event scale rule                             │ not proven │
+│ preserve or reuse execution path       │ stored job definition + trigger + image + identity                     │ yes        │
+╰────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┴────────────╯
+This walkthrough shows the strongest currently visible Container Apps Jobs persistence path. The inventory below lists the other visible jobs without repeating the same narrative.
+- Current identity can create a new Container Apps job or reuse this existing job definition in its environment.
+   The job definition is the Azure-side object that ties together the environment, trigger, image, execution settings, and identity.
+   Visible Container Apps environment here is `aca-env-prod`.
+
+- Current identity can point this job at the container image and command Azure will execute for each run.
+   This is the stored execution payload, separate from the trigger mode that brings the job back later.
+   Visible image clue(s) here include ghcr.io/harrierops/jobs/reconcile:1.4.2.
+   Visible command clue(s) here include `reconcile: /app/reconcile --tenant prod`.
+
+- Current identity can leave this as a scheduled Container Apps job.
+   Trigger mode is the service-specific re-entry choice for Container Apps Jobs: manual start, cron schedule, or event scaler.
+   Visible trigger type here is Schedule.
+   Visible schedule expression here is `0 3 * * *`.
+
+- Current identity can set the execution shape through retries, timeout, replica counts, secrets, registry posture, and attached identity.
+   This is the execution-power layer for the job: how many tasks run, how they retry, and what identity or secret-backed material they can use.
+   Visible execution settings here include parallelism=1, completions=1, retries=3, timeout=1800s.
+   Safe access posture here includes 2 secret reference(s), 1 Key Vault-backed secret reference(s), registry server(s) ghcr.io, 1 registry identity reference(s).
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+   Container Apps job identity `system-assigned identity for Container Apps job "nightly-reconcile"` is visible here, but no Azure role-assignment rows are found for its principal ID.
+
+- Current identity can deploy or update the job so the Container Apps environment retains the job definition, trigger, image, and execution settings.
+   This is the durable object layer: the stored Microsoft.App/jobs definition remains in the control plane until changed or removed.
+
+- Current identity does not yet have a proven path to start this job manually or rely on its later trigger-driven executions.
+   Visibility still shows environment aca-env-prod; 1 image clue(s); command clue visible;
+parallelism=1; secrets=2; registries=ghcr.io.
+   Visible execution context here is `system-assigned identity for Container Apps job "nightly-reconcile"`
+with no Azure role-assignment rows found for its principal ID.
+   That is enough to judge whether this Container Apps job already has trigger, image, execution-setting, or reuse value if stronger control is obtained later.
+
+Visible Container Apps Jobs
+container apps job | trigger                      | visible state                                                        | execution context                                                      
+
+nightly-reconcile  | Schedule; schedule 0 3 * * * | environment aca-env-prod; 1 image clue(s); command clue visible;     | `system-assigned identity for Container Apps job "nightly-reconcile"`  
+                   |                              | parallelism=1; secrets=2; registries=ghcr.io                         | with no Azure role-assignment rows found for its principal ID          
+queue-drain        | Event; 1 event rule(s)       | environment aca-env-internal; 1 image clue(s); command clue visible; | `system-assigned identity for Container Apps job "queue-drain"` with no
+                   |                              | parallelism=2; secrets=1; registries=contoso.azurecr.io              | Azure role-assignment rows found for its principal ID                  
+
+
+Not collected by default
+- the current command does not retrieve raw secret values, registry passwords, or environment variable values, so it reports only safe secret and registry posture
+- the current command does not inspect container image contents or command behavior, so operator intent is not inferred from image names or command clues alone
+- the current command does not replay job execution, logs, or execution history, so conclusions stop at stored management-plane job definition and trigger posture
+- the current command does not inspect downstream queue contents, event payloads, or pipeline data that may drive an event-triggered job run

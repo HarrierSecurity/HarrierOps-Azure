@@ -43,13 +43,13 @@
           "status": "yes"
         },
         {
-          "action": "create or modify schedule",
-          "api_surface": "schedules",
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
           "status": "yes"
         },
         {
-          "action": "attach or reuse exec ctx",
-          "api_surface": "workspace identity",
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
           "status": "yes"
         },
         {
@@ -165,13 +165,13 @@
           "status": "yes"
         },
         {
-          "action": "create or modify schedule",
-          "api_surface": "schedules",
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
           "status": "yes"
         },
         {
-          "action": "attach or reuse exec ctx",
-          "api_surface": "workspace identity",
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
           "status": "yes"
         },
         {
@@ -252,13 +252,13 @@
           "status": "yes"
         },
         {
-          "action": "create or modify schedule",
-          "api_surface": "schedules",
+          "action": "attach or reuse exec ctx",
+          "api_surface": "workspace identity",
           "status": "yes"
         },
         {
-          "action": "attach or reuse exec ctx",
-          "api_surface": "workspace identity",
+          "action": "create or modify schedule",
+          "api_surface": "schedules",
           "status": "yes"
         },
         {

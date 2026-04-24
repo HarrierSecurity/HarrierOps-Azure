@@ -2,16 +2,16 @@ HO-Azure :: attack-path-focused Azure recon
 context :: tenant=auto subscription=auto output=table
 
 [persistence] Azure Functions persistence means a hosted Function App plus deployed code plus trigger posture plus access that Azure can invoke later, not a long-running process on a VM.
-Function capability
+Azure Functions capability
 
 ╭──────────────────────────────────────────┬─────────────────────────────────────────┬────────╮
 │ action                                   │ api surface                             │ status │
 ├──────────────────────────────────────────┼─────────────────────────────────────────┼────────┤
 │ create or modify function app            │ Microsoft.Web/sites                     │ yes    │
 │ deploy or replace code                   │ zip deploy / run-from-package / publish │ yes    │
-│ attach or reuse exec ctx                 │ function identity / app settings        │ yes    │
-│ change app settings or deployment config │ app settings / site config              │ yes    │
 │ repurpose trigger posture                │ HTTP, timer, queue, or event trigger    │ yes    │
+│ change app settings or deployment config │ app settings / site config              │ yes    │
+│ attach or reuse exec ctx                 │ function identity / app settings        │ yes    │
 │ restart or enable function host          │ site state / restart action             │ yes    │
 ╰──────────────────────────────────────────┴─────────────────────────────────────────┴────────╯
 - Current identity can create a new Function App or reuse this existing Function App.
@@ -28,7 +28,7 @@ Function capability
    Visible child functions here show `HTTP`, `timer`, and `Service Bus` trigger paths.
    Current visible functions include OrdersWebhook [HTTP], NightlyReconcile [timer], BusReconcile [Service Bus; disabled].
    HTTP-triggered functions are visible from management-plane metadata, including an invoke URL template and visible auth-level metadata.
-  Timer, queue, Service Bus, or other event-driven triggers are visible from bindings, but they are not the same as a directly callable public entrypoint.
+   Timer, queue, Service Bus, or other event-driven triggers are visible from bindings, but they are not the same as a directly callable public entrypoint.
    The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.
    That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.
 

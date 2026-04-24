@@ -220,6 +220,19 @@ var commandContracts = map[string]CommandContract{
 			"metadata",
 		},
 	},
+	"container-apps-jobs": {
+		Name:             "container-apps-jobs",
+		Section:          "compute",
+		Status:           StatusImplemented,
+		Model:            "ContainerAppsJobsOutput",
+		OperatorQuestion: "Which Container Apps jobs already hold reusable trigger, image, execution, identity, or secret posture Azure can run again later?",
+		TopLevelFields: []string{
+			"container_apps_jobs",
+			"findings",
+			"issues",
+			"metadata",
+		},
+	},
 	"container-instances": {
 		Name:             "container-instances",
 		Section:          "compute",
@@ -557,6 +570,19 @@ var commandContracts = map[string]CommandContract{
 			"issues",
 			"metadata",
 			"vm_assets",
+		},
+	},
+	"vm-extensions": {
+		Name:             "vm-extensions",
+		Section:          "compute",
+		Status:           StatusImplemented,
+		Model:            "VMExtensionsOutput",
+		OperatorQuestion: "Which VM Extensions expose Azure-side handler, script or command source, protected-settings, and rerun posture worth operator follow-up?",
+		TopLevelFields: []string{
+			"findings",
+			"issues",
+			"metadata",
+			"vm_extensions",
 		},
 	},
 	"vmss": {

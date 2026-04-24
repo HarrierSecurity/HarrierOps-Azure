@@ -52,6 +52,14 @@ type userAssignedIdentityDetails struct {
 	clientID    *string
 }
 
+type roleDefinitionDetail struct {
+	roleName       string
+	actions        []string
+	notActions     []string
+	dataActions    []string
+	notDataActions []string
+}
+
 func (provider AzureProvider) RBAC(ctx context.Context, tenant string, subscription string) (RBACFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
 	if err != nil {
@@ -268,7 +276,7 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 	}
 	principals := map[string]models.Principal{}
 	roleAssignments := []models.RoleAssignment{}
-	roleNameCache := map[string]string{}
+	roleDefinitionCache := map[string]roleDefinitionDetail{}
 	issues := []models.Issue{}
 
 	for _, assignment := range assignments {
@@ -287,7 +295,7 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 		}
 
 		roleDefinitionID := mapStringValue(properties, "roleDefinitionId")
-		roleName, resolveErr := resolveRoleDefinitionName(ctx, roleDefinitionsClient, roleDefinitionID, roleNameCache)
+		roleDefinition, resolveErr := resolveRoleDefinitionDetail(ctx, roleDefinitionsClient, roleDefinitionID, roleDefinitionCache)
 		if resolveErr != nil {
 			issues = append(issues, issueFromError("rbac.role_definition["+roleDefinitionID+"]", resolveErr))
 		}
@@ -309,8 +317,12 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 			PrincipalID:      principalID,
 			PrincipalType:    firstNonEmpty(principalType, "unknown"),
 			RoleDefinitionID: roleDefinitionID,
-			RoleName:         roleName,
+			RoleName:         roleDefinition.roleName,
 			ScopeID:          assignmentScope,
+			Actions:          append([]string{}, roleDefinition.actions...),
+			NotActions:       append([]string{}, roleDefinition.notActions...),
+			DataActions:      append([]string{}, roleDefinition.dataActions...),
+			NotDataActions:   append([]string{}, roleDefinition.notDataActions...),
 		})
 	}
 
@@ -989,31 +1001,50 @@ func roleDefinitionGUID(roleDefinitionID string) string {
 	return strings.ToLower(parts[len(parts)-1])
 }
 
-func resolveRoleDefinitionName(ctx context.Context, client *armauthorization.RoleDefinitionsClient, roleDefinitionID string, cache map[string]string) (string, error) {
+func resolveRoleDefinitionDetail(ctx context.Context, client *armauthorization.RoleDefinitionsClient, roleDefinitionID string, cache map[string]roleDefinitionDetail) (roleDefinitionDetail, error) {
 	if roleDefinitionID == "" {
-		return "", nil
+		return roleDefinitionDetail{}, nil
 	}
 	cacheKey := strings.ToLower(roleDefinitionID)
-	if roleName, ok := cache[cacheKey]; ok {
-		return roleName, nil
+	if detail, ok := cache[cacheKey]; ok {
+		return detail, nil
 	}
 	if roleName, ok := builtInHighImpactRolesByID[roleDefinitionGUID(roleDefinitionID)]; ok {
-		cache[cacheKey] = roleName
-		return roleName, nil
+		detail := roleDefinitionDetail{roleName: roleName}
+		cache[cacheKey] = detail
+		return detail, nil
 	}
 
 	if client == nil {
-		return "", fmt.Errorf("role definitions client unavailable")
+		return roleDefinitionDetail{}, fmt.Errorf("role definitions client unavailable")
 	}
 	roleDefinitionResponse, err := client.GetByID(ctx, roleDefinitionID, nil)
 	if err != nil {
-		return "", err
+		return roleDefinitionDetail{}, err
 	}
 	roleDefinition := map[string]any{}
 	decodeJSONInto(roleDefinitionResponse.RoleDefinition, &roleDefinition)
-	roleName := firstNonEmpty(mapStringValue(mapValue(roleDefinition, "properties"), "roleName"), mapStringValue(roleDefinition, "name"))
-	cache[cacheKey] = roleName
-	return roleName, nil
+	detail := roleDefinitionDetailFromMap(roleDefinition)
+	cache[cacheKey] = detail
+	return detail, nil
+}
+
+func roleDefinitionDetailFromMap(roleDefinition map[string]any) roleDefinitionDetail {
+	properties := mapValue(roleDefinition, "properties")
+	detail := roleDefinitionDetail{
+		roleName: firstNonEmpty(mapStringValue(properties, "roleName"), mapStringValue(roleDefinition, "name")),
+	}
+	for _, permission := range listValue(properties, "permissions") {
+		detail.actions = append(detail.actions, stringListValue(permission, "actions", "Actions")...)
+		detail.notActions = append(detail.notActions, stringListValue(permission, "notActions", "NotActions")...)
+		detail.dataActions = append(detail.dataActions, stringListValue(permission, "dataActions", "DataActions")...)
+		detail.notDataActions = append(detail.notDataActions, stringListValue(permission, "notDataActions", "NotDataActions")...)
+	}
+	detail.actions = sortedUniqueStrings(detail.actions)
+	detail.notActions = sortedUniqueStrings(detail.notActions)
+	detail.dataActions = sortedUniqueStrings(detail.dataActions)
+	detail.notDataActions = sortedUniqueStrings(detail.notDataActions)
+	return detail
 }
 
 func loadUserAssignedIdentityDetails(ctx context.Context, client *armmsi.UserAssignedIdentitiesClient, identityID string, cache map[string]userAssignedIdentityDetails) (userAssignedIdentityDetails, []models.Issue) {

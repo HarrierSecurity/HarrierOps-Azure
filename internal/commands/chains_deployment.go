@@ -351,10 +351,14 @@ func buildDevopsDeploymentRecord(
 	supporting []models.ArmDeploymentSummary,
 ) (models.ChainPathRecord, bool) {
 	spec := deploymentTargetSpecs[familyName]
-	exactTargets, confirmationBasis := devopsExactTargets(pipeline, familyName, targetsByFamily[familyName])
+	visibleTargets := targetsByFamily[familyName]
+	exactTargets, confirmationBasis := devopsExactTargets(pipeline, familyName, visibleTargets)
 	selectedTargets := exactTargets
 	if len(selectedTargets) == 0 && targetVisibilityIssue == nil {
-		selectedTargets = append([]deploymentTarget{}, targetsByFamily[familyName]...)
+		selectedTargets = append([]deploymentTarget{}, visibleTargets...)
+	}
+	if len(selectedTargets) == 0 && len(visibleTargets) == 0 && targetVisibilityIssue == nil && len(pipeline.TargetClues) > 0 {
+		targetVisibilityIssue = models.StringPtr("current " + spec.Label + " inventory returned no visible targets for the pipeline clue")
 	}
 	targetResolution := deploymentTargetResolution(selectedTargets, confirmationBasis, targetVisibilityIssue, pipeline.MissingTargetMapping)
 	if targetResolution == "" {

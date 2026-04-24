@@ -15,17 +15,19 @@ import (
 )
 
 type liveAzureCache struct {
-	mu            sync.Mutex
-	sessions      map[string]*onceValue[azureSession]
-	webAppsStates map[string]*liveWebAppsState
-	computeStates map[string]*liveComputeNetworkState
+	mu                   sync.Mutex
+	sessions             map[string]*onceValue[azureSession]
+	webAppsStates        map[string]*liveWebAppsState
+	computeStates        map[string]*liveComputeNetworkState
+	devopsOrgDiscoveries map[string]*onceValue[devopsOrganizationDiscovery]
 }
 
 func newLiveAzureCache() *liveAzureCache {
 	return &liveAzureCache{
-		sessions:      map[string]*onceValue[azureSession]{},
-		webAppsStates: map[string]*liveWebAppsState{},
-		computeStates: map[string]*liveComputeNetworkState{},
+		sessions:             map[string]*onceValue[azureSession]{},
+		webAppsStates:        map[string]*liveWebAppsState{},
+		computeStates:        map[string]*liveComputeNetworkState{},
+		devopsOrgDiscoveries: map[string]*onceValue[devopsOrganizationDiscovery]{},
 	}
 }
 

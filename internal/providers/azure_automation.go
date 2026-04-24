@@ -140,6 +140,7 @@ func automationAccountSummary(
 		PublishedRunbookCount:  publishedRunbookCount,
 		PublishedRunbookNames:  publishedRunbookNames,
 		ScheduleCount:          automationCount(schedules),
+		ScheduleDefinitions:    automationScheduleDefinitions(schedules),
 		JobScheduleCount:       automationCount(jobSchedules),
 		WebhookCount:           automationCount(webhooks),
 		HybridWorkerGroupCount: automationCount(hybridWorkerGroups),
@@ -340,6 +341,139 @@ func automationRunbookName(item map[string]any) string {
 		}
 	}
 	return ""
+}
+
+func automationScheduleDefinitions(schedules []map[string]any) []string {
+	if schedules == nil {
+		return []string{}
+	}
+	definitions := []string{}
+	for _, schedule := range schedules {
+		if definition := automationScheduleDefinition(schedule); definition != "" {
+			definitions = append(definitions, definition)
+		}
+	}
+	sort.Strings(definitions)
+	return dedupeStrings(definitions)
+}
+
+func automationScheduleDefinition(schedule map[string]any) string {
+	properties := mapValue(schedule, "properties")
+	name := firstNonEmpty(
+		mapStringValue(schedule, "name"),
+		mapStringValue(properties, "name"),
+		"schedule",
+	)
+	parts := []string{}
+	if frequency := firstNonEmpty(mapStringValue(properties, "frequency"), mapStringValue(schedule, "frequency")); frequency != "" {
+		parts = append(parts, "frequency="+frequency)
+	}
+	if interval := firstNonZeroInt(mapIntValue(properties, "interval"), mapIntValue(schedule, "interval")); interval > 0 {
+		parts = append(parts, "interval="+stringValue(interval))
+	}
+	if timezone := firstNonEmpty(mapStringValue(properties, "timeZone", "time_zone"), mapStringValue(schedule, "timeZone", "time_zone")); timezone != "" {
+		parts = append(parts, "timezone="+timezone)
+	}
+	if start := firstNonEmpty(mapStringValue(properties, "startTime", "start_time"), mapStringValue(schedule, "startTime", "start_time")); start != "" {
+		parts = append(parts, "start="+start)
+	}
+	if expiry := firstNonEmpty(mapStringValue(properties, "expiryTime", "expiry_time"), mapStringValue(schedule, "expiryTime", "expiry_time")); expiry != "" {
+		parts = append(parts, "expiry="+expiry)
+	}
+	if enabled, ok := automationOptionalBool(properties, schedule, "isEnabled", "is_enabled"); ok {
+		parts = append(parts, "enabled="+boolText(enabled))
+	}
+	if advanced := automationAdvancedScheduleSummary(mapValue(properties, "advancedSchedule", "advanced_schedule")); advanced != "" {
+		parts = append(parts, advanced)
+	}
+	if len(parts) == 0 {
+		return name
+	}
+	return name + ": " + strings.Join(parts, "; ")
+}
+
+func automationAdvancedScheduleSummary(advanced map[string]any) string {
+	if len(advanced) == 0 {
+		return ""
+	}
+	parts := []string{}
+	if weekDays := automationStringValues(listValue(advanced, "weekDays", "week_days")); len(weekDays) > 0 {
+		parts = append(parts, "weekdays="+strings.Join(weekDays, ","))
+	}
+	if values := automationIntValues(listValue(advanced, "monthDays", "month_days")); len(values) > 0 {
+		parts = append(parts, "monthdays="+strings.Join(values, ","))
+	}
+	if monthlyOccurrences := listValue(advanced, "monthlyOccurrences", "monthly_occurrences"); len(monthlyOccurrences) > 0 {
+		parts = append(parts, "monthlyOccurrences="+stringValue(len(monthlyOccurrences)))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func automationStringValues(values []any) []string {
+	items := []string{}
+	for _, value := range values {
+		switch typed := value.(type) {
+		case string:
+			if trimmed := strings.TrimSpace(typed); trimmed != "" {
+				items = append(items, trimmed)
+			}
+		}
+	}
+	sort.Strings(items)
+	return dedupeStrings(items)
+}
+
+func automationIntValues(values []any) []string {
+	items := []string{}
+	for _, value := range values {
+		switch typed := value.(type) {
+		case int:
+			items = append(items, stringValue(typed))
+		case float64:
+			items = append(items, stringValue(int(typed)))
+		}
+	}
+	sort.Strings(items)
+	return dedupeStrings(items)
+}
+
+func automationOptionalBool(primary map[string]any, secondary map[string]any, keys ...string) (bool, bool) {
+	for _, input := range []map[string]any{primary, secondary} {
+		for _, key := range keys {
+			raw, ok := input[key]
+			if !ok {
+				continue
+			}
+			switch value := raw.(type) {
+			case bool:
+				return value, true
+			case string:
+				switch strings.ToLower(strings.TrimSpace(value)) {
+				case "true", "enabled", "yes":
+					return true, true
+				case "false", "disabled", "no":
+					return false, true
+				}
+			}
+		}
+	}
+	return false, false
+}
+
+func firstNonZeroInt(values ...int) int {
+	for _, value := range values {
+		if value != 0 {
+			return value
+		}
+	}
+	return 0
+}
+
+func boolText(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
 }
 
 func automationPrimaryRunPath(

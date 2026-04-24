@@ -138,7 +138,7 @@ func (provider AzureProvider) Lighthouse(ctx context.Context, tenant string, sub
 	}
 
 	subscriptionScope := "/subscriptions/" + session.subscription.ID
-	roleNameCache := map[string]string{}
+	roleNameCache := map[string]roleDefinitionDetail{}
 	seenAssignmentIDs := map[string]struct{}{}
 	delegations := []models.LighthouseDelegationAsset{}
 	issues := []models.Issue{}
@@ -204,7 +204,7 @@ func lighthouseDelegationSummary(
 	credential azcore.TokenCredential,
 	assignment map[string]any,
 	scope string,
-	roleNameCache map[string]string,
+	roleNameCache map[string]roleDefinitionDetail,
 ) models.LighthouseDelegationAsset {
 	assignmentID := mapStringValue(assignment, "id")
 	properties := mapValue(assignment, "properties")
@@ -311,7 +311,7 @@ func lighthouseRoleNames(
 	credential azcore.TokenCredential,
 	scope string,
 	authorizations []any,
-	roleNameCache map[string]string,
+	roleNameCache map[string]roleDefinitionDetail,
 ) []string {
 	roleNames := []string{}
 	roleDefinitionsClient, _ := armauthorization.NewRoleDefinitionsClient(credential, nil)
@@ -324,7 +324,8 @@ func lighthouseRoleNames(
 		if roleDefinitionID == "" {
 			continue
 		}
-		roleName, err := resolveRoleDefinitionName(ctx, roleDefinitionsClient, roleDefinitionID, roleNameCache)
+		roleDefinition, err := resolveRoleDefinitionDetail(ctx, roleDefinitionsClient, roleDefinitionID, roleNameCache)
+		roleName := roleDefinition.roleName
 		if err != nil || strings.TrimSpace(roleName) == "" {
 			roleName = firstNonEmpty(builtInHighImpactRolesByID[roleDefinitionGUID(roleDefinitionID)], "Unknown")
 		}

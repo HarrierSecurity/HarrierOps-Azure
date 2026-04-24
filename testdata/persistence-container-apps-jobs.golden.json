@@ -1,0 +1,263 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "persistence",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "persistence",
+  "surface": "container-apps-jobs",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Container Apps Jobs for stored job definitions, trigger mode, container image, execution settings, and identity-backed rerun paths.",
+  "backing_commands": [
+    "container-apps-jobs",
+    "managed-identities",
+    "permissions",
+    "rbac"
+  ],
+  "container_apps_jobs": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/nightly-reconcile",
+      "container_apps_job": "nightly-reconcile",
+      "resource_group": "rg-containers",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or reuse job in environment",
+          "api_surface": "Microsoft.App/jobs + properties.environmentId",
+          "status": "yes"
+        },
+        {
+          "action": "point job at image or command",
+          "api_surface": "properties.template.containers",
+          "status": "yes"
+        },
+        {
+          "action": "choose trigger mode",
+          "api_surface": "configuration.triggerType / scheduleTriggerConfig / eventTriggerConfig",
+          "status": "yes"
+        },
+        {
+          "action": "set execution shape and access posture",
+          "api_surface": "replica settings / secrets / registries / identity",
+          "status": "yes"
+        },
+        {
+          "action": "deploy or update stored job definition",
+          "api_surface": "Microsoft.App/jobs",
+          "status": "yes"
+        },
+        {
+          "action": "start or rely on later executions",
+          "api_surface": "manual start / schedule / event scale rule",
+          "status": "not proven"
+        },
+        {
+          "action": "preserve or reuse execution path",
+          "api_surface": "stored job definition + trigger + image + identity",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "container image visible",
+        "command clue visible",
+        "scheduled trigger",
+        "secret references",
+        "Key Vault-backed secrets",
+        "registry posture",
+        "environment linkage"
+      ],
+      "current_state": {
+        "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+        "trigger_type": "Schedule",
+        "schedule_expression": "0 3 * * *",
+        "container_images": [
+          "ghcr.io/harrierops/jobs/reconcile:1.4.2"
+        ],
+        "command": [
+          "reconcile: /app/reconcile --tenant prod"
+        ],
+        "parallelism": 1,
+        "replica_completion_count": 1,
+        "replica_retry_limit": 3,
+        "replica_timeout": 1800,
+        "identity_type": "SystemAssigned",
+        "workload_principal_id": "abab3333-3333-3333-3333-333333333333",
+        "workload_client_id": "cdcd3333-3333-3333-3333-333333333333",
+        "secret_count": 2,
+        "key_vault_secret_count": 1,
+        "registry_servers": [
+          "ghcr.io"
+        ],
+        "registry_identity_count": 1,
+        "registry_password_ref_count": 0,
+        "strongest_visible_execution_context": {
+          "name": "system-assigned identity for Container Apps job \"nightly-reconcile\"",
+          "kind": "container-apps-job-execution-context",
+          "principal_id": "abab3333-3333-3333-3333-333333333333",
+          "identity_type": "SystemAssigned",
+          "role_names": [],
+          "scope_ids": [],
+          "summary": "Container Apps job identity `system-assigned identity for Container Apps job \"nightly-reconcile\"` is visible here, but no Azure role-assignment rows are found for its principal ID."
+        }
+      },
+      "still_unmapped": [
+        "the current command does not retrieve raw secret values, registry passwords, or environment variable values, so it reports only safe secret and registry posture",
+        "the current command does not inspect container image contents or command behavior, so operator intent is not inferred from image names or command clues alone",
+        "the current command does not replay job execution, logs, or execution history, so conclusions stop at stored management-plane job definition and trigger posture",
+        "the current command does not inspect downstream queue contents, event payloads, or pipeline data that may drive an event-triggered job run"
+      ],
+      "summary": "Current identity can preserve or reuse Container Apps job 'nightly-reconcile' as Container Apps Jobs persistence, with visible trigger, image, execution settings, and safe access posture from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/nightly-reconcile",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+        "abab3333-3333-3333-3333-333333333333"
+      ]
+    },
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/queue-drain",
+      "container_apps_job": "queue-drain",
+      "resource_group": "rg-containers",
+      "location": "eastus",
+      "capability_steps": [
+        {
+          "action": "create or reuse job in environment",
+          "api_surface": "Microsoft.App/jobs + properties.environmentId",
+          "status": "yes"
+        },
+        {
+          "action": "point job at image or command",
+          "api_surface": "properties.template.containers",
+          "status": "yes"
+        },
+        {
+          "action": "choose trigger mode",
+          "api_surface": "configuration.triggerType / scheduleTriggerConfig / eventTriggerConfig",
+          "status": "yes"
+        },
+        {
+          "action": "set execution shape and access posture",
+          "api_surface": "replica settings / secrets / registries / identity",
+          "status": "yes"
+        },
+        {
+          "action": "deploy or update stored job definition",
+          "api_surface": "Microsoft.App/jobs",
+          "status": "yes"
+        },
+        {
+          "action": "start or rely on later executions",
+          "api_surface": "manual start / schedule / event scale rule",
+          "status": "not proven"
+        },
+        {
+          "action": "preserve or reuse execution path",
+          "api_surface": "stored job definition + trigger + image + identity",
+          "status": "yes"
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "summary": "Current foothold `azurefox-lab-sp` already holds Owner at subscription scope."
+      },
+      "execution_context_options": [
+        "managed identity",
+        "container image visible",
+        "command clue visible",
+        "event trigger",
+        "secret references",
+        "registry posture",
+        "environment linkage"
+      ],
+      "current_state": {
+        "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+        "trigger_type": "Event",
+        "event_rules": [
+          {
+            "auth_secret_refs": [
+              "queue-connection"
+            ],
+            "identity": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs",
+            "name": "orders-queue",
+            "type": "azure-queue"
+          }
+        ],
+        "container_images": [
+          "contoso.azurecr.io/jobs/queue-drain:2026.04"
+        ],
+        "command": [
+          "worker: /app/drain --queue orders"
+        ],
+        "parallelism": 2,
+        "replica_completion_count": 2,
+        "replica_retry_limit": 3,
+        "replica_timeout": 3600,
+        "identity_type": "SystemAssigned, UserAssigned",
+        "workload_principal_id": "abab2222-2222-2222-2222-222222222222",
+        "workload_client_id": "cdcd2222-2222-2222-2222-222222222222",
+        "workload_identity_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+        ],
+        "secret_count": 1,
+        "key_vault_secret_count": 0,
+        "registry_servers": [
+          "contoso.azurecr.io"
+        ],
+        "registry_identity_count": 0,
+        "registry_password_ref_count": 1,
+        "strongest_visible_execution_context": {
+          "name": "system-assigned identity for Container Apps job \"queue-drain\"",
+          "kind": "container-apps-job-execution-context",
+          "principal_id": "abab2222-2222-2222-2222-222222222222",
+          "identity_type": "SystemAssigned, UserAssigned",
+          "role_names": [],
+          "scope_ids": [],
+          "summary": "Container Apps job identity `system-assigned identity for Container Apps job \"queue-drain\"` is visible here, but no Azure role-assignment rows are found for its principal ID."
+        },
+        "nearby_thematic_names": [
+          "nightly-reconcile"
+        ]
+      },
+      "still_unmapped": [
+        "the current command does not retrieve raw secret values, registry passwords, or environment variable values, so it reports only safe secret and registry posture",
+        "the current command does not inspect container image contents or command behavior, so operator intent is not inferred from image names or command clues alone",
+        "the current command does not replay job execution, logs, or execution history, so conclusions stop at stored management-plane job definition and trigger posture",
+        "the current command does not inspect downstream queue contents, event payloads, or pipeline data that may drive an event-triggered job run"
+      ],
+      "summary": "Current identity can preserve or reuse Container Apps job 'queue-drain' as Container Apps Jobs persistence, with visible trigger, image, execution settings, and safe access posture from the current read path.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/queue-drain",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+        "abab2222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+      ]
+    }
+  ],
+  "issues": []
+}

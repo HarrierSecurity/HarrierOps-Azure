@@ -17,6 +17,7 @@ type Provider interface {
 	ArmDeployments(context.Context, string, string) (ArmDeploymentsFacts, error)
 	AppServices(context.Context, string, string) (AppServicesFacts, error)
 	ContainerApps(context.Context, string, string) (ContainerAppsFacts, error)
+	ContainerAppsJobs(context.Context, string, string) (ContainerAppsJobsFacts, error)
 	ContainerInstances(context.Context, string, string) (ContainerInstancesFacts, error)
 	Databases(context.Context, string, string) (DatabasesFacts, error)
 	Endpoints(context.Context, string, string) (EndpointsFacts, error)
@@ -44,6 +45,7 @@ type Provider interface {
 	Storage(context.Context, string, string) (StorageFacts, error)
 	SnapshotsDisks(context.Context, string, string) (SnapshotsDisksFacts, error)
 	TokensCredentials(context.Context, string, string) (TokensCredentialsFacts, error)
+	VMExtensions(context.Context, string, string) (VMExtensionsFacts, error)
 	VMs(context.Context, string, string) (VMsFacts, error)
 	VMSS(context.Context, string, string) (VMSSFacts, error)
 	WebJobs(context.Context, string, string) (WebJobsFacts, error)
@@ -228,6 +230,13 @@ type ContainerAppsFacts struct {
 	Issues         []models.Issue
 }
 
+type ContainerAppsJobsFacts struct {
+	TenantID          string
+	SubscriptionID    string
+	ContainerAppsJobs []models.ContainerAppsJobAsset
+	Issues            []models.Issue
+}
+
 type ContainerInstancesFacts struct {
 	TenantID           string
 	SubscriptionID     string
@@ -267,6 +276,13 @@ type VMsFacts struct {
 	TenantID       string
 	SubscriptionID string
 	VMAssets       []models.VmAsset
+	Issues         []models.Issue
+}
+
+type VMExtensionsFacts struct {
+	TenantID       string
+	SubscriptionID string
+	VMExtensions   []models.VMExtensionAsset
 	Issues         []models.Issue
 }
 

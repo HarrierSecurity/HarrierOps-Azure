@@ -24,7 +24,7 @@ func TestDevopsListValuesUsesBasicAuthAndRedirectSuppressHeaders(t *testing.T) {
 		sawRedirectSuppress = r.Header.Get("X-TFS-FedAuthRedirect")
 		sawPassThrough = r.Header.Get("X-VSS-ForceMsaPassThrough")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"value":[{"name":"Azurefox Proof Lab"}]}`))
+		_, _ = w.Write([]byte(`{"value":[{"name":"Contoso Proof Lab"}]}`))
 	}))
 	defer server.Close()
 
@@ -32,7 +32,7 @@ func TestDevopsListValuesUsesBasicAuthAndRedirectSuppressHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("devopsListValuesWithClient() error = %v, want nil", err)
 	}
-	if len(values) != 1 || stringMapValue(values[0], "name") != "Azurefox Proof Lab" {
+	if len(values) != 1 || stringMapValue(values[0], "name") != "Contoso Proof Lab" {
 		t.Fatalf("devopsListValuesWithClient() values = %#v, want one parsed project row", values)
 	}
 
@@ -75,22 +75,91 @@ func TestDevopsListValuesSurfacesNonJSONResponseTruthfully(t *testing.T) {
 	}
 }
 
+func TestDevopsOrganizationsFromFederatedCredentialsUsesAzureSideClues(t *testing.T) {
+	t.Helper()
+
+	organizations := devopsOrganizationsFromFederatedCredentials([]map[string]any{
+		{
+			"subject":     "sc://contoso-devops-lab/Contoso Proof Lab/af-rg-reader",
+			"description": "Azure DevOps service connection for https://dev.azure.com/contoso-devops-lab/Azurefox%20Proof%20Lab",
+		},
+		{
+			"subject":     "repo:harrierops/ho-azure:ref:refs/heads/main",
+			"description": "Legacy Azure DevOps org: contoso-devops-lab",
+		},
+		{
+			"issuer": "https://vstoken.dev.azure.com/11111111-1111-1111-1111-111111111111",
+		},
+	})
+
+	if !slices.Equal(organizations, []string{"contoso-devops-lab"}) {
+		t.Fatalf("organizations = %#v, want contoso-devops-lab", organizations)
+	}
+}
+
+func TestDevopsOrganizationsFromFederatedCredentialsKeepsMultipleOrgDecisionExplicit(t *testing.T) {
+	t.Helper()
+
+	organizations := devopsOrganizationsFromFederatedCredentials([]map[string]any{
+		{"description": "Azure DevOps organization=contoso"},
+		{"description": "https://fabrikam.visualstudio.com/DefaultCollection"},
+	})
+
+	if !slices.Equal(organizations, []string{"contoso", "fabrikam"}) {
+		t.Fatalf("organizations = %#v, want contoso and fabrikam", organizations)
+	}
+}
+
+func TestGraphListObjectsLimitStopsInsidePageWithoutFollowingMoreLinks(t *testing.T) {
+	t.Helper()
+
+	requests := 0
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/first":
+			_, _ = w.Write([]byte(`{"value":[{"id":"1"},{"id":"2"},{"id":"3"}],"@odata.nextLink":"` + server.URL + `/next"}`))
+		case "/next":
+			t.Fatal("graphListObjectsLimit followed @odata.nextLink after reaching the configured cap")
+		default:
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	items, truncated, err := graphListObjectsLimit(context.Background(), "token", server.URL+"/first", 2)
+	if err != nil {
+		t.Fatalf("graphListObjectsLimit() error = %v, want nil", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("graphListObjectsLimit() returned %d items, want 2", len(items))
+	}
+	if !truncated {
+		t.Fatal("graphListObjectsLimit() truncated = false, want true")
+	}
+	if requests != 1 {
+		t.Fatalf("graphListObjectsLimit() made %d requests, want 1", requests)
+	}
+}
+
 func TestBuildDevopsPipelineAssetPreservesYAMLTargetsAndPermissionProof(t *testing.T) {
 	t.Helper()
 
 	project := map[string]any{
 		"id":   "80791807-25db-4094-a70c-1ba32a0c7370",
-		"name": "Azurefox Proof Lab",
+		"name": "Contoso Proof Lab",
 	}
 	definition := map[string]any{
 		"id":   "3",
-		"name": "lab-proof-targeted",
+		"name": "contoso-proof-targeted",
 		"path": "\\",
 		"repository": map[string]any{
 			"id":            "2f15c90d-94e2-4c2f-8730-954ea594c4a1",
-			"name":          "lab-proof",
+			"name":          "contoso-proof",
 			"type":          "TfsGit",
-			"url":           "https://dev.azure.com/azurefox-proof-lab-foxlab/Azurefox%20Proof%20Lab/_git/lab-proof",
+			"url":           "https://dev.azure.com/contoso-devops-lab/Azurefox%20Proof%20Lab/_git/contoso-proof",
 			"defaultBranch": "main",
 		},
 		"triggers": []any{
@@ -108,19 +177,19 @@ func TestBuildDevopsPipelineAssetPreservesYAMLTargetsAndPermissionProof(t *testi
 	}
 	serviceEndpointsByName := map[string]map[string]any{
 		"af-rg-reader": {
-			"id":   "0b746b31-635e-4b09-890c-af76e7c4638a",
+			"id":   "55555555-5555-5555-5555-555555555555",
 			"name": "af-rg-reader",
 			"type": "azurerm",
 			"authorization": map[string]any{
 				"scheme": "WorkloadIdentityFederation",
 				"parameters": map[string]any{
-					"serviceprincipalid": "2f4a317c-1ee4-49d6-ac44-56bb6fc56b08",
-					"tenantid":           "0bdb6f5d-f8c3-4525-8417-b1fa701482cd",
+					"serviceprincipalid": "66666666-6666-6666-6666-666666666666",
+					"tenantid":           "11111111-1111-1111-1111-111111111111",
 				},
 			},
 			"data": map[string]any{
-				"spnObjectId":    "808a05cd-7de5-42c6-b06f-f98ebf154b3d",
-				"subscriptionId": "b436881a-b87e-44b6-a5d6-7bf7f4bc9c88",
+				"spnObjectId":    "77777777-7777-7777-7777-777777777777",
+				"subscriptionId": "22222222-2222-2222-2222-222222222222",
 			},
 		},
 	}
@@ -144,7 +213,7 @@ steps:
 `
 
 	pipeline, issues := buildDevopsPipelineAsset(
-		"azurefox-proof-lab-foxlab",
+		"contoso-devops-lab",
 		project,
 		definition,
 		yamlContent,
@@ -162,6 +231,21 @@ steps:
 	}
 	if !slices.Contains(pipeline.AzureServiceConnectionNames, "af-rg-reader") {
 		t.Fatalf("azure_service_connection_names = %#v, want af-rg-reader", pipeline.AzureServiceConnectionNames)
+	}
+	if !slices.Equal(pipeline.AzureServiceConnectionAuthSchemes, []string{"WorkloadIdentityFederation"}) {
+		t.Fatalf("azure_service_connection_auth_schemes = %#v, want WorkloadIdentityFederation", pipeline.AzureServiceConnectionAuthSchemes)
+	}
+	if !slices.Equal(pipeline.AzureServiceConnectionPrincipalIDs, []string{"77777777-7777-7777-7777-777777777777"}) {
+		t.Fatalf("azure_service_connection_principal_ids = %#v, want spnObjectId", pipeline.AzureServiceConnectionPrincipalIDs)
+	}
+	if !slices.Equal(pipeline.AzureServiceConnectionClientIDs, []string{"66666666-6666-6666-6666-666666666666"}) {
+		t.Fatalf("azure_service_connection_client_ids = %#v, want serviceprincipalid", pipeline.AzureServiceConnectionClientIDs)
+	}
+	if !slices.Equal(pipeline.AzureServiceConnectionTenantIDs, []string{"11111111-1111-1111-1111-111111111111"}) {
+		t.Fatalf("azure_service_connection_tenant_ids = %#v, want tenantid", pipeline.AzureServiceConnectionTenantIDs)
+	}
+	if !slices.Equal(pipeline.AzureServiceConnectionSubscriptionIDs, []string{"22222222-2222-2222-2222-222222222222"}) {
+		t.Fatalf("azure_service_connection_subscription_ids = %#v, want subscriptionId", pipeline.AzureServiceConnectionSubscriptionIDs)
 	}
 	if !slices.Contains(pipeline.TargetClues, "App Service") || !slices.Contains(pipeline.TargetClues, "App Service: app-public-api-6402b6") {
 		t.Fatalf("target_clues = %#v, want generic and exact App Service clues", pipeline.TargetClues)

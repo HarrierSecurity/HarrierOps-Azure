@@ -417,14 +417,13 @@ func TestBuildPersistenceWebJobsOutputResolvesInheritedExecutionContext(t *testi
 	t.Fatalf("expected nightly-reconcile webjob in output")
 }
 
-func TestPersistenceAppServiceStillUnmappedPointsToWebJobsSurface(t *testing.T) {
+func TestPersistenceAppServiceStillUnmappedDoesNotDuplicateWebJobsSurfaceBoundary(t *testing.T) {
 	items := persistenceAppServiceStillUnmapped()
 	for _, item := range items {
 		if strings.Contains(item, "`persistence webjobs`") {
-			return
+			t.Fatalf("expected WebJobs boundary to stay in table walkthrough rather than Not collected by default, got %#v", items)
 		}
 	}
-	t.Fatalf("expected App Service still-unmapped guidance to point at persistence webjobs, got %#v", items)
 }
 
 func TestPersistenceLogicAppSummaryDoesNotOverclaimDisabledWorkflowAsDurable(t *testing.T) {

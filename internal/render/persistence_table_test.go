@@ -299,7 +299,7 @@ func TestPersistenceLogicAppsTableUsesSingleWalkthroughForMultipleWorkflows(t *t
 		},
 	})
 
-	if strings.Count(output, "Workflow capability") != 1 {
+	if strings.Count(output, "Logic Apps capability") != 1 {
 		t.Fatalf("expected one shared Logic Apps walkthrough, got:\n%s", output)
 	}
 	if strings.Contains(output, "Reminder: ") {

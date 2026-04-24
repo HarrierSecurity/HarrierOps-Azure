@@ -1,0 +1,50 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[vm-extensions] Reviewing VM Extensions handler, source, protected-settings, and rerun posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure vm-extensions
+
+╭────────────────────┬────────────────────────────┬─────────────────────────────────────────────────────────────────┬──────────────────────────────────────╮
+│ extension          │ target                     │ handler                                                         │ status                               │
+├────────────────────┼────────────────────────────┼─────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+│ config-bootstrap   │ VM=vm-web-01; identities=1 │ Microsoft.Compute/CustomScriptExtension                         │ provisioning=Succeeded;              │
+│                    │                            │ 1.10; minor-auto=yes;                                           │ instance=ProvisioningState/succeeded │
+│                    │                            │ auto-upgrade=no                                                 │                                      │
+│ maintenance-script │ VMSS=vmss-batch;           │ Microsoft.Azure.Extensions/CustomScript                         │ provisioning=Succeeded               │
+│                    │ vmss=Uniform/Rolling       │ 2.1; minor-auto=no; auto-upgrade=no                             │                                      │
+│ dependency-agent   │ VM=vm-web-01; identities=1 │ Microsoft.Azure.Monitoring.DependencyAgent/DependencyAgentLinux │ provisioning=Succeeded;              │
+│                    │                            │ 9.10; minor-auto=yes;                                           │ instance=ProvisioningState/succeeded │
+│                    │                            │ auto-upgrade=yes                                                │                                      │
+╰────────────────────┴────────────────────────────┴─────────────────────────────────────────────────────────────────┴──────────────────────────────────────╯
+
+Takeaway: 3 VM extension definitions visible; 2 are Custom Script-style handlers, 2 expose public command clues, 1 uses Key Vault protected settings, and 2 show rerun clues.
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ operator notes                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ config-bootstrap: VM extension 'config-bootstrap' targets VM 'vm-web-01' with                    │
+│ Microsoft.Compute/CustomScriptExtension 1.10, shows public file URI hosts                        │
+│ raw.githubusercontent.com and storageacct.blob.core.windows.net, exposes a public command clue,  │
+│ and has protected settings present.                                                              │
+│ Visible status: Succeeded.                                                                       │
+│ Source: file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net; fileUris=2;     │
+│ command=public commandToExecute visible; executable=powershell; arguments redacted.              │
+│ Settings: public=commandToExecute, fileUris; protected=yes; suppress-failures=no.                │
+│ Rerun: forceUpdateTag=2026-04-23T120000Z.                                                        │
+│ maintenance-script: VMSS extension 'maintenance-script' targets scale set 'vmss-batch' with      │
+│ Microsoft.Azure.Extensions/CustomScript 2.1, shows public file URI host                          │
+│ scripts.contoso.internal, exposes a public command clue, and uses Key Vault-referenced protected │
+│ settings.                                                                                        │
+│ Visible status: Succeeded.                                                                       │
+│ Source: file-hosts=scripts.contoso.internal; fileUris=1; command=public commandToExecute         │
+│ visible; executable=maintenance.sh; arguments redacted.                                          │
+│ Settings: public=commandToExecute, fileUris; kv-protected=yes; suppress-failures=no.             │
+│ Rerun: forceUpdateTag=roll-20260423.                                                             │
+│ dependency-agent: VM extension 'dependency-agent' targets VM 'vm-web-01' with                    │
+│ Microsoft.Azure.Monitoring.DependencyAgent/DependencyAgentLinux 9.10, does not expose public     │
+│ script or command source clues, and does not expose protected-settings metadata in this          │
+│ response.                                                                                        │
+│ Visible status: Succeeded.                                                                       │
+│ Settings: suppress-failures=no.                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

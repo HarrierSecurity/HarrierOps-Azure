@@ -1,0 +1,99 @@
+{
+  "container_apps_jobs": [
+    {
+      "command": [
+        "reconcile: /app/reconcile --tenant prod"
+      ],
+      "container_images": [
+        "ghcr.io/harrierops/jobs/reconcile:1.4.2"
+      ],
+      "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+      "event_rules": [],
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/nightly-reconcile",
+      "key_vault_secret_count": 1,
+      "location": "eastus",
+      "name": "nightly-reconcile",
+      "parallelism": 1,
+      "registry_identity_count": 1,
+      "registry_password_ref_count": 0,
+      "registry_servers": [
+        "ghcr.io"
+      ],
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/nightly-reconcile",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-prod",
+        "abab3333-3333-3333-3333-333333333333"
+      ],
+      "replica_completion_count": 1,
+      "replica_retry_limit": 3,
+      "replica_timeout": 1800,
+      "resource_group": "rg-containers",
+      "schedule_expression": "0 3 * * *",
+      "secret_count": 2,
+      "summary": "Container Apps job 'nightly-reconcile' uses Schedule trigger with schedule '0 3 * * *', stores 1 container image clue(s), and uses managed identity (SystemAssigned). Safe posture: secrets 2, Key Vault-backed secrets 1, registry servers 1, registry identity refs 1.",
+      "trigger_type": "Schedule",
+      "workload_client_id": "cdcd3333-3333-3333-3333-333333333333",
+      "workload_identity_ids": [],
+      "workload_identity_type": "SystemAssigned",
+      "workload_principal_id": "abab3333-3333-3333-3333-333333333333"
+    },
+    {
+      "command": [
+        "worker: /app/drain --queue orders"
+      ],
+      "container_images": [
+        "contoso.azurecr.io/jobs/queue-drain:2026.04"
+      ],
+      "environment_id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+      "event_rules": [
+        {
+          "auth_secret_refs": [
+            "queue-connection"
+          ],
+          "identity": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs",
+          "name": "orders-queue",
+          "type": "azure-queue"
+        }
+      ],
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/queue-drain",
+      "key_vault_secret_count": 0,
+      "location": "eastus",
+      "name": "queue-drain",
+      "parallelism": 2,
+      "registry_identity_count": 0,
+      "registry_password_ref_count": 1,
+      "registry_servers": [
+        "contoso.azurecr.io"
+      ],
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/jobs/queue-drain",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-containers/providers/Microsoft.App/managedEnvironments/aca-env-internal",
+        "abab2222-2222-2222-2222-222222222222",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+      ],
+      "replica_completion_count": 2,
+      "replica_retry_limit": 3,
+      "replica_timeout": 3600,
+      "resource_group": "rg-containers",
+      "secret_count": 1,
+      "summary": "Container Apps job 'queue-drain' uses Event trigger with 1 event scale rule(s), stores 1 container image clue(s), and uses managed identity (SystemAssigned, UserAssigned). Safe posture: secrets 1, registry servers 1.",
+      "trigger_type": "Event",
+      "workload_client_id": "cdcd2222-2222-2222-2222-222222222222",
+      "workload_identity_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-identities/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-container-jobs"
+      ],
+      "workload_identity_type": "SystemAssigned, UserAssigned",
+      "workload_principal_id": "abab2222-2222-2222-2222-222222222222"
+    }
+  ],
+  "findings": [],
+  "issues": [],
+  "metadata": {
+    "command": "container-apps-jobs",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "schema_version": "1.4.0",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "token_source": null
+  }
+}

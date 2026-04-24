@@ -58,6 +58,18 @@
       ]
     },
     {
+      "surface": "container-apps-jobs",
+      "state": "implemented",
+      "summary": "Review Container Apps Jobs for stored job definitions, trigger mode, container image, execution settings, and identity-backed rerun paths.",
+      "operator_question": "How far can current access take me in Container Apps Jobs before I hit the permission boundary between job definition control, trigger mode, image/command, and execution context?",
+      "backing_commands": [
+        "container-apps-jobs",
+        "managed-identities",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
       "surface": "functions",
       "state": "implemented",
       "summary": "Review Function Apps for reusable code, identity, and trigger paths.",
@@ -75,6 +87,18 @@
       "operator_question": "How far can current access take me in Azure Logic Apps before I hit a permission boundary?",
       "backing_commands": [
         "logic-apps",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "vm-extensions",
+      "state": "implemented",
+      "summary": "Review VM Extensions for Azure-side extension attachment, script or command source, settings posture, VM agent delivery, and rerun paths.",
+      "operator_question": "How far can current access take me through VM Extensions before the proof boundary moves from Azure control-plane configuration into guest-side runtime evidence?",
+      "backing_commands": [
+        "vm-extensions",
+        "managed-identities",
         "permissions",
         "rbac"
       ]

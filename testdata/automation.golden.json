@@ -32,6 +32,12 @@
         "Rotate-Certs"
       ],
       "schedule_count": 4,
+      "schedule_definitions": [
+        "baseline-nightly: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T01:00:00Z; enabled=true",
+        "cert-rotation-weekly: frequency=Week; interval=1; timezone=UTC; start=2026-04-13T02:00:00Z; enabled=true; weekdays=Sunday",
+        "nightly-reconcile: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T04:00:00Z; enabled=true",
+        "sync-secrets-hourly: frequency=Hour; interval=6; timezone=UTC; start=2026-04-13T00:00:00Z; enabled=true"
+      ],
       "job_schedule_count": 5,
       "webhook_count": 2,
       "hybrid_worker_group_count": 1,
@@ -111,6 +117,9 @@
         "Lab-Maintenance"
       ],
       "schedule_count": 1,
+      "schedule_definitions": [
+        "lab-maintenance-daily: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T03:00:00Z; enabled=true"
+      ],
       "job_schedule_count": 1,
       "webhook_count": 0,
       "hybrid_worker_group_count": 0,

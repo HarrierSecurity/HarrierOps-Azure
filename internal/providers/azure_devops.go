@@ -19,19 +19,161 @@ import (
 )
 
 const (
-	devopsScope             = "499b84ac-1321-427f-aa17-267ca6975798/.default"
-	devopsGitNamespaceID    = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87"
-	devopsBuildNamespaceID  = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
-	devopsGraphUsersVersion = "7.1-preview.1"
+	devopsScope                                 = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+	devopsGitNamespaceID                        = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87"
+	devopsBuildNamespaceID                      = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
+	devopsGraphUsersVersion                     = "7.1-preview.1"
+	devopsAzureSideDiscoveryServicePrincipalCap = 100
+)
+
+var (
+	devopsOrganizationPattern             = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,49}$`)
+	devopsGUIDPattern                     = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	devopsAzureURLOrganizationPattern     = regexp.MustCompile(`(?i)https?://dev\.azure\.com/([a-z0-9][a-z0-9-]{0,49})`)
+	devopsVisualStudioOrganizationPattern = regexp.MustCompile(`(?i)https?://([a-z0-9][a-z0-9-]{0,49})\.visualstudio\.com`)
+	devopsNamedOrganizationPattern        = regexp.MustCompile(`(?i)\b(?:azure\s+devops\s+)?(?:organization|organisation|org)\s*[:=]\s*['"]?([a-z0-9][a-z0-9-]{0,49})`)
+	devopsServiceConnectionSubjectPattern = regexp.MustCompile(`(?i)(?:^|[\s"'(])sc://([^/\s]+)/[^/\s]+/[^/\s]+`)
 )
 
 type devopsPermissionSnapshot struct {
 	resolved map[string]string
 }
 
+type devopsOrganizationDiscovery struct {
+	Organizations []string
+	Issues        []models.Issue
+}
+
 func (snapshot devopsPermissionSnapshot) allows(permissionName string) bool {
 	value := strings.TrimSpace(snapshot.resolved[permissionName])
 	return strings.HasPrefix(value, "Allow")
+}
+
+func (provider AzureProvider) devopsOrganizationsFromAzureSideClues(ctx context.Context, session azureSession) devopsOrganizationDiscovery {
+	if provider.cache == nil {
+		return collectDevopsOrganizationsFromAzureSideClues(ctx, session)
+	}
+
+	cacheKey := sessionStateKey(session)
+
+	provider.cache.mu.Lock()
+	entry := provider.cache.devopsOrgDiscoveries[cacheKey]
+	if entry == nil {
+		entry = &onceValue[devopsOrganizationDiscovery]{}
+		provider.cache.devopsOrgDiscoveries[cacheKey] = entry
+	}
+	provider.cache.mu.Unlock()
+
+	discovery, err := entry.get(func() (devopsOrganizationDiscovery, error) {
+		return collectDevopsOrganizationsFromAzureSideClues(ctx, session), nil
+	})
+	if err != nil {
+		return devopsOrganizationDiscovery{
+			Issues: []models.Issue{issueFromError("devops.azure_side_org_discovery", err)},
+		}
+	}
+	return discovery
+}
+
+func collectDevopsOrganizationsFromAzureSideClues(ctx context.Context, session azureSession) devopsOrganizationDiscovery {
+	issues := []models.Issue{}
+	graphToken, err := accessToken(ctx, session.credential, graphScope)
+	if err != nil {
+		return devopsOrganizationDiscovery{
+			Issues: []models.Issue{issueFromError("devops.azure_side_org_discovery.graph_auth", err)},
+		}
+	}
+
+	servicePrincipals, truncated, err := graphListObjectsLimit(ctx, graphToken, graphCollectionURL("/servicePrincipals", map[string]string{
+		"$select": "id,appId,displayName,servicePrincipalType",
+		"$top":    fmt.Sprintf("%d", devopsAzureSideDiscoveryServicePrincipalCap),
+	}), devopsAzureSideDiscoveryServicePrincipalCap)
+	if err != nil {
+		return devopsOrganizationDiscovery{
+			Issues: []models.Issue{issueFromError("devops.azure_side_org_discovery.service_principals", err)},
+		}
+	}
+	if truncated {
+		issues = append(issues, models.Issue{
+			Kind:    "partial",
+			Message: fmt.Sprintf("devops: Azure-side organization discovery inspected the first %d service principals and stopped to avoid broad Graph enumeration; rerun with --devops-organization or set AZUREFOX_DEVOPS_ORG for complete DevOps coverage.", devopsAzureSideDiscoveryServicePrincipalCap),
+			Context: map[string]string{"collector": "devops"},
+			Scope:   "devops",
+		})
+	}
+
+	seededAppIDs := make([]string, 0, len(servicePrincipals))
+	seenAppIDs := map[string]struct{}{}
+	for _, servicePrincipal := range servicePrincipals {
+		appID := strings.TrimSpace(mapStringValue(servicePrincipal, "appId"))
+		if appID == "" {
+			continue
+		}
+		if _, seen := seenAppIDs[appID]; seen {
+			continue
+		}
+		seenAppIDs[appID] = struct{}{}
+		seededAppIDs = append(seededAppIDs, appID)
+	}
+	sort.Strings(seededAppIDs)
+
+	applicationRequests := make([]graphBatchRequest, 0, len(seededAppIDs))
+	for _, appID := range seededAppIDs {
+		applicationRequests = append(applicationRequests, graphBatchRequest{
+			Key: appID,
+			URL: graphCollectionURL("/applications", map[string]string{
+				"$filter": "appId eq '" + strings.ReplaceAll(appID, "'", "''") + "'",
+				"$select": "id,appId,displayName",
+			}),
+		})
+	}
+
+	applicationsByAppID, applicationErrs := graphBatchListObjectsByKey(ctx, graphToken, applicationRequests)
+	applicationIDs := []string{}
+	seenApplicationIDs := map[string]struct{}{}
+	for _, appID := range seededAppIDs {
+		if lookupErr, ok := applicationErrs[appID]; ok {
+			issues = append(issues, issueFromError("devops.azure_side_org_discovery.applications.by_app_id["+appID+"]", lookupErr))
+			continue
+		}
+		for _, application := range applicationsByAppID[appID] {
+			applicationID := strings.TrimSpace(mapStringValue(application, "id"))
+			if applicationID == "" {
+				continue
+			}
+			if _, seen := seenApplicationIDs[applicationID]; seen {
+				continue
+			}
+			seenApplicationIDs[applicationID] = struct{}{}
+			applicationIDs = append(applicationIDs, applicationID)
+		}
+	}
+	sort.Strings(applicationIDs)
+
+	federatedRequests := make([]graphBatchRequest, 0, len(applicationIDs))
+	for _, applicationID := range applicationIDs {
+		federatedRequests = append(federatedRequests, graphBatchRequest{
+			Key: applicationID,
+			URL: graphCollectionURL("/applications/"+url.PathEscape(applicationID)+"/federatedIdentityCredentials", map[string]string{
+				"$select": "id,issuer,subject,name,description",
+			}),
+		})
+	}
+
+	federatedByApplicationID, federatedErrs := graphBatchListObjectsByKey(ctx, graphToken, federatedRequests)
+	credentials := []map[string]any{}
+	for _, applicationID := range applicationIDs {
+		if credentialErr, ok := federatedErrs[applicationID]; ok {
+			issues = append(issues, issueFromError("devops.azure_side_org_discovery.applications["+applicationID+"].federated_credentials", credentialErr))
+			continue
+		}
+		credentials = append(credentials, federatedByApplicationID[applicationID]...)
+	}
+
+	return devopsOrganizationDiscovery{
+		Organizations: devopsOrganizationsFromFederatedCredentials(credentials),
+		Issues:        issues,
+	}
 }
 
 func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscription string, organization string) (DevopsFacts, error) {
@@ -43,18 +185,40 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 	issues := []models.Issue{}
 	organization = strings.TrimSpace(organization)
 	if organization == "" {
-		return DevopsFacts{
-			TenantID:       session.tenantID,
-			SubscriptionID: session.subscription.ID,
-			TokenSource:    session.tokenSource,
-			AuthMode:       session.authMode,
-			Issues: []models.Issue{{
+		discovery := provider.devopsOrganizationsFromAzureSideClues(ctx, session)
+		issues = append(issues, discovery.Issues...)
+		switch len(discovery.Organizations) {
+		case 1:
+			organization = discovery.Organizations[0]
+		case 0:
+			issues = append(issues, models.Issue{
 				Kind:    "unknown",
-				Message: "devops: Azure DevOps organization not configured; rerun with --devops-organization or set AZUREFOX_DEVOPS_ORG.",
+				Message: "devops: Azure DevOps organization not configured and Azure-side federated credential discovery did not find a high-confidence organization; rerun with --devops-organization or set AZUREFOX_DEVOPS_ORG.",
 				Context: map[string]string{"collector": "devops"},
 				Scope:   "devops",
-			}},
-		}, nil
+			})
+			return DevopsFacts{
+				TenantID:       session.tenantID,
+				SubscriptionID: session.subscription.ID,
+				TokenSource:    session.tokenSource,
+				AuthMode:       session.authMode,
+				Issues:         issues,
+			}, nil
+		default:
+			issues = append(issues, models.Issue{
+				Kind:    "unknown",
+				Message: "devops: Azure-side federated credential discovery found multiple Azure DevOps organizations (" + strings.Join(discovery.Organizations, ", ") + "); rerun with --devops-organization or set AZUREFOX_DEVOPS_ORG.",
+				Context: map[string]string{"collector": "devops"},
+				Scope:   "devops",
+			})
+			return DevopsFacts{
+				TenantID:       session.tenantID,
+				SubscriptionID: session.subscription.ID,
+				TokenSource:    session.tokenSource,
+				AuthMode:       session.authMode,
+				Issues:         issues,
+			}, nil
+		}
 	}
 
 	token, err := session.credential.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{devopsScope}})
@@ -76,7 +240,7 @@ func (provider AzureProvider) Devops(ctx context.Context, tenant string, subscri
 			DevOpsOrganization: organization,
 			TokenSource:        session.tokenSource,
 			AuthMode:           session.authMode,
-			Issues:             []models.Issue{issueFromError("devops.projects", err)},
+			Issues:             append(issues, issueFromError("devops.projects", err)),
 		}, nil
 	}
 
@@ -729,6 +893,94 @@ func devopsRepositoryHostType(repositoryType string, repositoryURL string) strin
 	return strings.ToLower(repositoryType)
 }
 
+func devopsOrganizationsFromFederatedCredentials(credentials []map[string]any) []string {
+	candidates := []string{}
+	for _, credential := range credentials {
+		candidates = append(candidates, devopsOrganizationsFromFederatedText(mapStringValue(credential, "subject"), true)...)
+		candidates = append(candidates, devopsOrganizationsFromFederatedText(mapStringValue(credential, "description"), false)...)
+		candidates = append(candidates, devopsOrganizationsFromFederatedText(mapStringValue(credential, "name"), false)...)
+	}
+	return dedupeStringsCaseInsensitive(candidates)
+}
+
+func devopsOrganizationsFromFederatedText(value string, allowServiceConnectionSubject bool) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if unescaped, err := url.PathUnescape(value); err == nil {
+		value = unescaped
+	}
+
+	candidates := []string{}
+	for _, match := range devopsAzureURLOrganizationPattern.FindAllStringSubmatch(value, -1) {
+		if len(match) > 1 {
+			candidates = append(candidates, normalizeDevopsOrganization(match[1]))
+		}
+	}
+	for _, match := range devopsVisualStudioOrganizationPattern.FindAllStringSubmatch(value, -1) {
+		if len(match) > 1 {
+			candidates = append(candidates, normalizeDevopsOrganization(match[1]))
+		}
+	}
+	if allowServiceConnectionSubject {
+		for _, match := range devopsServiceConnectionSubjectPattern.FindAllStringSubmatch(value, -1) {
+			if len(match) > 1 {
+				candidates = append(candidates, normalizeDevopsOrganization(match[1]))
+			}
+		}
+	}
+
+	lower := strings.ToLower(value)
+	if strings.Contains(lower, "devops") || strings.Contains(lower, "dev.azure.com") || strings.Contains(lower, "visualstudio.com") {
+		for _, match := range devopsNamedOrganizationPattern.FindAllStringSubmatch(value, -1) {
+			if len(match) > 1 {
+				candidates = append(candidates, normalizeDevopsOrganization(match[1]))
+			}
+		}
+	}
+
+	return dedupeStringsCaseInsensitive(candidates)
+}
+
+func normalizeDevopsOrganization(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.Trim(value, `'"`)
+	if value == "" {
+		return ""
+	}
+	if !devopsOrganizationPattern.MatchString(value) {
+		return ""
+	}
+	if devopsGUIDPattern.MatchString(value) {
+		return ""
+	}
+	return value
+}
+
+func dedupeStringsCaseInsensitive(values []string) []string {
+	seen := map[string]string{}
+	keys := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = value
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]string, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, seen[key])
+	}
+	return result
+}
+
 func devopsSourceVisibilityState(repositoryHostType string, repositoryID *string, repositoriesByID map[string]map[string]any) string {
 	if repositoryHostType == "github" {
 		return "external-reference"
@@ -865,22 +1117,25 @@ func devopsEndpointDetails(endpoints []map[string]any) ([]string, []string, []st
 	tenantIDs := []string{}
 	subscriptionIDs := []string{}
 	for _, endpoint := range endpoints {
+		authorization := mapValue(endpoint, "authorization")
+		authorizationParameters := mapValue(authorization, "parameters")
+		data := mapValue(endpoint, "data")
 		names = appendUniqueString(names, stringMapValue(endpoint, "name"))
 		types = appendUniqueString(types, stringMapValue(endpoint, "type"))
 		ids = appendUniqueString(ids, stringMapValue(endpoint, "id"))
-		schemes = appendUniqueString(schemes, mapStringValue(endpoint, "authorization", "scheme"))
+		schemes = appendUniqueString(schemes, mapStringValue(authorization, "scheme"))
 		principalID := firstNonEmpty(
-			mapStringValue(endpoint, "data", "servicePrincipalObjectId"),
-			mapStringValue(endpoint, "data", "spnObjectId"),
+			mapStringValue(data, "servicePrincipalObjectId"),
+			mapStringValue(data, "spnObjectId"),
 		)
 		clientID := firstNonEmpty(
-			mapStringValue(endpoint, "authorization", "parameters", "serviceprincipalid"),
-			mapStringValue(endpoint, "data", "servicePrincipalId"),
+			mapStringValue(authorizationParameters, "serviceprincipalid"),
+			mapStringValue(data, "servicePrincipalId"),
 		)
 		principalIDs = appendUniqueString(principalIDs, principalID)
 		clientIDs = appendUniqueString(clientIDs, clientID)
-		tenantIDs = appendUniqueString(tenantIDs, firstNonEmpty(mapStringValue(endpoint, "authorization", "parameters", "tenantid"), mapStringValue(endpoint, "data", "subscriptionTenantId")))
-		subscriptionIDs = appendUniqueString(subscriptionIDs, mapStringValue(endpoint, "data", "subscriptionId"))
+		tenantIDs = appendUniqueString(tenantIDs, firstNonEmpty(mapStringValue(authorizationParameters, "tenantid"), mapStringValue(data, "subscriptionTenantId")))
+		subscriptionIDs = appendUniqueString(subscriptionIDs, mapStringValue(data, "subscriptionId"))
 	}
 	return sortedUniqueStrings(names), sortedUniqueStrings(types), sortedUniqueStrings(schemes), sortedUniqueStrings(ids), sortedUniqueStrings(principalIDs), sortedUniqueStrings(clientIDs), sortedUniqueStrings(tenantIDs), sortedUniqueStrings(subscriptionIDs)
 }

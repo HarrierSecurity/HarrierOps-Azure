@@ -36,6 +36,14 @@ var persistenceSurfaceContracts = map[string]PersistenceSurfaceContract{
 		OperatorQuestion: "How far can current access take me in Azure ML before I hit a permission boundary?",
 		BackingCommands:  []string{"azure-ml", "managed-identities", "permissions", "rbac"},
 	},
+	"container-apps-jobs": {
+		GroupCommand:     "persistence",
+		Name:             "container-apps-jobs",
+		Status:           StatusImplemented,
+		Summary:          "Review Container Apps Jobs for stored job definitions, trigger mode, container image, execution settings, and identity-backed rerun paths.",
+		OperatorQuestion: "How far can current access take me in Container Apps Jobs before I hit the permission boundary between job definition control, trigger mode, image/command, and execution context?",
+		BackingCommands:  []string{"container-apps-jobs", "managed-identities", "permissions", "rbac"},
+	},
 	"functions": {
 		GroupCommand:     "persistence",
 		Name:             "functions",
@@ -59,6 +67,14 @@ var persistenceSurfaceContracts = map[string]PersistenceSurfaceContract{
 		Summary:          "Review App Service WebJobs for reusable background code, mode, inherited app context, and rerun paths.",
 		OperatorQuestion: "How far can current access take me in App Service WebJobs before I hit the permission boundary between parent app control, WebJob content, rerun mode, and inherited execution context?",
 		BackingCommands:  []string{"webjobs", "app-services", "managed-identities", "permissions", "rbac"},
+	},
+	"vm-extensions": {
+		GroupCommand:     "persistence",
+		Name:             "vm-extensions",
+		Status:           StatusImplemented,
+		Summary:          "Review VM Extensions for Azure-side extension attachment, script or command source, settings posture, VM agent delivery, and rerun paths.",
+		OperatorQuestion: "How far can current access take me through VM Extensions before the proof boundary moves from Azure control-plane configuration into guest-side runtime evidence?",
+		BackingCommands:  []string{"vm-extensions", "managed-identities", "permissions", "rbac"},
 	},
 }
 

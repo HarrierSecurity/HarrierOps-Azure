@@ -14,47 +14,49 @@ import (
 const findingNoteWrapWidth = 100
 
 var commandNarration = map[string]string{
-	"whoami":             "Checking caller context and active subscription scope.",
-	"inventory":          "Scoping the visible Azure resource footprint.",
-	"automation":         "Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.",
-	"app-credentials":    "Reviewing application and service-principal authentication material, federated trust, and visible current-identity control paths.",
-	"devops":             "Reviewing Azure DevOps build definitions for trusted source inputs, visible injection surfaces, and Azure-facing change paths.",
-	"app-services":       "Reviewing App Service runtime, hostname, identity, deployment, and config cues that change follow-on paths.",
-	"acr":                "Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.",
-	"databases":          "Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.",
-	"dns":                "Reviewing public and private DNS zone inventory and namespace boundaries.",
-	"aks":                "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
-	"api-mgmt":           "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
-	"functions":          "Reviewing Function App runtime, trigger, storage binding, identity, and deployment posture.",
-	"webjobs":            "Reviewing App Service WebJobs for background execution mode, rerun posture, and inherited app context.",
-	"azure-ml":           "Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.",
-	"event-grid":         "Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.",
-	"logic-apps":         "Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.",
-	"arm-deployments":    "Reviewing ARM deployment history for config exposure and linked content.",
-	"endpoints":          "Mapping reachable IP and hostname surfaces from compute and web workloads.",
-	"network-effective":  "Prioritizing likely public-IP reachability by combining visible endpoint and NSG evidence.",
-	"env-vars":           "Reviewing App Service and Function App settings for exposed config paths and likely credential or secret follow-on.",
-	"network-ports":      "Tracing likely inbound port exposure from visible NIC and subnet NSG rules.",
-	"tokens-credentials": "Correlating token-minting workloads, credential-bearing metadata paths, and the next likely follow-on.",
-	"rbac":               "Collecting raw RBAC assignments across the current subscription.",
-	"principals":         "Mapping visible principals, identity footholds, and follow-on candidates.",
-	"permissions":        "Ranking principals by high-impact RBAC exposure and the next likely follow-on.",
-	"privesc":            "Triage likely privilege-escalation and workload identity abuse paths.",
-	"role-trusts":        "Reviewing high-signal identity trust edges and the clearest next review without implying delegated or admin consent.",
-	"cross-tenant":       "Reviewing outside-tenant trust, delegated management, and tenant policy cues that most change control or pivot paths.",
-	"lighthouse":         "Reviewing Azure Lighthouse delegations for cross-tenant management scope and high-impact access cues.",
-	"auth-policies":      "Reviewing tenant auth controls that widen guest, consent, app-creation, or sign-in abuse paths.",
-	"managed-identities": "Mapping workload-linked managed identities and their visible privilege cues.",
-	"keyvault":           "Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.",
-	"resource-trusts":    "Correlating resource trust surfaces across public network and private-link paths.",
-	"storage":            "Checking storage exposure and network posture for likely data targets.",
-	"snapshots-disks":    "Reviewing managed disks and snapshots for offline-copy, sharing/export, and encryption posture with highest-value targets first.",
-	"nics":               "Enumerating NIC attachments, IP context, and network boundary references.",
-	"workloads":          "Joining workload assets with identity context and visible ingress paths.",
-	"vms":                "Summarizing reachable compute assets and identity-bearing workloads.",
-	"vmss":               "Reviewing Virtual Machine Scale Sets (VMSS) for fleet posture, identity, and frontend network cues.",
-	"chains":             "Correlating grouped chain evidence with conservative cross-command joins.",
-	"persistence":        "Walking the current identity through Azure-native persistence surfaces one service at a time.",
+	"whoami":              "Checking caller context and active subscription scope.",
+	"inventory":           "Scoping the visible Azure resource footprint.",
+	"automation":          "Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.",
+	"app-credentials":     "Reviewing application and service-principal authentication material, federated trust, and visible current-identity control paths.",
+	"devops":              "Reviewing Azure DevOps build definitions for trusted source inputs, visible injection surfaces, and Azure-facing change paths.",
+	"app-services":        "Reviewing App Service runtime, hostname, identity, deployment, and config cues that change follow-on paths.",
+	"acr":                 "Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.",
+	"databases":           "Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.",
+	"dns":                 "Reviewing public and private DNS zone inventory and namespace boundaries.",
+	"aks":                 "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
+	"api-mgmt":            "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
+	"functions":           "Reviewing Function App runtime, trigger, storage binding, identity, and deployment posture.",
+	"webjobs":             "Reviewing App Service WebJobs for background execution mode, rerun posture, and inherited app context.",
+	"azure-ml":            "Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.",
+	"event-grid":          "Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.",
+	"logic-apps":          "Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.",
+	"container-apps-jobs": "Reviewing Container Apps Jobs trigger, execution, image, identity, secret, and registry posture.",
+	"arm-deployments":     "Reviewing ARM deployment history for config exposure and linked content.",
+	"endpoints":           "Mapping reachable IP and hostname surfaces from compute and web workloads.",
+	"network-effective":   "Prioritizing likely public-IP reachability by combining visible endpoint and NSG evidence.",
+	"env-vars":            "Reviewing App Service and Function App settings for exposed config paths and likely credential or secret follow-on.",
+	"network-ports":       "Tracing likely inbound port exposure from visible NIC and subnet NSG rules.",
+	"tokens-credentials":  "Correlating token-minting workloads, credential-bearing metadata paths, and the next likely follow-on.",
+	"rbac":                "Collecting raw RBAC assignments across the current subscription.",
+	"principals":          "Mapping visible principals, identity footholds, and follow-on candidates.",
+	"permissions":         "Ranking principals by high-impact RBAC exposure and the next likely follow-on.",
+	"privesc":             "Triage likely privilege-escalation and workload identity abuse paths.",
+	"role-trusts":         "Reviewing high-signal identity trust edges and the clearest next review without implying delegated or admin consent.",
+	"cross-tenant":        "Reviewing outside-tenant trust, delegated management, and tenant policy cues that most change control or pivot paths.",
+	"lighthouse":          "Reviewing Azure Lighthouse delegations for cross-tenant management scope and high-impact access cues.",
+	"auth-policies":       "Reviewing tenant auth controls that widen guest, consent, app-creation, or sign-in abuse paths.",
+	"managed-identities":  "Mapping workload-linked managed identities and their visible privilege cues.",
+	"keyvault":            "Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.",
+	"resource-trusts":     "Correlating resource trust surfaces across public network and private-link paths.",
+	"storage":             "Checking storage exposure and network posture for likely data targets.",
+	"snapshots-disks":     "Reviewing managed disks and snapshots for offline-copy, sharing/export, and encryption posture with highest-value targets first.",
+	"nics":                "Enumerating NIC attachments, IP context, and network boundary references.",
+	"workloads":           "Joining workload assets with identity context and visible ingress paths.",
+	"vms":                 "Summarizing reachable compute assets and identity-bearing workloads.",
+	"vm-extensions":       "Reviewing VM Extensions handler, source, protected-settings, and rerun posture.",
+	"vmss":                "Reviewing Virtual Machine Scale Sets (VMSS) for fleet posture, identity, and frontend network cues.",
+	"chains":              "Correlating grouped chain evidence with conservative cross-command joins.",
+	"persistence":         "Walking the current identity through Azure-native persistence surfaces one service at a time.",
 }
 
 var commandCompactIntroHint = map[string]string{
@@ -67,6 +69,7 @@ var commandCompactIntroHint = map[string]string{
 	"event-grid":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
 	"logic-apps":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
 	"tokens-credentials": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
+	"vm-extensions":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
 }
 
 var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
@@ -195,10 +198,14 @@ func commandNarrationForPayload(command string, payload any) string {
 		return "App Service persistence means a deployed web host plus deployment path plus configuration and identity plus a reachable entry path Azure will keep serving later, not a long-running shell on a VM."
 	case models.PersistenceAzureMLOutput:
 		return "Azure ML persistence means stored workspace logic plus compute, schedules, endpoints, and identity-backed runtime context that Azure can invoke later, not a permanently compromised host."
+	case models.PersistenceContainerAppsJobsOutput:
+		return "Container Apps Jobs persistence means a stored job definition plus trigger mode plus container image and execution context Azure can run again later, not just another long-running container app revision."
+	case models.PersistenceVMExtensionsOutput:
+		return "VM Extensions persistence means an Azure control-plane extension attachment plus stored handler settings and script or command source the VM agent can apply on a VM or VMSS, not proof of guest-side success."
 	case models.PersistenceFunctionsOutput:
 		return "Azure Functions persistence means a hosted Function App plus deployed code plus trigger posture plus access that Azure can invoke later, not a long-running process on a VM."
 	case models.PersistenceLogicAppsOutput:
-		return "Logic App persistence means a stored workflow plus a trigger plus access that remains valid, not malware living on a host."
+		return "Logic Apps persistence means a stored workflow plus trigger posture plus connector or identity context that Azure can run again later, not malware living on a host."
 	case models.PersistenceWebJobsOutput:
 		return "WebJobs persistence means deployed background job code plus mode plus inherited app context that App Service and Kudu can run again later, not a shell living on the host."
 	default:
@@ -348,6 +355,28 @@ func containerAppsTable(payload models.ContainerAppsOutput) string {
 	return renderListTable("ho-azure container-apps", []string{
 		"container app", "environment", "hostname", "ingress", "identity", "revisions", "why it matters",
 	}, rows, []string{"no Container Apps visible", "", "", "", "", "", ""}, containerAppsTakeaway(payload))
+}
+
+func containerAppsJobsTable(payload models.ContainerAppsJobsOutput) string {
+	rows := make([][]string, 0, len(payload.ContainerAppsJobs))
+	notes := []string{}
+	for _, job := range payload.ContainerAppsJobs {
+		rows = append(rows, []string{
+			job.Name,
+			wrapTableNote(containerAppsJobTriggerContext(job), 32),
+			containerAppsJobEnvironmentContext(job),
+			wrapTableNote(resourceIdentityContext(job.WorkloadIdentityType, job.WorkloadIdentityIDs), 30),
+			wrapTableNote(containerAppsJobSafePostureContext(job), 36),
+		})
+		notes = append(notes, containerAppsJobNote(job))
+	}
+	output := renderListTable("ho-azure container-apps-jobs", []string{
+		"job", "trigger", "environment", "identity", "safe posture",
+	}, rows, []string{"no Container Apps Jobs visible", "", "", "", ""}, containerAppsJobsTakeaway(payload))
+	if len(notes) > 0 {
+		output += "\n" + renderWrappedDetailTableWithWidth("operator notes", strings.Join(notes, "\n"), 96)
+	}
+	return output
 }
 
 func containerInstancesTable(payload models.ContainerInstancesOutput) string {
@@ -528,6 +557,37 @@ func containerAppsTakeaway(payload models.ContainerAppsOutput) string {
 		external,
 		hostnames,
 		identities,
+	)
+}
+
+func containerAppsJobsTakeaway(payload models.ContainerAppsJobsOutput) string {
+	scheduled := 0
+	eventDriven := 0
+	identities := 0
+	registries := 0
+
+	for _, job := range payload.ContainerAppsJobs {
+		if job.ScheduleExpression != nil && *job.ScheduleExpression != "" {
+			scheduled++
+		}
+		if len(job.EventRules) > 0 {
+			eventDriven++
+		}
+		if job.WorkloadIdentityType != nil && *job.WorkloadIdentityType != "" {
+			identities++
+		}
+		if len(job.RegistryServers) > 0 || intPtrValue(job.RegistryIdentityCount) > 0 {
+			registries++
+		}
+	}
+
+	return fmt.Sprintf(
+		"%d Container Apps Jobs visible; %d expose literal schedules, %d expose event rules, %d carry managed identity context, and %d show private registry posture.",
+		len(payload.ContainerAppsJobs),
+		scheduled,
+		eventDriven,
+		identities,
+		registries,
 	)
 }
 
@@ -727,6 +787,60 @@ func vmsTakeaway(payload models.VmsOutput) string {
 		}
 	}
 	return fmt.Sprintf("%d compute assets visible; %d have public IP exposure.", len(payload.VMAssets), publicAssets)
+}
+
+func vmExtensionsTable(payload models.VMExtensionsOutput) string {
+	rows := make([][]string, 0, len(payload.VMExtensions))
+	notes := []string{}
+	for _, extension := range payload.VMExtensions {
+		rows = append(rows, []string{
+			extension.Name,
+			wrapTableNote(vmExtensionTargetContext(extension), 26),
+			wrapTableNote(vmExtensionHandlerContext(extension), 36),
+			wrapTableNote(vmExtensionStatusContext(extension), 34),
+		})
+		notes = append(notes, vmExtensionNote(extension))
+	}
+	if len(rows) == 0 {
+		rows = append(rows, []string{"no VM extensions visible", "", "", ""})
+	}
+
+	output := renderStructuredTable("ho-azure vm-extensions", []string{
+		"extension", "target", "handler", "status",
+	}, rows) + "\nTakeaway: " + vmExtensionsTakeaway(payload) + "\n"
+	if len(notes) > 0 {
+		output += "\n" + renderWrappedDetailTableWithWidth("operator notes", strings.Join(notes, "\n"), 96)
+	}
+	return output
+}
+
+func vmExtensionsTakeaway(payload models.VMExtensionsOutput) string {
+	customScript := 0
+	commandClues := 0
+	keyVaultProtected := 0
+	rerunnable := 0
+	for _, extension := range payload.VMExtensions {
+		if strings.Contains(strings.ToLower(valueOrEmpty(extension.ExtensionType)), "customscript") {
+			customScript++
+		}
+		if extension.CommandClue != nil {
+			commandClues++
+		}
+		if boolPtrValue(extension.KeyVaultProtectedSettings) {
+			keyVaultProtected++
+		}
+		if len(extension.RerunClues) > 0 {
+			rerunnable++
+		}
+	}
+	return fmt.Sprintf(
+		"%d VM extension definitions visible; %d are Custom Script-style handlers, %d expose public command clues, %s Key Vault protected settings, and %d show rerun clues.",
+		len(payload.VMExtensions),
+		customScript,
+		commandClues,
+		countVerbPhrase(keyVaultProtected, "uses", "use"),
+		rerunnable,
+	)
 }
 
 func vmssTable(payload models.VmssOutput) string {
@@ -1062,6 +1176,231 @@ func containerAppRevisionContext(app models.ContainerAppAsset) string {
 		return "-"
 	}
 	return strings.Join(parts, "; ")
+}
+
+func containerAppsJobTriggerContext(job models.ContainerAppsJobAsset) string {
+	parts := []string{}
+	if job.TriggerType != nil && *job.TriggerType != "" {
+		parts = append(parts, *job.TriggerType)
+	}
+	if job.ScheduleExpression != nil && *job.ScheduleExpression != "" {
+		parts = append(parts, "schedule="+*job.ScheduleExpression)
+	}
+	if len(job.EventRules) > 0 {
+		ruleParts := []string{}
+		for _, rule := range job.EventRules {
+			label := rule.Name
+			if rule.Type != "" {
+				label += ":" + rule.Type
+			}
+			if len(rule.AuthSecretRefs) > 0 {
+				label += fmt.Sprintf(" auth-refs=%d", len(rule.AuthSecretRefs))
+			}
+			ruleParts = append(ruleParts, label)
+		}
+		parts = append(parts, "rules="+strings.Join(ruleParts, ", "))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func containerAppsJobEnvironmentContext(job models.ContainerAppsJobAsset) string {
+	if job.EnvironmentID == nil || *job.EnvironmentID == "" {
+		return "-"
+	}
+	return resourceNameFromDisplayID(*job.EnvironmentID)
+}
+
+func containerAppsJobExecutionContext(job models.ContainerAppsJobAsset) string {
+	parts := []string{}
+	if job.Parallelism != nil {
+		parts = append(parts, fmt.Sprintf("parallelism=%d", *job.Parallelism))
+	}
+	if job.ReplicaCompletionCount != nil {
+		parts = append(parts, fmt.Sprintf("completions=%d", *job.ReplicaCompletionCount))
+	}
+	if job.ReplicaRetryLimit != nil {
+		parts = append(parts, fmt.Sprintf("retries=%d", *job.ReplicaRetryLimit))
+	}
+	if job.ReplicaTimeout != nil {
+		parts = append(parts, fmt.Sprintf("timeout=%ds", *job.ReplicaTimeout))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func containerAppsJobPayloadContext(job models.ContainerAppsJobAsset) string {
+	parts := []string{}
+	if len(job.ContainerImages) > 0 {
+		parts = append(parts, "images="+strings.Join(job.ContainerImages, ", "))
+	}
+	if len(job.Command) > 0 {
+		parts = append(parts, "command="+strings.Join(job.Command, " | "))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func containerAppsJobSafePostureContext(job models.ContainerAppsJobAsset) string {
+	parts := []string{}
+	if job.SecretCount != nil {
+		parts = append(parts, fmt.Sprintf("secrets=%d", *job.SecretCount))
+	}
+	if job.KeyVaultSecretCount != nil && *job.KeyVaultSecretCount > 0 {
+		parts = append(parts, fmt.Sprintf("kv-secrets=%d", *job.KeyVaultSecretCount))
+	}
+	if len(job.RegistryServers) > 0 {
+		parts = append(parts, "registries="+strings.Join(job.RegistryServers, ", "))
+	}
+	if job.RegistryIdentityCount != nil && *job.RegistryIdentityCount > 0 {
+		parts = append(parts, fmt.Sprintf("registry-identities=%d", *job.RegistryIdentityCount))
+	}
+	if job.RegistryPasswordRefCount != nil && *job.RegistryPasswordRefCount > 0 {
+		parts = append(parts, fmt.Sprintf("registry-password-refs=%d", *job.RegistryPasswordRefCount))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func containerAppsJobNote(job models.ContainerAppsJobAsset) string {
+	parts := []string{job.Name + ": " + job.Summary}
+	if execution := containerAppsJobExecutionContext(job); execution != "-" {
+		parts = append(parts, "Execution: "+execution+".")
+	}
+	if payload := containerAppsJobPayloadContext(job); payload != "-" {
+		parts = append(parts, "Image or command: "+payload+".")
+	}
+	return strings.Join(parts, " ")
+}
+
+func resourceNameFromDisplayID(resourceID string) string {
+	text := strings.Trim(strings.TrimSpace(resourceID), "/")
+	if text == "" {
+		return "-"
+	}
+	parts := strings.Split(text, "/")
+	if len(parts) == 0 {
+		return text
+	}
+	return parts[len(parts)-1]
+}
+
+func vmExtensionTargetContext(extension models.VMExtensionAsset) string {
+	label := strings.ToUpper(extension.TargetKind)
+	if strings.TrimSpace(label) == "" {
+		label = "TARGET"
+	}
+	parts := []string{label + "=" + firstNonEmptyText(extension.TargetName, "-")}
+	if len(extension.TargetIdentityIDs) > 0 {
+		parts = append(parts, fmt.Sprintf("identities=%d", len(extension.TargetIdentityIDs)))
+	}
+	vmssParts := nonEmptyStrings(valueOrEmpty(extension.VMSSOrchestrationMode), valueOrEmpty(extension.VMSSUpgradeMode))
+	if len(vmssParts) > 0 {
+		parts = append(parts, "vmss="+strings.Join(vmssParts, "/"))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionHandlerContext(extension models.VMExtensionAsset) string {
+	handler := firstNonEmptyText(valueOrEmpty(extension.Publisher), "unknown") + "/" + firstNonEmptyText(valueOrEmpty(extension.ExtensionType), "unknown")
+	if extension.TypeHandlerVersion != nil {
+		handler += " " + *extension.TypeHandlerVersion
+	}
+	parts := []string{handler}
+	if extension.AutoUpgradeMinorVersion != nil {
+		parts = append(parts, "minor-auto="+boolWord(*extension.AutoUpgradeMinorVersion))
+	}
+	if extension.EnableAutomaticUpgrade != nil {
+		parts = append(parts, "auto-upgrade="+boolWord(*extension.EnableAutomaticUpgrade))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionSourceContext(extension models.VMExtensionAsset) string {
+	parts := []string{}
+	if len(extension.FileURIHosts) > 0 {
+		parts = append(parts, "file-hosts="+strings.Join(extension.FileURIHosts, ", "))
+	}
+	if extension.FileURICount != nil && *extension.FileURICount > 0 {
+		parts = append(parts, fmt.Sprintf("fileUris=%d", *extension.FileURICount))
+	}
+	if extension.CommandClue != nil {
+		parts = append(parts, "command="+*extension.CommandClue)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionSettingsContext(extension models.VMExtensionAsset) string {
+	parts := []string{}
+	if len(extension.PublicSettingKeys) > 0 {
+		parts = append(parts, "public="+strings.Join(extension.PublicSettingKeys, ", "))
+	}
+	if extension.ProtectedSettingsPresent != nil {
+		parts = append(parts, "protected="+boolWord(*extension.ProtectedSettingsPresent))
+	}
+	if extension.KeyVaultProtectedSettings != nil && *extension.KeyVaultProtectedSettings {
+		parts = append(parts, "kv-protected=yes")
+	}
+	if extension.SuppressFailures != nil {
+		parts = append(parts, "suppress-failures="+boolWord(*extension.SuppressFailures))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionRerunContext(extension models.VMExtensionAsset) string {
+	parts := append([]string{}, extension.RerunClues...)
+	if extension.ForceUpdateTag != nil && len(extension.RerunClues) == 0 {
+		parts = append(parts, "forceUpdateTag="+*extension.ForceUpdateTag)
+	}
+	if len(extension.ProvisionAfterExtensions) > 0 {
+		parts = append(parts, "after="+strings.Join(extension.ProvisionAfterExtensions, ", "))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionStatusContext(extension models.VMExtensionAsset) string {
+	parts := []string{}
+	if extension.ProvisioningState != nil {
+		parts = append(parts, "provisioning="+*extension.ProvisioningState)
+	}
+	if len(extension.InstanceViewStatuses) > 0 {
+		parts = append(parts, "instance="+strings.Join(extension.InstanceViewStatuses, ", "))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func vmExtensionNote(extension models.VMExtensionAsset) string {
+	parts := []string{extension.Name + ": " + extension.Summary}
+	if source := vmExtensionSourceContext(extension); source != "-" {
+		parts = append(parts, "Source: "+source+".")
+	}
+	if settings := vmExtensionSettingsContext(extension); settings != "-" {
+		parts = append(parts, "Settings: "+settings+".")
+	}
+	if rerun := vmExtensionRerunContext(extension); rerun != "-" {
+		parts = append(parts, "Rerun: "+rerun+".")
+	}
+	return strings.Join(parts, " ")
 }
 
 func containerInstanceEndpointContext(item models.ContainerInstanceAsset) string {
@@ -1814,6 +2153,31 @@ func stringOrFallback(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func boolWord(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
+}
+
+func countVerbPhrase(count int, singularVerb string, pluralVerb string) string {
+	verb := pluralVerb
+	if count == 1 {
+		verb = singularVerb
+	}
+	return fmt.Sprintf("%d %s", count, verb)
+}
+
+func nonEmptyStrings(values ...string) []string {
+	result := []string{}
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func keyVaultTableDefaultAction(vault models.KeyVaultAsset) string {
