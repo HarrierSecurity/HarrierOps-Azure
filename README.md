@@ -106,7 +106,7 @@ ho-azure permissions
 | Grouped Command | Live Families |
 | --- | --- |
 | `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control. |
-| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place.<br><br>`logic-apps`<br>Walks the current identity through Logic Apps workflow control, trigger posture, execution context, and durable workflow reuse paths. |
+| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `app-service`<br>Walks the current identity through App Service deployment, configuration, code replacement, and reachable reuse posture.<br><br>`automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place.<br><br>`azure-ml`<br>Walks the current identity through Azure ML reusable compute, jobs, schedules, endpoints, and identity-backed runtime context.<br><br>`container-apps-jobs`<br>Walks the current identity through Container Apps Jobs stored definitions, trigger mode, image/command clues, execution settings, identity, and rerun posture.<br><br>`functions`<br>Walks the current identity through Function App code, identity, config, and trigger reuse posture.<br><br>`logic-apps`<br>Walks the current identity through Logic Apps workflow control, trigger posture, execution context, and durable workflow reuse paths.<br><br>`vm-extensions`<br>Walks the current identity through Azure-side VM Extension attachment, script or command source, settings posture, VM agent delivery, and rerun paths.<br><br>`webjobs`<br>Walks the current identity through App Service WebJobs background code, mode, inherited app context, and rerun paths. |
 
 ### Flat Commands
 
@@ -119,7 +119,7 @@ ho-azure permissions
 | `resource` | `automation`, `devops`, `acr`, `api-mgmt`, `databases`, `resource-trusts` |
 | `storage` | `storage` |
 | `network` | `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports` |
-| `compute` | `workloads`, `app-services`, `functions`, `container-apps`, `container-instances`, `aks`, `vms`, `vmss`, `snapshots-disks` |
+| `compute` | `workloads`, `app-services`, `functions`, `container-apps`, `container-apps-jobs`, `container-instances`, `aks`, `vms`, `vm-extensions`, `vmss`, `snapshots-disks` |
 
 ## Need A Test Lab?
 
@@ -344,7 +344,7 @@ Current section mappings:
 - `resource`: `automation`, `devops`, `acr`, `api-mgmt`, `databases`, `resource-trusts`
 - `storage`: `storage`
 - `network`: `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`
-- `compute`: `workloads`, `app-services`, `functions`, `container-apps`, `container-instances`, `aks`, `vms`, `vmss`, `snapshots-disks`
+- `compute`: `workloads`, `app-services`, `functions`, `container-apps`, `container-apps-jobs`, `container-instances`, `aks`, `vms`, `vm-extensions`, `vmss`, `snapshots-disks`
 - `core`: `inventory`
 - `orchestration`: `chains`, `persistence`
 
@@ -357,8 +357,14 @@ Current `chains` families:
 
 Current `persistence` surfaces:
 
+- `app-service`
 - `automation`
+- `azure-ml`
+- `container-apps-jobs`
+- `functions`
 - `logic-apps`
+- `vm-extensions`
+- `webjobs`
 
 ## Help
 

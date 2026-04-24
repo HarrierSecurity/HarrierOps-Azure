@@ -10,8 +10,8 @@ Azure ML capability
 │ create or modify workspace      │ Microsoft.MachineLearningServices/workspaces │ yes    │
 │ attach or reuse compute         │ computes                                     │ yes    │
 │ add or modify jobs or pipelines │ jobs / pipelines                             │ yes    │
-│ create or modify schedule       │ schedules                                    │ yes    │
 │ attach or reuse exec ctx        │ workspace identity                           │ yes    │
+│ create or modify schedule       │ schedules                                    │ yes    │
 │ expose or reuse endpoint        │ onlineEndpoints                              │ yes    │
 ╰─────────────────────────────────┴──────────────────────────────────────────────┴────────╯
 This walkthrough shows the strongest currently visible Azure ML persistence path. The inventory below lists the other visible workspaces without repeating the same narrative.

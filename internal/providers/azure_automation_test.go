@@ -58,3 +58,25 @@ func TestAutomationSKUNameFallsBackToProperties(t *testing.T) {
 		t.Fatalf("automationSKUName() = %v, want Basic", got)
 	}
 }
+
+func TestAutomationScheduleDefinitionCollectsSafeScheduleMetadata(t *testing.T) {
+	schedule := map[string]any{
+		"name": "weekly-maintenance",
+		"properties": map[string]any{
+			"frequency": "Week",
+			"interval":  1,
+			"timeZone":  "UTC",
+			"startTime": "2026-04-13T02:00:00Z",
+			"isEnabled": true,
+			"advancedSchedule": map[string]any{
+				"weekDays": []any{"Sunday"},
+			},
+		},
+	}
+
+	got := automationScheduleDefinition(schedule)
+	want := "weekly-maintenance: frequency=Week; interval=1; timezone=UTC; start=2026-04-13T02:00:00Z; enabled=true; weekdays=Sunday"
+	if got != want {
+		t.Fatalf("automationScheduleDefinition() = %q, want %q", got, want)
+	}
+}

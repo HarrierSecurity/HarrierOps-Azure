@@ -98,6 +98,12 @@
           "Rotate-Certs"
         ],
         "schedule_count": 4,
+        "schedule_definitions": [
+          "baseline-nightly: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T01:00:00Z; enabled=true",
+          "cert-rotation-weekly: frequency=Week; interval=1; timezone=UTC; start=2026-04-13T02:00:00Z; enabled=true; weekdays=Sunday",
+          "nightly-reconcile: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T04:00:00Z; enabled=true",
+          "sync-secrets-hourly: frequency=Hour; interval=6; timezone=UTC; start=2026-04-13T00:00:00Z; enabled=true"
+        ],
         "job_schedule_count": 5,
         "webhook_count": 2,
         "hybrid_worker_group_count": 1,
@@ -131,9 +137,9 @@
         "missing_target_mapping": true
       },
       "still_unmapped": [
-        "the exact runbook code, content source, or operator intent behind this Automation surface",
-        "the exact downstream resources, workflows, or credentials this automation path would modify",
-        "the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata"
+        "the current command does not retrieve runbook code bodies, runbook package contents, or content source payloads, so operator intent is not inferred from Automation content here",
+        "the current command does not resolve the exact downstream resources, workflows, or credentials this automation path would modify without reading or executing runbook logic",
+        "the current command does not print webhook URI material, run job history, or runtime-side trigger success, so it does not prove a trigger is reachable or useful at execution time"
       ],
       "summary": "Current identity can manage Automation Account 'aa-hybrid-prod' end to end, and the strongest visible execution context already carries Azure control.",
       "related_ids": [
@@ -211,6 +217,9 @@
           "Lab-Maintenance"
         ],
         "schedule_count": 1,
+        "schedule_definitions": [
+          "lab-maintenance-daily: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T03:00:00Z; enabled=true"
+        ],
         "job_schedule_count": 1,
         "webhook_count": 0,
         "hybrid_worker_group_count": 0,
@@ -230,9 +239,9 @@
         "missing_target_mapping": true
       },
       "still_unmapped": [
-        "the exact runbook code, content source, or operator intent behind this Automation surface",
-        "the exact downstream resources, workflows, or credentials this automation path would modify",
-        "the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata"
+        "the current command does not retrieve runbook code bodies, runbook package contents, or content source payloads, so operator intent is not inferred from Automation content here",
+        "the current command does not resolve the exact downstream resources, workflows, or credentials this automation path would modify without reading or executing runbook logic",
+        "the current command does not print webhook URI material, run job history, or runtime-side trigger success, so it does not prove a trigger is reachable or useful at execution time"
       ],
       "summary": "Current identity can manage Automation Account 'aa-lab-quiet' end to end from current RBAC evidence.",
       "related_ids": [

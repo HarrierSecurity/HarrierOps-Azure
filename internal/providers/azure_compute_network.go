@@ -22,7 +22,9 @@ type computeNetworkClients struct {
 	subnets         *armnetwork.SubnetsClient
 	disks           *armcompute.DisksClient
 	snapshots       *armcompute.SnapshotsClient
+	vmExtensions    *armcompute.VirtualMachineExtensionsClient
 	virtualMachines *armcompute.VirtualMachinesClient
+	vmssExtensions  *armcompute.VirtualMachineScaleSetExtensionsClient
 	vmScaleSets     *armcompute.VirtualMachineScaleSetsClient
 }
 
@@ -427,6 +429,14 @@ func newComputeNetworkCollector(session azureSession) (computeNetworkCollector, 
 	if err != nil {
 		return computeNetworkCollector{}, fmt.Errorf("build vm scale sets client: %w", err)
 	}
+	vmExtensions, err := armcompute.NewVirtualMachineExtensionsClient(session.subscription.ID, session.credential, nil)
+	if err != nil {
+		return computeNetworkCollector{}, fmt.Errorf("build vm extensions client: %w", err)
+	}
+	vmssExtensions, err := armcompute.NewVirtualMachineScaleSetExtensionsClient(session.subscription.ID, session.credential, nil)
+	if err != nil {
+		return computeNetworkCollector{}, fmt.Errorf("build vm scale set extensions client: %w", err)
+	}
 	interfaces, err := armnetwork.NewInterfacesClient(session.subscription.ID, session.credential, nil)
 	if err != nil {
 		return computeNetworkCollector{}, fmt.Errorf("build interfaces client: %w", err)
@@ -453,7 +463,9 @@ func newComputeNetworkCollector(session azureSession) (computeNetworkCollector, 
 			subnets:         subnets,
 			disks:           disks,
 			snapshots:       snapshots,
+			vmExtensions:    vmExtensions,
 			virtualMachines: virtualMachines,
+			vmssExtensions:  vmssExtensions,
 			vmScaleSets:     vmScaleSets,
 		},
 	}, nil

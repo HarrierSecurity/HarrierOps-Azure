@@ -1,0 +1,36 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[container-apps-jobs] Reviewing Container Apps Jobs trigger, execution, image, identity, secret, and registry posture.
+ho-azure container-apps-jobs
+
+╭───────────────────┬────────────────────────────────┬──────────────────┬───────────────────────────────┬────────────────────────────────╮
+│ job               │ trigger                        │ environment      │ identity                      │ safe posture                   │
+├───────────────────┼────────────────────────────────┼──────────────────┼───────────────────────────────┼────────────────────────────────┤
+│ nightly-reconcile │ Schedule; schedule=0 3 * * *   │ aca-env-prod     │ SystemAssigned                │ secrets=2; kv-secrets=1;       │
+│                   │                                │                  │                               │ registries=ghcr.io;            │
+│                   │                                │                  │                               │ registry-identities=1          │
+│ queue-drain       │ Event;                         │ aca-env-internal │ SystemAssigned, UserAssigned; │ secrets=1;                     │
+│                   │ rules=orders-queue:azure-queue │                  │ user-assigned=1               │ registries=contoso.azurecr.io; │
+│                   │ auth-refs=1                    │                  │                               │ registry-password-refs=1       │
+╰───────────────────┴────────────────────────────────┴──────────────────┴───────────────────────────────┴────────────────────────────────╯
+
+Takeaway: 2 Container Apps Jobs visible; 1 expose literal schedules, 1 expose event rules, 2 carry managed identity context, and 2 show private registry posture.
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ operator notes                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ nightly-reconcile: Container Apps job 'nightly-reconcile' uses Schedule trigger with schedule '0 │
+│ 3 * * *', stores 1 container image clue(s), and uses managed identity (SystemAssigned).          │
+│ Safe posture: secrets 2, Key Vault-backed secrets 1, registry servers 1, registry identity refs  │
+│ 1.                                                                                               │
+│ Execution: parallelism=1; completions=1; retries=3; timeout=1800s.                               │
+│ Image or command: images=ghcr.io/harrierops/jobs/reconcile:1.4.2; command=reconcile:             │
+│ /app/reconcile --tenant prod.                                                                    │
+│ queue-drain: Container Apps job 'queue-drain' uses Event trigger with 1 event scale rule(s),     │
+│ stores 1 container image clue(s), and uses managed identity (SystemAssigned, UserAssigned).      │
+│ Safe posture: secrets 1, registry servers 1.                                                     │
+│ Execution: parallelism=2; completions=2; retries=3; timeout=3600s.                               │
+│ Image or command: images=contoso.azurecr.io/jobs/queue-drain:2026.04; command=worker: /app/drain │
+│ --queue orders.                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

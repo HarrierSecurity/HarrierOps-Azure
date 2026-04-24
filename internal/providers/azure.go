@@ -335,6 +335,31 @@ func (provider AzureProvider) ContainerApps(ctx context.Context, tenant string, 
 	}, nil
 }
 
+func (provider AzureProvider) ContainerAppsJobs(ctx context.Context, tenant string, subscription string) (ContainerAppsJobsFacts, error) {
+	session, err := provider.session(ctx, tenant, subscription)
+	if err != nil {
+		return ContainerAppsJobsFacts{}, err
+	}
+
+	resourcesClient := session.clientFactory.NewClient()
+	rows, issues := collectResourceSummaries(
+		ctx,
+		resourcesClient,
+		"Microsoft.App/jobs",
+		"2024-03-01",
+		containerAppsJobSummary,
+		"container_apps_jobs.resources",
+		"container_apps_jobs.hydrate",
+	)
+
+	return ContainerAppsJobsFacts{
+		TenantID:          session.tenantID,
+		SubscriptionID:    session.subscription.ID,
+		ContainerAppsJobs: rows,
+		Issues:            issues,
+	}, nil
+}
+
 func (provider AzureProvider) ContainerInstances(ctx context.Context, tenant string, subscription string) (ContainerInstancesFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
 	if err != nil {
@@ -706,6 +731,247 @@ func containerAppSummary(resource map[string]any) models.ContainerAppAsset {
 		WorkloadIdentityType: workloadIdentityType,
 		WorkloadPrincipalID:  workloadPrincipalID,
 	}
+}
+
+func containerAppsJobSummary(resource map[string]any) models.ContainerAppsJobAsset {
+	resourceID := stringMapValue(resource, "id")
+	name := firstNonEmpty(stringMapValue(resource, "name"), resourceNameFromID(resourceID), "unknown")
+
+	identity := mapValue(resource, "identity")
+	properties := mapValue(resource, "properties")
+	configuration := mapValue(properties, "configuration")
+	template := mapValue(properties, "template")
+	triggerType := stringPtr(mapStringValue(configuration, "triggerType", "trigger_type"))
+	triggerConfig := containerAppsJobTriggerConfig(configuration, stringPtrValue(triggerType))
+	eventConfig := mapValue(configuration, "eventTriggerConfig", "event_trigger_config")
+	scaleConfig := mapValue(eventConfig, "scale")
+
+	workloadIdentityIDs := sortedKeys(mapValue(identity, "userAssignedIdentities", "user_assigned_identities"))
+	workloadIdentityType := stringPtr(mapStringValue(identity, "type"))
+	workloadPrincipalID := stringPtr(mapStringValue(identity, "principalId", "principal_id"))
+	workloadClientID := stringPtr(mapStringValue(identity, "clientId", "client_id"))
+	environmentID := stringPtr(mapStringValue(properties, "environmentId", "environment_id", "managedEnvironmentId", "managed_environment_id"))
+	scheduleExpression := stringPtr(mapStringValue(mapValue(configuration, "scheduleTriggerConfig", "schedule_trigger_config"), "cronExpression", "cron_expression"))
+
+	containers := listValue(template, "containers")
+	containerImages := []string{}
+	commandClues := []string{}
+	for _, rawContainer := range containers {
+		container := mapValue(rawContainer)
+		image := mapStringValue(container, "image")
+		if image != "" {
+			containerImages = append(containerImages, image)
+		}
+		command := stringListValue(container, "command")
+		args := stringListValue(container, "args")
+		if len(command) > 0 || len(args) > 0 {
+			containerName := mapStringValue(container, "name")
+			clue := strings.Join(command, " ")
+			if len(args) > 0 {
+				if clue != "" {
+					clue += " "
+				}
+				clue += strings.Join(args, " ")
+			}
+			if containerName != "" {
+				clue = containerName + ": " + clue
+			}
+			commandClues = append(commandClues, clue)
+		}
+	}
+	containerImages = dedupeStrings(containerImages)
+	commandClues = dedupeStrings(commandClues)
+
+	secrets := listValue(configuration, "secrets")
+	secretCount := intPtr(len(secrets))
+	keyVaultSecretCount := intPtr(containerAppsJobKeyVaultSecretCount(secrets))
+
+	registries := listValue(configuration, "registries")
+	registryServers := []string{}
+	registryIdentityCount := 0
+	registryPasswordRefCount := 0
+	registryIdentityIDs := []string{}
+	for _, rawRegistry := range registries {
+		registry := mapValue(rawRegistry)
+		if server := mapStringValue(registry, "server"); server != "" {
+			registryServers = append(registryServers, server)
+		}
+		if identity := mapStringValue(registry, "identity"); identity != "" {
+			registryIdentityCount++
+			if !strings.EqualFold(identity, "system") {
+				registryIdentityIDs = append(registryIdentityIDs, identity)
+			}
+		}
+		if mapStringValue(registry, "passwordSecretRef", "password_secret_ref") != "" {
+			registryPasswordRefCount++
+		}
+	}
+	registryServers = dedupeStrings(registryServers)
+	registryIdentityIDs = dedupeStrings(registryIdentityIDs)
+
+	eventRules := containerAppsJobEventRules(scaleConfig)
+	eventIdentityIDs := containerAppsJobEventIdentityIDs(eventRules)
+	relatedIDs := dedupeStrings(append(append([]string{
+		resourceID,
+		stringPtrValue(environmentID),
+		stringPtrValue(workloadPrincipalID),
+	}, workloadIdentityIDs...), append(registryIdentityIDs, eventIdentityIDs...)...))
+
+	parallelism := optionalIntPtr(triggerConfig, "parallelism")
+	replicaCompletionCount := optionalIntPtr(triggerConfig, "replicaCompletionCount", "replica_completion_count")
+	replicaRetryLimit := optionalIntPtr(configuration, "replicaRetryLimit", "replica_retry_limit")
+	replicaTimeout := optionalIntPtr(configuration, "replicaTimeout", "replica_timeout")
+
+	return models.ContainerAppsJobAsset{
+		Command:                  commandClues,
+		ContainerImages:          containerImages,
+		EnvironmentID:            environmentID,
+		EventRules:               eventRules,
+		ID:                       firstNonEmpty(resourceID, "/unknown/"+name),
+		KeyVaultSecretCount:      keyVaultSecretCount,
+		Location:                 stringMapValue(resource, "location"),
+		Name:                     name,
+		Parallelism:              parallelism,
+		RegistryIdentityCount:    intPtr(registryIdentityCount),
+		RegistryPasswordRefCount: intPtr(registryPasswordRefCount),
+		RegistryServers:          registryServers,
+		RelatedIDs:               relatedIDs,
+		ReplicaCompletionCount:   replicaCompletionCount,
+		ReplicaRetryLimit:        replicaRetryLimit,
+		ReplicaTimeout:           replicaTimeout,
+		ResourceGroup:            resourceGroupFromID(resourceID),
+		ScheduleExpression:       scheduleExpression,
+		SecretCount:              secretCount,
+		Summary: containerAppsJobSummaryText(
+			name,
+			triggerType,
+			scheduleExpression,
+			len(eventRules),
+			len(containerImages),
+			workloadIdentityType,
+			secretCount,
+			keyVaultSecretCount,
+			len(registryServers),
+			registryIdentityCount,
+		),
+		TriggerType:          triggerType,
+		WorkloadClientID:     workloadClientID,
+		WorkloadIdentityIDs:  workloadIdentityIDs,
+		WorkloadIdentityType: workloadIdentityType,
+		WorkloadPrincipalID:  workloadPrincipalID,
+	}
+}
+
+func containerAppsJobTriggerConfig(configuration map[string]any, triggerType string) map[string]any {
+	switch strings.ToLower(strings.TrimSpace(triggerType)) {
+	case "schedule":
+		return mapValue(configuration, "scheduleTriggerConfig", "schedule_trigger_config")
+	case "event":
+		return mapValue(configuration, "eventTriggerConfig", "event_trigger_config")
+	case "manual":
+		return mapValue(configuration, "manualTriggerConfig", "manual_trigger_config")
+	default:
+		for _, key := range []string{"scheduleTriggerConfig", "eventTriggerConfig", "manualTriggerConfig"} {
+			if value := mapValue(configuration, key); len(value) > 0 {
+				return value
+			}
+		}
+	}
+	return map[string]any{}
+}
+
+func containerAppsJobKeyVaultSecretCount(secrets []any) int {
+	count := 0
+	for _, rawSecret := range secrets {
+		if mapStringValue(mapValue(rawSecret), "keyVaultUrl", "key_vault_url") != "" {
+			count++
+		}
+	}
+	return count
+}
+
+func containerAppsJobEventRules(scaleConfig map[string]any) []models.ContainerAppsJobEventRule {
+	rules := []models.ContainerAppsJobEventRule{}
+	for _, rawRule := range listValue(scaleConfig, "rules") {
+		rule := mapValue(rawRule)
+		authRefs := []string{}
+		for _, rawAuth := range listValue(rule, "auth") {
+			if secretRef := mapStringValue(mapValue(rawAuth), "secretRef", "secret_ref"); secretRef != "" {
+				authRefs = append(authRefs, secretRef)
+			}
+		}
+		rules = append(rules, models.ContainerAppsJobEventRule{
+			AuthSecretRefs: dedupeStrings(authRefs),
+			Identity:       stringPtr(mapStringValue(rule, "identity")),
+			Name:           firstNonEmpty(mapStringValue(rule, "name"), "unnamed-rule"),
+			Type:           mapStringValue(rule, "type"),
+		})
+	}
+	return rules
+}
+
+func containerAppsJobEventIdentityIDs(rules []models.ContainerAppsJobEventRule) []string {
+	ids := []string{}
+	for _, rule := range rules {
+		identity := stringPtrValue(rule.Identity)
+		if identity == "" || strings.EqualFold(identity, "system") {
+			continue
+		}
+		ids = append(ids, identity)
+	}
+	return dedupeStrings(ids)
+}
+
+func containerAppsJobSummaryText(
+	name string,
+	triggerType *string,
+	scheduleExpression *string,
+	eventRuleCount int,
+	imageCount int,
+	identityType *string,
+	secretCount *int,
+	keyVaultSecretCount *int,
+	registryServerCount int,
+	registryIdentityCount int,
+) string {
+	triggerPhrase := "has an unknown trigger type from the current read path"
+	if triggerType != nil && *triggerType != "" {
+		triggerPhrase = "uses " + *triggerType + " trigger"
+	}
+	if scheduleExpression != nil && *scheduleExpression != "" {
+		triggerPhrase += " with schedule '" + *scheduleExpression + "'"
+	} else if eventRuleCount > 0 {
+		triggerPhrase += " with " + strconv.Itoa(eventRuleCount) + " event scale rule(s)"
+	}
+
+	payloadPhrase := "has no container image visible from the current read path"
+	if imageCount > 0 {
+		payloadPhrase = "stores " + strconv.Itoa(imageCount) + " container image clue(s)"
+	}
+	identityPhrase := "has no managed identity visible from the current read path"
+	if identityType != nil && *identityType != "" {
+		identityPhrase = "uses managed identity (" + *identityType + ")"
+	}
+
+	postureParts := []string{}
+	if secretCount != nil {
+		postureParts = append(postureParts, "secrets "+strconv.Itoa(*secretCount))
+	}
+	if keyVaultSecretCount != nil && *keyVaultSecretCount > 0 {
+		postureParts = append(postureParts, "Key Vault-backed secrets "+strconv.Itoa(*keyVaultSecretCount))
+	}
+	if registryServerCount > 0 {
+		postureParts = append(postureParts, "registry servers "+strconv.Itoa(registryServerCount))
+	}
+	if registryIdentityCount > 0 {
+		postureParts = append(postureParts, "registry identity refs "+strconv.Itoa(registryIdentityCount))
+	}
+	posturePhrase := ""
+	if len(postureParts) > 0 {
+		posturePhrase = " Safe posture: " + strings.Join(postureParts, ", ") + "."
+	}
+
+	return "Container Apps job '" + name + "' " + triggerPhrase + ", " + payloadPhrase + ", and " + identityPhrase + "." + posturePhrase
 }
 
 func containerInstanceSummary(resource map[string]any) models.ContainerInstanceAsset {
@@ -1531,6 +1797,35 @@ func optionalBoolPtr(input any, keys ...string) *bool {
 	return nil
 }
 
+func optionalIntPtr(input any, keys ...string) *int {
+	if mapped, ok := input.(map[string]any); ok {
+		for _, key := range keys {
+			if value, exists := mapped[key]; exists {
+				switch typed := value.(type) {
+				case int:
+					return &typed
+				case int32:
+					converted := int(typed)
+					return &converted
+				case int64:
+					converted := int(typed)
+					return &converted
+				case float64:
+					converted := int(typed)
+					return &converted
+				case json.Number:
+					intValue, err := typed.Int64()
+					if err == nil {
+						converted := int(intValue)
+						return &converted
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func webAppDefaultHostname(app map[string]any) *string {
 	return webAppStringField(app, "defaultHostName", "default_host_name")
 }
@@ -1589,6 +1884,17 @@ func listValue(input any, keys ...string) []any {
 	default:
 		return []any{}
 	}
+}
+
+func stringListValue(input any, keys ...string) []string {
+	values := []string{}
+	for _, item := range listValue(input, keys...) {
+		text := strings.TrimSpace(stringValue(item))
+		if text != "" {
+			values = append(values, text)
+		}
+	}
+	return values
 }
 
 func mapStringValue(input any, keys ...string) string {

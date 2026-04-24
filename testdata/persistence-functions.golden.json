@@ -37,8 +37,8 @@
           "status": "yes"
         },
         {
-          "action": "attach or reuse exec ctx",
-          "api_surface": "function identity / app settings",
+          "action": "repurpose trigger posture",
+          "api_surface": "HTTP, timer, queue, or event trigger",
           "status": "yes"
         },
         {
@@ -47,8 +47,8 @@
           "status": "yes"
         },
         {
-          "action": "repurpose trigger posture",
-          "api_surface": "HTTP, timer, queue, or event trigger",
+          "action": "attach or reuse exec ctx",
+          "api_surface": "function identity / app settings",
           "status": "yes"
         },
         {

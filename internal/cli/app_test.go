@@ -104,6 +104,8 @@ func implementedArtifactCases() []artifactCase {
 		explicitArtifactCase("persistence-automation", []string{"persistence", "automation", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-app-service", []string{"persistence", "app-service", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-azure-ml", []string{"persistence", "azure-ml", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-container-apps-jobs", []string{"persistence", "container-apps-jobs", "--output", "json"}, "persistence"),
+		explicitArtifactCase("persistence-vm-extensions", []string{"persistence", "vm-extensions", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-logic-apps", []string{"persistence", "logic-apps", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-functions", []string{"persistence", "functions", "--output", "json"}, "persistence"),
 		explicitArtifactCase("persistence-webjobs", []string{"persistence", "webjobs", "--output", "json"}, "persistence"),

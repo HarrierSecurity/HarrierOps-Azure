@@ -67,6 +67,8 @@ func renderRegistryEntry(command string) (rendererEntry, error) {
 		return rendererEntry{table: wrapTableRenderer("logic-apps", logicAppsTable), csv: wrapCSVRenderer("logic-apps", logicAppsCSV)}, nil
 	case "container-apps":
 		return rendererEntry{table: wrapTableRenderer("container-apps", containerAppsTable), csv: wrapCSVRenderer("container-apps", containerAppsCSV)}, nil
+	case "container-apps-jobs":
+		return rendererEntry{table: wrapTableRenderer("container-apps-jobs", containerAppsJobsTable), csv: wrapCSVRenderer("container-apps-jobs", containerAppsJobsCSV)}, nil
 	case "container-instances":
 		return rendererEntry{table: wrapTableRenderer("container-instances", containerInstancesTable), csv: wrapCSVRenderer("container-instances", containerInstancesCSV)}, nil
 	case "arm-deployments":
@@ -81,6 +83,8 @@ func renderRegistryEntry(command string) (rendererEntry, error) {
 		return rendererEntry{table: wrapTableRenderer("nics", nicsTable), csv: wrapCSVRenderer("nics", nicsCSV)}, nil
 	case "vms":
 		return rendererEntry{table: wrapTableRenderer("vms", vmsTable), csv: wrapCSVRenderer("vms", vmsCSV)}, nil
+	case "vm-extensions":
+		return rendererEntry{table: wrapTableRenderer("vm-extensions", vmExtensionsTable), csv: wrapCSVRenderer("vm-extensions", vmExtensionsCSV)}, nil
 	case "vmss":
 		return rendererEntry{table: wrapTableRenderer("vmss", vmssTable), csv: wrapCSVRenderer("vmss", vmssCSV)}, nil
 	case "workloads":

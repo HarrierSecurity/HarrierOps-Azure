@@ -1,0 +1,76 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[persistence] VM Extensions persistence means an Azure control-plane extension attachment plus stored handler settings and script or command source the VM agent can apply on a VM or VMSS, not proof of guest-side success.
+VM Extensions capability
+
+╭──────────────────────────────────────────┬──────────────────────────────────────────────────────────────┬────────────╮
+│ action                                   │ api surface                                                  │ status     │
+├──────────────────────────────────────────┼──────────────────────────────────────────────────────────────┼────────────┤
+│ modify VM extension configuration        │ Microsoft.Compute VM or VMSS extension write                 │ yes        │
+│ reuse VM or VMSS target                  │ Microsoft.Compute/virtualMachines or virtualMachineScaleSets │ yes        │
+│ add or modify extension attachment       │ Microsoft.Compute extension child resource                   │ yes        │
+│ provide script or command source         │ settings.fileUris / commandToExecute / scriptUri             │ yes        │
+│ configure extension execution            │ extension settings / protected settings posture              │ yes        │
+│ deliver config to VM agent               │ Azure extension lifecycle / instance view                    │ not proven │
+│ hand off extension execution to VM agent │ guest-side handler boundary                                  │ not proven │
+│ update extension later                   │ forceUpdateTag / timestamp / extension update                │ yes        │
+│ preserve control-plane execution path    │ extension attachment + stored settings                       │ yes        │
+╰──────────────────────────────────────────┴──────────────────────────────────────────────────────────────┴────────────╯
+This walkthrough shows the strongest currently visible VM Extensions persistence path. The inventory below lists the other visible VM and VMSS extensions without repeating the same narrative.
+- Current identity can modify VM extension configuration on this VM or VMSS.
+   Current foothold `azurefox-lab-sp` already holds Owner at subscription scope.
+
+- Current identity can reuse this visible VM target without interactive guest sign-in.
+   Visible target posture here is VM `vm-web-01`, 1 target identity attached.
+   Target managed identity `ua-app` is attached to the VM target for this extension, and it already holds Owner at subscription scope. This does not prove the extension payload used that identity.
+
+- Current identity can attach or change an extension definition that Azure stores on the VM or VMSS control-plane resource.
+   The extension attachment is the Azure-side object that binds handler, settings, source clues, and target together.
+   Visible handler here is Microsoft.Compute/CustomScriptExtension 1.10.
+
+- Current identity can provide a script or command source directly, or point the extension at a reachable source such as storage, GitHub, or another host.
+   This is the script or command source layer, separate from the settings that tell the handler how to apply it.
+   Visible source posture here includes file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net; fileUris=2; command clue `public commandToExecute visible; executable=powershell; arguments redacted`.
+
+- Current identity can set the extension settings that tell the handler what to run and how to apply it.
+   Visible settings posture here includes public=commandToExecute, fileUris; protected=yes; suppress-failures=no.
+
+- Azure stores extension configuration, but this path does not yet have proven current-identity control here.
+   Visibility still shows Microsoft.Compute/CustomScriptExtension 1.10;
+file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net;
+fileUris=2; command clue `public commandToExecute visible;
+executable=powershell; arguments redacted`; public=commandToExecute,
+fileUris; protected=yes; suppress-failures=no;
+forceUpdateTag=2026-04-23T120000Z; provisioning=Succeeded;
+instance=ProvisioningState/succeeded.
+   Visible execution context here is `ua-app` with Owner at subscription scope.
+   That is enough to judge whether this VM Extension already has handler, source, settings, rerun, or reuse value if stronger control is obtained later.
+   Nearby maintenance- or schedule-themed names visible from the current environment include `dependency-agent` and `maintenance-script`.
+
+Visible VM Extensions
+extension          | target                     | visible state                                                            | execution context                                                       
+
+config-bootstrap   | VM=vm-web-01; identities=1 | Microsoft.Compute/CustomScriptExtension 1.10;                            | `ua-app` with Owner at subscription scope                               
+                   |                            | file-hosts=raw.githubusercontent.com, storageacct.blob.core.windows.net; |                                                                         
+                   |                            | fileUris=2; command clue `public commandToExecute visible;               |                                                                         
+                   |                            | executable=powershell; arguments redacted`; public=commandToExecute,     |                                                                         
+                   |                            | fileUris; protected=yes; suppress-failures=no;                           |                                                                         
+                   |                            | forceUpdateTag=2026-04-23T120000Z; provisioning=Succeeded;               |                                                                         
+                   |                            | instance=ProvisioningState/succeeded                                     |                                                                         
+maintenance-script | VMSS=vmss-batch            | Microsoft.Azure.Extensions/CustomScript 2.1;                             | Custom Script-style handler, reachable source clue, public command clue,
+                   |                            | file-hosts=scripts.contoso.internal; fileUris=1; command clue `public    | public settings visible, Key Vault-referenced protected settings, rerun 
+                   |                            | commandToExecute visible; executable=maintenance.sh; arguments           | clues visible                                                           
+                   |                            | redacted`; public=commandToExecute, fileUris; kv-protected=yes;          |                                                                         
+                   |                            | suppress-failures=no; forceUpdateTag=roll-20260423;                      |                                                                         
+                   |                            | provisioning=Succeeded                                                   |                                                                         
+dependency-agent   | VM=vm-web-01; identities=1 | Microsoft.Azure.Monitoring.DependencyAgent/DependencyAgentLinux 9.10;    | `ua-app` with Owner at subscription scope                               
+                   |                            | suppress-failures=no; provisioning=Succeeded;                            |                                                                         
+                   |                            | instance=ProvisioningState/succeeded                                     |                                                                         
+
+
+Not collected by default
+- the current command does not print protected setting values or Key Vault-referenced protected setting material
+- the current command does not fetch script bodies, GitHub files, storage blobs, or other remote payloads, so operator intent is not inferred from source clues alone
+- the current command does not inspect guest filesystem state, guest logs, running processes, or runtime-side script effects
+- the current command does not prove that a previously configured command or remote payload still succeeds if Azure applies the extension again

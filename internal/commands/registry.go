@@ -96,6 +96,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return logicAppsHandler(provider, now)
 	case "container-apps":
 		return containerAppsHandler(provider, now)
+	case "container-apps-jobs":
+		return containerAppsJobsHandler(provider, now)
 	case "container-instances":
 		return containerInstancesHandler(provider, now)
 	case "arm-deployments":
@@ -110,6 +112,8 @@ func handlerFor(name string, provider providers.Provider, now func() time.Time) 
 		return nicsHandler(provider, now)
 	case "vms":
 		return vmsHandler(provider, now)
+	case "vm-extensions":
+		return vmExtensionsHandler(provider, now)
 	case "vmss":
 		return vmssHandler(provider, now)
 	case "workloads":

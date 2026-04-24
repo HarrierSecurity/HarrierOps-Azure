@@ -376,7 +376,6 @@ func persistenceAppServiceStillUnmapped() []string {
 		"the current command does not retrieve deployed application packages, repository contents, or source bundles, so operator intent is not inferred from code here",
 		"the current command does not replay HTTP traffic or inspect runtime-side request handling, so conclusions stop at visible management-plane exposure posture",
 		"the current command does not infer downstream API, data, or automation impact from runtime stack or setting names alone",
-		"this App Service view stops at the main web host; use `persistence webjobs` when you need App Service WebJobs background-execution depth",
 	}
 }
 

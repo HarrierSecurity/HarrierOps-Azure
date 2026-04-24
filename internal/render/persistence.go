@@ -17,6 +17,10 @@ func persistenceTableRenderer(payload any) (string, error) {
 		return persistenceAppServiceTable(out), nil
 	case models.PersistenceWebJobsOutput:
 		return persistenceWebJobsTable(out), nil
+	case models.PersistenceContainerAppsJobsOutput:
+		return persistenceContainerAppsJobsTable(out), nil
+	case models.PersistenceVMExtensionsOutput:
+		return persistenceVMExtensionsTable(out), nil
 	case models.PersistenceAzureMLOutput:
 		return persistenceAzureMLTable(out), nil
 	case models.PersistenceFunctionsOutput:
@@ -62,7 +66,7 @@ func persistenceAutomationTable(payload models.PersistenceAutomationOutput) stri
 		"",
 		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceAutomationCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.AutomationAccounts) > 1 {
@@ -78,7 +82,7 @@ func persistenceAutomationTable(payload models.PersistenceAutomationOutput) stri
 		),
 	)
 	if unmapped := persistenceAutomationCombinedStillUnmapped(payload.AutomationAccounts); unmapped != "" {
-		lines = append(lines, "", "Still unmapped", unmapped)
+		lines = append(lines, "", "Not collected by default", unmapped)
 	}
 
 	return strings.Join(lines, "\n")
@@ -101,7 +105,7 @@ func persistenceAppServiceTable(payload models.PersistenceAppServiceOutput) stri
 		"",
 		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceAppServiceCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.AppServices) > 1 {
@@ -140,7 +144,7 @@ func persistenceWebJobsTable(payload models.PersistenceWebJobsOutput) string {
 		"",
 		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceWebJobsCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.WebJobs) > 1 {
@@ -156,6 +160,84 @@ func persistenceWebJobsTable(payload models.PersistenceWebJobsOutput) string {
 		),
 	)
 	if items := persistenceWebJobsCombinedStillUnmapped(payload.WebJobs); len(items) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(items))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func persistenceContainerAppsJobsTable(payload models.PersistenceContainerAppsJobsOutput) string {
+	if len(payload.ContainerAppsJobs) == 0 {
+		return renderListTable(
+			"ho-azure persistence container-apps-jobs",
+			[]string{"container apps job", "status"},
+			nil,
+			[]string{"No visible Container Apps Jobs were confirmed from current scope.", ""},
+			"0 Container Apps Jobs visible; no Container Apps Jobs persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceContainerAppsJobsLeadJob(payload.ContainerAppsJobs)
+	lines := []string{
+		"Container Apps Jobs capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.ContainerAppsJobs) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible Container Apps Jobs persistence path. The inventory below lists the other visible jobs without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceContainerAppsJobsExplanation(lead),
+		"",
+		"Visible Container Apps Jobs",
+		renderAlignedPipeTable(
+			[]string{"container apps job", "trigger", "visible state", "execution context"},
+			persistenceContainerAppsJobsInventoryRows(payload.ContainerAppsJobs),
+		),
+	)
+	if items := persistenceContainerAppsJobsCombinedStillUnmapped(payload.ContainerAppsJobs); len(items) > 0 {
+		lines = append(lines, "", "Not collected by default", renderBulletList(items))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func persistenceVMExtensionsTable(payload models.PersistenceVMExtensionsOutput) string {
+	if len(payload.VMExtensions) == 0 {
+		return renderListTable(
+			"ho-azure persistence vm-extensions",
+			[]string{"vm extension", "status"},
+			nil,
+			[]string{"No visible VM Extensions were confirmed from current scope.", ""},
+			"0 VM Extensions visible; no VM Extensions persistence surface was confirmed from current scope.",
+		)
+	}
+
+	lead := persistenceVMExtensionsLeadExtension(payload.VMExtensions)
+	lines := []string{
+		"VM Extensions capability",
+		"",
+		renderPersistenceSectionTable(
+			[]string{"action", "api surface", "status"},
+			persistenceCapabilityRows(lead.CapabilitySteps),
+		),
+	}
+	if len(payload.VMExtensions) > 1 {
+		lines = append(lines, "This walkthrough shows the strongest currently visible VM Extensions persistence path. The inventory below lists the other visible VM and VMSS extensions without repeating the same narrative.")
+	}
+	lines = append(lines,
+		persistenceVMExtensionsExplanation(lead),
+		"",
+		"Visible VM Extensions",
+		renderAlignedPipeTable(
+			[]string{"extension", "target", "visible state", "execution context"},
+			persistenceVMExtensionsInventoryRows(payload.VMExtensions),
+		),
+	)
+	if items := persistenceVMExtensionsCombinedStillUnmapped(payload.VMExtensions); len(items) > 0 {
 		lines = append(lines, "", "Not collected by default", renderBulletList(items))
 	}
 
@@ -179,7 +261,7 @@ func persistenceAzureMLTable(payload models.PersistenceAzureMLOutput) string {
 		"",
 		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceAzureMLCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.Workspaces) > 1 {
@@ -217,10 +299,11 @@ func persistenceLogicAppsTable(payload models.PersistenceLogicAppsOutput) string
 
 	lead := persistenceLogicAppLeadWorkflow(payload.Workflows)
 	lines := []string{
-		"Workflow capability",
-		renderAlignedPipeTable(
+		"Logic Apps capability",
+		"",
+		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceLogicAppCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.Workflows) > 1 {
@@ -236,7 +319,7 @@ func persistenceLogicAppsTable(payload models.PersistenceLogicAppsOutput) string
 		),
 	)
 	if items := persistenceLogicAppCombinedStillUnmapped(payload.Workflows); len(items) > 0 {
-		lines = append(lines, "", "Still unmapped", renderBulletList(items))
+		lines = append(lines, "", "Not collected by default", renderBulletList(items))
 	}
 
 	return strings.Join(lines, "\n")
@@ -255,11 +338,11 @@ func persistenceFunctionsTable(payload models.PersistenceFunctionsOutput) string
 
 	lead := persistenceFunctionsLeadApp(payload.FunctionApps)
 	lines := []string{
-		"Function capability",
+		"Azure Functions capability",
 		"",
 		renderPersistenceSectionTable(
 			[]string{"action", "api surface", "status"},
-			persistenceFunctionsCapabilityRows(lead.CapabilitySteps),
+			persistenceCapabilityRows(lead.CapabilitySteps),
 		),
 	}
 	if len(payload.FunctionApps) > 1 {
@@ -285,7 +368,7 @@ func persistenceFunctionsTable(payload models.PersistenceFunctionsOutput) string
 	return strings.Join(lines, "\n")
 }
 
-func persistenceAppServiceCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
+func persistenceCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
 	rows := make([][]string, 0, len(steps))
 	for _, step := range steps {
 		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
@@ -303,46 +386,6 @@ func persistenceOverviewTakeaway(payload models.PersistenceOverviewOutput) strin
 	return fmt.Sprintf("%d persistence surfaces are available; start with the service that best matches your current question.", len(payload.Surfaces))
 }
 
-func persistenceAutomationCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
-	rows := make([][]string, 0, len(steps))
-	for _, step := range steps {
-		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
-	}
-	return rows
-}
-
-func persistenceLogicAppCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
-	rows := make([][]string, 0, len(steps))
-	for _, step := range steps {
-		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
-	}
-	return rows
-}
-
-func persistenceFunctionsCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
-	rows := make([][]string, 0, len(steps))
-	for _, step := range steps {
-		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
-	}
-	return rows
-}
-
-func persistenceWebJobsCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
-	rows := make([][]string, 0, len(steps))
-	for _, step := range steps {
-		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
-	}
-	return rows
-}
-
-func persistenceAzureMLCapabilityRows(steps []models.PersistenceCapabilityStep) [][]string {
-	rows := make([][]string, 0, len(steps))
-	for _, step := range steps {
-		rows = append(rows, []string{step.Action, step.APISurface, step.Status})
-	}
-	return rows
-}
-
 func renderAlignedPipeTable(headers []string, rows [][]string) string {
 	widths := make([]int, len(headers))
 	for index, header := range headers {
@@ -350,22 +393,43 @@ func renderAlignedPipeTable(headers []string, rows [][]string) string {
 	}
 	for _, row := range rows {
 		for index, cell := range row {
-			if index < len(widths) && len(cell) > widths[index] {
-				widths[index] = len(cell)
+			if index >= len(widths) {
+				continue
+			}
+			for _, line := range strings.Split(cell, "\n") {
+				if len(line) > widths[index] {
+					widths[index] = len(line)
+				}
 			}
 		}
 	}
 
 	renderRow := func(cells []string) string {
-		parts := make([]string, len(widths))
+		cellLines := make([][]string, len(widths))
+		height := 1
 		for index := range widths {
-			cell := ""
-			if index < len(cells) {
-				cell = cells[index]
+			lines := []string{""}
+			if index < len(cells) && strings.TrimSpace(cells[index]) != "" {
+				lines = strings.Split(cells[index], "\n")
 			}
-			parts[index] = padRight(cell, widths[index])
+			cellLines[index] = lines
+			if len(lines) > height {
+				height = len(lines)
+			}
 		}
-		return strings.Join(parts, " | ")
+		rendered := make([]string, 0, height)
+		for lineIndex := 0; lineIndex < height; lineIndex++ {
+			parts := make([]string, len(widths))
+			for index := range widths {
+				cell := ""
+				if lineIndex < len(cellLines[index]) {
+					cell = cellLines[index][lineIndex]
+				}
+				parts[index] = padRight(cell, widths[index])
+			}
+			rendered = append(rendered, strings.Join(parts, " | "))
+		}
+		return strings.Join(rendered, "\n")
 	}
 
 	var builder strings.Builder
@@ -431,11 +495,22 @@ func persistenceAutomationExplanation(account models.PersistenceAutomationAccoun
 		persistenceCapabilityStatus(account.CapabilitySteps, "create webhook") != "yes" {
 		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+	if len(account.CurrentState.ScheduleDefinitions) > 0 {
+		lines = append(lines, "  Visible schedule definitions here include "+persistenceAutomationScheduleDefinitionSummary(account.CurrentState.ScheduleDefinitions)+".")
+	}
 	lines = append(lines, "- "+persistenceAutomationRepurposeBullet(account))
 	if nearby := persistenceAutomationNearbyNamesLine(account.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
 	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceAutomationScheduleDefinitionSummary(definitions []string) string {
+	if len(definitions) <= 3 {
+		return renderNaturalJoin(quoteInlineValues(definitions))
+	}
+	visible := quoteInlineValues(definitions[:3])
+	return renderNaturalJoin(visible) + fmt.Sprintf(", plus %d more", len(definitions)-3)
 }
 
 func persistenceAutomationAccountBullet(account models.PersistenceAutomationAccount) string {
@@ -865,7 +940,9 @@ func persistenceFunctionsTriggerWalkthrough(app models.PersistenceFunctionApp) [
 		lines = append(lines, "  Current visible functions include "+persistenceFunctionsVisibleFunctionSummary(app.CurrentState.VisibleFunctions)+".")
 	}
 	if detail := persistenceFunctionsTriggerBoundaryLine(app.CurrentState.VisibleFunctions); detail != "" {
-		lines = append(lines, detail)
+		for _, line := range strings.Split(detail, "\n") {
+			lines = append(lines, line)
+		}
 	}
 	lines = append(lines, "  The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.")
 	lines = append(lines, "  That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.")
@@ -1232,6 +1309,539 @@ func persistenceWebJobsVisibilityLines(job models.PersistenceWebJob) []string {
 	)
 }
 
+func persistenceContainerAppsJobsExplanation(job models.PersistenceContainerAppsJob) string {
+	lines := []string{"- " + persistenceContainerAppsJobsJobBullet(job)}
+	if persistenceCapabilityStatus(job.CapabilitySteps, "create or reuse job in environment") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsJobWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsPayloadBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "point job at image or command") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsPayloadWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsTriggerBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "choose trigger mode") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsTriggerWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsExecutionShapeBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "set execution shape and access posture") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsExecutionShapeWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsDeployBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "deploy or update stored job definition") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsDeployWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsRerunBullet(job))
+	if persistenceCapabilityStatus(job.CapabilitySteps, "start or rely on later executions") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceContainerAppsJobsVisibilityLines(job), job.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceContainerAppsJobsRerunWalkthrough(job)...)
+
+	lines = append(lines, "- "+persistenceContainerAppsJobsPreserveBullet(job))
+	lines = append(lines, persistenceContainerAppsJobsPreserveWalkthrough(job)...)
+	if nearby := persistenceContainerAppsJobNearbyNamesLine(job.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceContainerAppsJobsJobBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "create or reuse job in environment") {
+	case "yes":
+		return "Current identity can create a new Container Apps job or reuse this existing job definition in its environment."
+	default:
+		return "Current identity does not yet have a proven path to create a new Container Apps job or reuse this existing job definition in its environment."
+	}
+}
+
+func persistenceContainerAppsJobsJobWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	lines := []string{
+		"  The job definition is the Azure-side object that ties together the environment, trigger, image, execution settings, and identity.",
+	}
+	if environment := strings.TrimSpace(valueOrEmpty(job.CurrentState.EnvironmentID)); environment != "" {
+		lines = append(lines, "  Visible Container Apps environment here is `"+resourceNameFromDisplayID(environment)+"`.")
+	}
+	return lines
+}
+
+func persistenceContainerAppsJobsPayloadBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "point job at image or command") {
+	case "yes":
+		return "Current identity can point this job at the container image and command Azure will execute for each run."
+	default:
+		return "Current identity does not yet have a proven path to point this job at the container image and command Azure would execute for each run."
+	}
+}
+
+func persistenceContainerAppsJobsPayloadWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	lines := []string{
+		"  This is the stored execution payload, separate from the trigger mode that brings the job back later.",
+	}
+	if len(job.CurrentState.ContainerImages) > 0 {
+		lines = append(lines, "  Visible image clue(s) here include "+strings.Join(job.CurrentState.ContainerImages, ", ")+".")
+	}
+	if len(job.CurrentState.Command) > 0 {
+		lines = append(lines, "  Visible command clue(s) here include `"+strings.Join(job.CurrentState.Command, "` and `")+"`.")
+	}
+	return lines
+}
+
+func persistenceContainerAppsJobsTriggerBullet(job models.PersistenceContainerAppsJob) string {
+	trigger := persistenceContainerAppsJobsTriggerPhrase(job)
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "choose trigger mode") {
+	case "yes":
+		return "Current identity can leave this as a " + trigger + " Container Apps job."
+	default:
+		return "Current identity does not yet have a proven path to leave this as a " + trigger + " Container Apps job."
+	}
+}
+
+func persistenceContainerAppsJobsTriggerWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	lines := []string{
+		"  Trigger mode is the service-specific re-entry choice for Container Apps Jobs: manual start, cron schedule, or event scaler.",
+	}
+	if trigger := strings.TrimSpace(valueOrEmpty(job.CurrentState.TriggerType)); trigger != "" {
+		lines = append(lines, "  Visible trigger type here is "+trigger+".")
+	}
+	if schedule := strings.TrimSpace(valueOrEmpty(job.CurrentState.ScheduleExpression)); schedule != "" {
+		lines = append(lines, "  Visible schedule expression here is `"+schedule+"`.")
+	}
+	if len(job.CurrentState.EventRules) > 0 {
+		lines = append(lines, "  Visible event rule posture here includes "+persistenceContainerAppsJobsEventRulesLine(job.CurrentState.EventRules)+".")
+	}
+	return lines
+}
+
+func persistenceContainerAppsJobsTriggerPhrase(job models.PersistenceContainerAppsJob) string {
+	switch strings.ToLower(strings.TrimSpace(valueOrEmpty(job.CurrentState.TriggerType))) {
+	case "schedule", "scheduled":
+		if strings.TrimSpace(valueOrEmpty(job.CurrentState.ScheduleExpression)) != "" {
+			return "scheduled"
+		}
+		return "scheduled"
+	case "event", "event-driven":
+		return "event-driven"
+	case "manual":
+		return "manual"
+	default:
+		return "manual, scheduled, or event-driven"
+	}
+}
+
+func persistenceContainerAppsJobsEventRulesLine(rules []models.ContainerAppsJobEventRule) string {
+	parts := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		label := strings.TrimSpace(rule.Name)
+		if label == "" {
+			label = "unnamed rule"
+		}
+		if strings.TrimSpace(rule.Type) != "" {
+			label += " (" + rule.Type + ")"
+		}
+		if len(rule.AuthSecretRefs) > 0 {
+			label += fmt.Sprintf(" with %d auth secret reference(s)", len(rule.AuthSecretRefs))
+		}
+		if strings.TrimSpace(valueOrEmpty(rule.Identity)) != "" {
+			label += " using identity " + resourceNameFromDisplayID(*rule.Identity)
+		}
+		parts = append(parts, label)
+	}
+	if len(parts) == 0 {
+		return "no event rules"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceContainerAppsJobsExecutionShapeBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "set execution shape and access posture") {
+	case "yes":
+		return "Current identity can set the execution shape through retries, timeout, replica counts, secrets, registry posture, and attached identity."
+	default:
+		return "Current identity does not yet have a proven path to set execution shape, safe access posture, or attached identity for this job."
+	}
+}
+
+func persistenceContainerAppsJobsExecutionShapeWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	lines := []string{
+		"  This is the execution-power layer for the job: how many tasks run, how they retry, and what identity or secret-backed material they can use.",
+	}
+	executionParts := []string{}
+	if count := intPtrString(job.CurrentState.Parallelism); count != "" {
+		executionParts = append(executionParts, "parallelism="+count)
+	}
+	if count := intPtrString(job.CurrentState.ReplicaCompletionCount); count != "" {
+		executionParts = append(executionParts, "completions="+count)
+	}
+	if count := intPtrString(job.CurrentState.ReplicaRetryLimit); count != "" {
+		executionParts = append(executionParts, "retries="+count)
+	}
+	if count := intPtrString(job.CurrentState.ReplicaTimeout); count != "" {
+		executionParts = append(executionParts, "timeout="+count+"s")
+	}
+	if len(executionParts) > 0 {
+		lines = append(lines, "  Visible execution settings here include "+strings.Join(executionParts, ", ")+".")
+	}
+	postureParts := []string{}
+	if count := intPtrString(job.CurrentState.SecretCount); count != "" {
+		postureParts = append(postureParts, count+" secret reference(s)")
+	}
+	if count := intPtrString(job.CurrentState.KeyVaultSecretCount); count != "" && count != "0" {
+		postureParts = append(postureParts, count+" Key Vault-backed secret reference(s)")
+	}
+	if len(job.CurrentState.RegistryServers) > 0 {
+		postureParts = append(postureParts, "registry server(s) "+strings.Join(job.CurrentState.RegistryServers, ", "))
+	}
+	if count := intPtrString(job.CurrentState.RegistryIdentityCount); count != "" && count != "0" {
+		postureParts = append(postureParts, count+" registry identity reference(s)")
+	}
+	if count := intPtrString(job.CurrentState.RegistryPasswordRefCount); count != "" && count != "0" {
+		postureParts = append(postureParts, count+" registry password reference(s)")
+	}
+	if len(postureParts) > 0 {
+		lines = append(lines, "  Safe access posture here includes "+strings.Join(postureParts, ", ")+".")
+	}
+	if job.CurrentIdentityContext != nil && strings.TrimSpace(job.CurrentIdentityContext.Summary) != "" {
+		lines = append(lines, "  "+job.CurrentIdentityContext.Summary)
+	}
+	if ctx := job.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
+		lines = append(lines, "  "+ctx.Summary)
+	}
+	return lines
+}
+
+func persistenceContainerAppsJobsDeployBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "deploy or update stored job definition") {
+	case "yes":
+		return "Current identity can deploy or update the job so the Container Apps environment retains the job definition, trigger, image, and execution settings."
+	default:
+		return "Current identity does not yet have a proven path to deploy or update the stored Container Apps job definition."
+	}
+}
+
+func persistenceContainerAppsJobsDeployWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	return []string{
+		"  This is the durable object layer: the stored Microsoft.App/jobs definition remains in the control plane until changed or removed.",
+	}
+}
+
+func persistenceContainerAppsJobsRerunBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "start or rely on later executions") {
+	case "yes":
+		return "Current identity can start the job manually, or rely on the configured schedule or event rule to create later executions from the same stored definition."
+	default:
+		return "Current identity does not yet have a proven path to start this job manually or rely on its later trigger-driven executions."
+	}
+}
+
+func persistenceContainerAppsJobsRerunWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	lines := []string{}
+	switch strings.ToLower(strings.TrimSpace(valueOrEmpty(job.CurrentState.TriggerType))) {
+	case "schedule", "scheduled":
+		lines = append(lines, "  Scheduled trigger mode means the stored job can come back when the cron expression fires again.")
+	case "event", "event-driven":
+		lines = append(lines, "  Event trigger mode means the stored job can come back when the configured scaler rule fires again.")
+	case "manual":
+		lines = append(lines, "  Manual trigger mode means the stored job can be started again without redefining the container payload.")
+	default:
+		lines = append(lines, "  The rerun story here comes from the stored trigger mode and the job definition Azure keeps for later executions.")
+	}
+	return lines
+}
+
+func persistenceContainerAppsJobsPreserveBullet(job models.PersistenceContainerAppsJob) string {
+	switch persistenceCapabilityStatus(job.CapabilitySteps, "preserve or reuse execution path") {
+	case "yes":
+		return "Current identity can preserve or reuse a Container Apps Jobs execution path by keeping the stored job definition, trigger, image, and execution context in place."
+	default:
+		return "This Container Apps job is still visible as a stored execution path, but the current identity does not yet have a proven path to preserve or reuse it here."
+	}
+}
+
+func persistenceContainerAppsJobsPreserveWalkthrough(job models.PersistenceContainerAppsJob) []string {
+	return []string{
+		"  The operator story here is the stored job definition plus trigger mode plus container image and execution context Azure can run again later.",
+	}
+}
+
+func persistenceContainerAppsJobsVisibilityLines(job models.PersistenceContainerAppsJob) []string {
+	state := strings.TrimSpace(persistenceContainerAppsJobsInventoryState(job))
+	execution := strings.TrimSpace(persistenceContainerAppsJobsInventoryExecutionContext(job))
+	return persistenceVisibilityFallbackLines(
+		state,
+		execution,
+		"this Container Apps job already has trigger, image, execution-setting, or reuse value if stronger control is obtained later.",
+		"this Container Apps job is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this Container Apps job exists, even though the current identity does not yet have a proven write path here.",
+	)
+}
+
+func persistenceContainerAppsJobNearbyNamesLine(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	quoted := make([]string, 0, len(names))
+	for _, name := range names {
+		quoted = append(quoted, "`"+name+"`")
+	}
+	return "Nearby batch-, sync-, worker-, or runner-themed Container Apps job names visible from the current environment include " + renderNaturalJoin(quoted) + "."
+}
+
+func persistenceVMExtensionsExplanation(extension models.PersistenceVMExtension) string {
+	lines := []string{"- " + persistenceVMExtensionsControlBullet(extension)}
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "modify VM extension configuration") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsControlWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsTargetBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "reuse VM or VMSS target") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsTargetWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsAttachmentBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "add or modify extension attachment") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsAttachmentWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsSourceBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "provide script or command source") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsSourceWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsSettingsBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "configure extension execution") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsSettingsWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsDeliveryBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "deliver config to VM agent") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsDeliveryWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsGuestExecutionBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "hand off extension execution to VM agent") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsGuestExecutionWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsUpdateBullet(extension))
+	if persistenceCapabilityStatus(extension.CapabilitySteps, "update extension later") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, persistenceVMExtensionsVisibilityLines(extension), extension.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceVMExtensionsUpdateWalkthrough(extension)...)
+
+	lines = append(lines, "- "+persistenceVMExtensionsPreserveBullet(extension))
+	lines = append(lines, persistenceVMExtensionsPreserveWalkthrough(extension)...)
+	if nearby := persistenceVMExtensionsNearbyNamesLine(extension.CurrentState.NearbyThematicNames); nearby != "" {
+		lines = append(lines, "  "+nearby)
+	}
+	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceVMExtensionsControlBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "modify VM extension configuration") {
+	case "yes":
+		return "Current identity can modify VM extension configuration on this VM or VMSS."
+	default:
+		return "Current identity does not yet have a proven path to modify VM extension configuration on this VM or VMSS."
+	}
+}
+
+func persistenceVMExtensionsControlWalkthrough(extension models.PersistenceVMExtension) []string {
+	if extension.CurrentIdentityContext == nil {
+		return nil
+	}
+	return []string{"  " + extension.CurrentIdentityContext.Summary}
+}
+
+func persistenceVMExtensionsTargetBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "reuse VM or VMSS target") {
+	case "yes":
+		return "Current identity can reuse this visible " + persistenceVMExtensionsTargetKindLabel(extension) + " target without interactive guest sign-in."
+	default:
+		return "Current identity does not yet have a proven path to reuse this visible " + persistenceVMExtensionsTargetKindLabel(extension) + " target."
+	}
+}
+
+func persistenceVMExtensionsTargetWalkthrough(extension models.PersistenceVMExtension) []string {
+	parts := []string{persistenceVMExtensionsTargetKindLabel(extension) + " `" + firstNonEmptyText(extension.CurrentState.TargetName, "unknown") + "`"}
+	if len(extension.CurrentState.TargetIdentityIDs) > 0 {
+		identityWord := "identities"
+		if len(extension.CurrentState.TargetIdentityIDs) == 1 {
+			identityWord = "identity"
+		}
+		parts = append(parts, fmt.Sprintf("%d target %s attached", len(extension.CurrentState.TargetIdentityIDs), identityWord))
+	}
+	if strings.EqualFold(extension.CurrentState.TargetKind, "vmss") {
+		vmssParts := nonEmptyStrings(valueOrEmpty(extension.CurrentState.VMSSOrchestrationMode), valueOrEmpty(extension.CurrentState.VMSSUpgradeMode))
+		if len(vmssParts) > 0 {
+			parts = append(parts, "VMSS posture "+strings.Join(vmssParts, "/"))
+		}
+	}
+	lines := []string{"  Visible target posture here is " + strings.Join(parts, ", ") + "."}
+	if ctx := extension.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
+		lines = append(lines, "  "+ctx.Summary+" This does not prove the extension payload used that identity.")
+	}
+	return lines
+}
+
+func persistenceVMExtensionsAttachmentBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "add or modify extension attachment") {
+	case "yes":
+		return "Current identity can attach or change an extension definition that Azure stores on the VM or VMSS control-plane resource."
+	default:
+		return "Current identity does not yet have a proven path to attach or change the Azure-stored extension definition."
+	}
+}
+
+func persistenceVMExtensionsAttachmentWalkthrough(extension models.PersistenceVMExtension) []string {
+	handler := persistenceVMExtensionsHandlerLabel(extension)
+	lines := []string{"  The extension attachment is the Azure-side object that binds handler, settings, source clues, and target together."}
+	if handler != "" {
+		lines = append(lines, "  Visible handler here is "+handler+".")
+	}
+	return lines
+}
+
+func persistenceVMExtensionsSourceBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "provide script or command source") {
+	case "yes":
+		return "Current identity can provide a script or command source directly, or point the extension at a reachable source such as storage, GitHub, or another host."
+	default:
+		return "Current identity does not yet have a proven path to provide or repoint the script or command source."
+	}
+}
+
+func persistenceVMExtensionsSourceWalkthrough(extension models.PersistenceVMExtension) []string {
+	source := persistenceVMExtensionsSourceState(extension)
+	if source == "none visible" {
+		return []string{"  No public script or command source clue is visible for this extension from the current read path."}
+	}
+	return []string{
+		"  This is the script or command source layer, separate from the settings that tell the handler how to apply it.",
+		"  Visible source posture here includes " + source + ".",
+	}
+}
+
+func persistenceVMExtensionsSettingsBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "configure extension execution") {
+	case "yes":
+		return "Current identity can set the extension settings that tell the handler what to run and how to apply it."
+	default:
+		return "Current identity does not yet have a proven path to set the extension settings that shape execution."
+	}
+}
+
+func persistenceVMExtensionsSettingsWalkthrough(extension models.PersistenceVMExtension) []string {
+	settings := persistenceVMExtensionsSettingsState(extension)
+	if settings == "none visible" {
+		return []string{"  No public setting keys or protected-settings posture are visible for this extension from the current read path."}
+	}
+	return []string{"  Visible settings posture here includes " + settings + "."}
+}
+
+func persistenceVMExtensionsDeliveryBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "deliver config to VM agent") {
+	case "yes":
+		return "Azure stores the extension configuration and the VM agent receives and applies it on the target."
+	default:
+		return "Azure stores extension configuration, but this path does not yet have proven current-identity control here."
+	}
+}
+
+func persistenceVMExtensionsDeliveryWalkthrough(extension models.PersistenceVMExtension) []string {
+	status := persistenceVMExtensionsStatusState(extension)
+	if status == "none visible" {
+		return []string{"  Azure-visible status is not present in this row, so delivery conclusions stay at the extension resource and target linkage."}
+	}
+	return []string{"  Visible Azure status here includes " + status + "."}
+}
+
+func persistenceVMExtensionsGuestExecutionBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "hand off extension execution to VM agent") {
+	case "yes":
+		return "Execution happens locally on the VM through the VM agent, while the trigger and configuration come from Azure."
+	default:
+		return "Execution would happen locally through the VM agent, but the current identity does not yet have a proven path to control this extension."
+	}
+}
+
+func persistenceVMExtensionsGuestExecutionWalkthrough(extension models.PersistenceVMExtension) []string {
+	return []string{"  Default output does not prove guest-side success, logs, filesystem changes, or runtime effects."}
+}
+
+func persistenceVMExtensionsUpdateBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "update extension later") {
+	case "yes":
+		return "Current identity can update the extension later, which may start another extension apply cycle."
+	default:
+		return "Current identity does not yet have a proven path to update this extension later."
+	}
+}
+
+func persistenceVMExtensionsUpdateWalkthrough(extension models.PersistenceVMExtension) []string {
+	rerun := persistenceVMExtensionsRerunState(extension)
+	if rerun == "none visible" {
+		return []string{"  No explicit rerun clue is visible here, so the reapply story is the normal extension update path."}
+	}
+	return []string{
+		"  Visible rerun posture here includes " + rerun + ".",
+		"  This does not prove the same command or payload still succeeds.",
+	}
+}
+
+func persistenceVMExtensionsPreserveBullet(extension models.PersistenceVMExtension) string {
+	switch persistenceCapabilityStatus(extension.CapabilitySteps, "preserve control-plane execution path") {
+	case "yes":
+		return "This acts like persistence because the extension attachment and settings remain in Azure control-plane state until changed."
+	default:
+		return "This extension is still visible Azure-side configuration, but the current identity does not yet have a proven path to preserve or repurpose it here."
+	}
+}
+
+func persistenceVMExtensionsPreserveWalkthrough(extension models.PersistenceVMExtension) []string {
+	return []string{
+		"  Defender review should start with the VM or VMSS target, extension handler, source clues, settings posture, rerun clues, and visible status.",
+	}
+}
+
+func persistenceVMExtensionsVisibilityLines(extension models.PersistenceVMExtension) []string {
+	state := strings.TrimSpace(persistenceVMExtensionsInventoryState(extension))
+	execution := strings.TrimSpace(persistenceVMExtensionsInventoryExecutionContext(extension))
+	return persistenceVisibilityFallbackLines(
+		state,
+		execution,
+		"this VM Extension already has handler, source, settings, rerun, or reuse value if stronger control is obtained later.",
+		"this VM Extension is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this VM Extension exists, even though the current identity does not yet have a proven write path here.",
+	)
+}
+
+func persistenceVMExtensionsNearbyNamesLine(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	quoted := make([]string, 0, len(names))
+	for _, name := range names {
+		quoted = append(quoted, "`"+name+"`")
+	}
+	return "Nearby maintenance-, bootstrap-, dependency-, or configuration-themed VM Extension names visible from the current environment include " + renderNaturalJoin(quoted) + "."
+}
+
 func persistenceLogicAppWorkflowBullet(workflow models.PersistenceLogicAppWorkflow) string {
 	switch persistenceCapabilityStatus(workflow.CapabilitySteps, "create or modify workflow") {
 	case "yes":
@@ -1579,6 +2189,26 @@ func persistenceWebJobsLeadJob(jobs []models.PersistenceWebJob) models.Persisten
 	return lead
 }
 
+func persistenceContainerAppsJobsLeadJob(jobs []models.PersistenceContainerAppsJob) models.PersistenceContainerAppsJob {
+	lead := jobs[0]
+	for _, candidate := range jobs[1:] {
+		if persistenceContainerAppsJobsRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
+func persistenceVMExtensionsLeadExtension(extensions []models.PersistenceVMExtension) models.PersistenceVMExtension {
+	lead := extensions[0]
+	for _, candidate := range extensions[1:] {
+		if persistenceVMExtensionsRanksBefore(candidate, lead) {
+			lead = candidate
+		}
+	}
+	return lead
+}
+
 func persistenceAppServiceRanksBefore(left, right models.PersistenceAppService) bool {
 	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
 	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
@@ -1629,6 +2259,77 @@ func persistenceWebJobsRanksBefore(left, right models.PersistenceWebJob) bool {
 	}
 }
 
+func persistenceContainerAppsJobsRanksBefore(left, right models.PersistenceContainerAppsJob) bool {
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	leftTriggerRank := persistenceContainerAppsJobTriggerRank(left.CurrentState.TriggerType)
+	rightTriggerRank := persistenceContainerAppsJobTriggerRank(right.CurrentState.TriggerType)
+	leftPayload := len(left.CurrentState.ContainerImages) > 0 || len(left.CurrentState.Command) > 0
+	rightPayload := len(right.CurrentState.ContainerImages) > 0 || len(right.CurrentState.Command) > 0
+	leftAccessPosture := intPtrValue(left.CurrentState.SecretCount) + intPtrValue(left.CurrentState.RegistryIdentityCount) + intPtrValue(left.CurrentState.RegistryPasswordRefCount)
+	rightAccessPosture := intPtrValue(right.CurrentState.SecretCount) + intPtrValue(right.CurrentState.RegistryIdentityCount) + intPtrValue(right.CurrentState.RegistryPasswordRefCount)
+	switch {
+	case leftHasExecRole != rightHasExecRole:
+		return leftHasExecRole
+	case leftTriggerRank != rightTriggerRank:
+		return leftTriggerRank < rightTriggerRank
+	case leftPayload != rightPayload:
+		return leftPayload
+	case leftAccessPosture != rightAccessPosture:
+		return leftAccessPosture > rightAccessPosture
+	default:
+		return left.Name < right.Name
+	}
+}
+
+func persistenceVMExtensionsRanksBefore(left, right models.PersistenceVMExtension) bool {
+	leftHasCurrentControl := left.CurrentIdentityContext != nil && len(left.CurrentIdentityContext.RoleNames) > 0
+	rightHasCurrentControl := right.CurrentIdentityContext != nil && len(right.CurrentIdentityContext.RoleNames) > 0
+	leftHasExecRole := left.CurrentState.StrongestVisibleExecutionContext != nil && len(left.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	rightHasExecRole := right.CurrentState.StrongestVisibleExecutionContext != nil && len(right.CurrentState.StrongestVisibleExecutionContext.RoleNames) > 0
+	leftCustomScript := persistenceVMExtensionsIsCustomScript(left)
+	rightCustomScript := persistenceVMExtensionsIsCustomScript(right)
+	leftCommand := strings.TrimSpace(valueOrEmpty(left.CurrentState.CommandClue)) != ""
+	rightCommand := strings.TrimSpace(valueOrEmpty(right.CurrentState.CommandClue)) != ""
+	leftSources := len(left.CurrentState.FileURIHosts)
+	rightSources := len(right.CurrentState.FileURIHosts)
+	leftRerun := len(left.CurrentState.RerunClues) > 0 || strings.TrimSpace(valueOrEmpty(left.CurrentState.ForceUpdateTag)) != ""
+	rightRerun := len(right.CurrentState.RerunClues) > 0 || strings.TrimSpace(valueOrEmpty(right.CurrentState.ForceUpdateTag)) != ""
+	leftProtected := boolPtrValue(left.CurrentState.ProtectedSettingsPresent) || boolPtrValue(left.CurrentState.KeyVaultProtectedSettings)
+	rightProtected := boolPtrValue(right.CurrentState.ProtectedSettingsPresent) || boolPtrValue(right.CurrentState.KeyVaultProtectedSettings)
+	switch {
+	case leftHasExecRole != rightHasExecRole:
+		return leftHasExecRole
+	case leftHasCurrentControl != rightHasCurrentControl:
+		return leftHasCurrentControl
+	case leftCustomScript != rightCustomScript:
+		return leftCustomScript
+	case leftCommand != rightCommand:
+		return leftCommand
+	case leftSources != rightSources:
+		return leftSources > rightSources
+	case leftRerun != rightRerun:
+		return leftRerun
+	case leftProtected != rightProtected:
+		return leftProtected
+	default:
+		return left.Name < right.Name
+	}
+}
+
+func persistenceContainerAppsJobTriggerRank(trigger *string) int {
+	switch strings.ToLower(strings.TrimSpace(valueOrEmpty(trigger))) {
+	case "schedule", "scheduled":
+		return 0
+	case "event", "event-driven":
+		return 1
+	case "manual":
+		return 2
+	default:
+		return 3
+	}
+}
+
 func persistenceWebJobModeRank(mode string) int {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "continuous":
@@ -1663,6 +2364,32 @@ func persistenceWebJobsInventoryRows(jobs []models.PersistenceWebJob) [][]string
 			job.CurrentState.ParentAppName,
 			persistenceWebJobsInventoryState(job),
 			persistenceWebJobsInventoryExecutionContext(job),
+		})
+	}
+	return rows
+}
+
+func persistenceContainerAppsJobsInventoryRows(jobs []models.PersistenceContainerAppsJob) [][]string {
+	rows := make([][]string, 0, len(jobs))
+	for _, job := range jobs {
+		rows = append(rows, []string{
+			job.Name,
+			persistenceContainerAppsJobsTriggerInventory(job),
+			persistenceContainerAppsJobsInventoryState(job),
+			persistenceContainerAppsJobsInventoryExecutionContext(job),
+		})
+	}
+	return rows
+}
+
+func persistenceVMExtensionsInventoryRows(extensions []models.PersistenceVMExtension) [][]string {
+	rows := make([][]string, 0, len(extensions))
+	for _, extension := range extensions {
+		rows = append(rows, []string{
+			extension.Name,
+			persistenceVMExtensionsTargetInventory(extension),
+			persistenceVMExtensionsInventoryState(extension),
+			persistenceVMExtensionsInventoryExecutionContext(extension),
 		})
 	}
 	return rows
@@ -1756,6 +2483,206 @@ func persistenceWebJobsInventoryExecutionContext(job models.PersistenceWebJob) s
 	return "none visible"
 }
 
+func persistenceContainerAppsJobsTriggerInventory(job models.PersistenceContainerAppsJob) string {
+	parts := []string{}
+	if trigger := strings.TrimSpace(valueOrEmpty(job.CurrentState.TriggerType)); trigger != "" {
+		parts = append(parts, trigger)
+	}
+	if schedule := strings.TrimSpace(valueOrEmpty(job.CurrentState.ScheduleExpression)); schedule != "" {
+		parts = append(parts, "schedule "+schedule)
+	}
+	if len(job.CurrentState.EventRules) > 0 {
+		parts = append(parts, fmt.Sprintf("%d event rule(s)", len(job.CurrentState.EventRules)))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceContainerAppsJobsInventoryState(job models.PersistenceContainerAppsJob) string {
+	parts := []string{}
+	if environment := strings.TrimSpace(valueOrEmpty(job.CurrentState.EnvironmentID)); environment != "" {
+		parts = append(parts, "environment "+resourceNameFromDisplayID(environment))
+	}
+	if len(job.CurrentState.ContainerImages) > 0 {
+		parts = append(parts, fmt.Sprintf("%d image clue(s)", len(job.CurrentState.ContainerImages)))
+	}
+	if len(job.CurrentState.Command) > 0 {
+		parts = append(parts, "command clue visible")
+	}
+	if count := intPtrValue(job.CurrentState.Parallelism); count > 0 {
+		parts = append(parts, fmt.Sprintf("parallelism=%d", count))
+	}
+	if count := intPtrValue(job.CurrentState.SecretCount); count > 0 {
+		parts = append(parts, fmt.Sprintf("secrets=%d", count))
+	}
+	if len(job.CurrentState.RegistryServers) > 0 {
+		parts = append(parts, "registries="+strings.Join(job.CurrentState.RegistryServers, ", "))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return wrapTableNote(strings.Join(parts, "; "), 72)
+}
+
+func persistenceContainerAppsJobsInventoryExecutionContext(job models.PersistenceContainerAppsJob) string {
+	if ctx := job.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return wrapTableNote(persistenceRoleContextLabel(*ctx), 72)
+		}
+		return wrapTableNote(persistenceRoleContextLine(ctx), 72)
+	}
+	if len(job.ExecutionContextOptions) > 0 {
+		return wrapTableNote(strings.Join(job.ExecutionContextOptions, ", "), 72)
+	}
+	return "none visible"
+}
+
+func persistenceVMExtensionsTargetInventory(extension models.PersistenceVMExtension) string {
+	target := persistenceVMExtensionsTargetKindLabel(extension)
+	if name := strings.TrimSpace(extension.CurrentState.TargetName); name != "" {
+		target += "=" + name
+	}
+	if len(extension.CurrentState.TargetIdentityIDs) > 0 {
+		target += fmt.Sprintf("; identities=%d", len(extension.CurrentState.TargetIdentityIDs))
+	}
+	return target
+}
+
+func persistenceVMExtensionsInventoryState(extension models.PersistenceVMExtension) string {
+	parts := []string{}
+	if handler := persistenceVMExtensionsHandlerLabel(extension); handler != "" {
+		parts = append(parts, handler)
+	}
+	if source := persistenceVMExtensionsSourceState(extension); source != "none visible" {
+		parts = append(parts, source)
+	}
+	if settings := persistenceVMExtensionsSettingsState(extension); settings != "none visible" {
+		parts = append(parts, settings)
+	}
+	if rerun := persistenceVMExtensionsRerunState(extension); rerun != "none visible" {
+		parts = append(parts, rerun)
+	}
+	if status := persistenceVMExtensionsStatusState(extension); status != "none visible" {
+		parts = append(parts, status)
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return wrapTableNote(strings.Join(parts, "; "), 72)
+}
+
+func persistenceVMExtensionsInventoryExecutionContext(extension models.PersistenceVMExtension) string {
+	if ctx := extension.CurrentState.StrongestVisibleExecutionContext; ctx != nil {
+		if len(ctx.RoleNames) > 0 {
+			return wrapTableNote(persistenceRoleContextLabel(*ctx), 72)
+		}
+		return wrapTableNote(persistenceRoleContextLine(ctx), 72)
+	}
+	if len(extension.ExecutionContextOptions) > 0 {
+		return wrapTableNote(strings.Join(extension.ExecutionContextOptions, ", "), 72)
+	}
+	return "none visible"
+}
+
+func persistenceVMExtensionsHandlerLabel(extension models.PersistenceVMExtension) string {
+	handler := firstNonEmptyText(valueOrEmpty(extension.CurrentState.Publisher), "unknown publisher") + "/" + firstNonEmptyText(valueOrEmpty(extension.CurrentState.ExtensionType), "unknown extension")
+	if version := strings.TrimSpace(valueOrEmpty(extension.CurrentState.TypeHandlerVersion)); version != "" {
+		handler += " " + version
+	}
+	return handler
+}
+
+func persistenceVMExtensionsSourceState(extension models.PersistenceVMExtension) string {
+	parts := []string{}
+	if len(extension.CurrentState.FileURIHosts) > 0 {
+		parts = append(parts, "file-hosts="+strings.Join(extension.CurrentState.FileURIHosts, ", "))
+	}
+	if count := intPtrValue(extension.CurrentState.FileURICount); count > 0 {
+		parts = append(parts, fmt.Sprintf("fileUris=%d", count))
+	}
+	if command := strings.TrimSpace(valueOrEmpty(extension.CurrentState.CommandClue)); command != "" {
+		parts = append(parts, "command clue `"+command+"`")
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceVMExtensionsSettingsState(extension models.PersistenceVMExtension) string {
+	parts := []string{}
+	if len(extension.CurrentState.PublicSettingKeys) > 0 {
+		parts = append(parts, "public="+strings.Join(extension.CurrentState.PublicSettingKeys, ", "))
+	}
+	if extension.CurrentState.ProtectedSettingsPresent != nil {
+		parts = append(parts, "protected="+boolWord(boolPtrValue(extension.CurrentState.ProtectedSettingsPresent)))
+	}
+	if boolPtrValue(extension.CurrentState.KeyVaultProtectedSettings) {
+		parts = append(parts, "kv-protected=yes")
+	}
+	if extension.CurrentState.SuppressFailures != nil {
+		parts = append(parts, "suppress-failures="+boolWord(boolPtrValue(extension.CurrentState.SuppressFailures)))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceVMExtensionsRerunState(extension models.PersistenceVMExtension) string {
+	parts := append([]string{}, extension.CurrentState.RerunClues...)
+	if tag := strings.TrimSpace(valueOrEmpty(extension.CurrentState.ForceUpdateTag)); tag != "" && !persistenceStringSliceContains(parts, "forceUpdateTag="+tag) {
+		parts = append(parts, "forceUpdateTag="+tag)
+	}
+	if len(extension.CurrentState.ProvisionAfterExtensions) > 0 {
+		parts = append(parts, "after="+strings.Join(extension.CurrentState.ProvisionAfterExtensions, ", "))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceVMExtensionsStatusState(extension models.PersistenceVMExtension) string {
+	parts := []string{}
+	if status := strings.TrimSpace(valueOrEmpty(extension.CurrentState.ProvisioningState)); status != "" {
+		parts = append(parts, "provisioning="+status)
+	}
+	if len(extension.CurrentState.InstanceViewStatuses) > 0 {
+		parts = append(parts, "instance="+strings.Join(extension.CurrentState.InstanceViewStatuses, ", "))
+	}
+	if len(parts) == 0 {
+		return "none visible"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func persistenceStringSliceContains(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func persistenceVMExtensionsTargetKindLabel(extension models.PersistenceVMExtension) string {
+	switch strings.ToLower(strings.TrimSpace(extension.CurrentState.TargetKind)) {
+	case "vm":
+		return "VM"
+	case "vmss":
+		return "VMSS"
+	default:
+		return firstNonEmptyText(strings.ToUpper(strings.TrimSpace(extension.CurrentState.TargetKind)), "target")
+	}
+}
+
+func persistenceVMExtensionsIsCustomScript(extension models.PersistenceVMExtension) bool {
+	return strings.Contains(strings.ToLower(valueOrEmpty(extension.CurrentState.ExtensionType)), "customscript")
+}
+
 func persistenceAppServiceCombinedStillUnmapped(apps []models.PersistenceAppService) []string {
 	items := []string{}
 	seen := map[string]struct{}{}
@@ -1772,10 +2699,28 @@ func persistenceAppServiceCombinedStillUnmapped(apps []models.PersistenceAppServ
 }
 
 func persistenceWebJobsCombinedStillUnmapped(jobs []models.PersistenceWebJob) []string {
+	return persistenceCombinedStillUnmapped(jobs, func(job models.PersistenceWebJob) []string {
+		return job.StillUnmapped
+	})
+}
+
+func persistenceContainerAppsJobsCombinedStillUnmapped(jobs []models.PersistenceContainerAppsJob) []string {
+	return persistenceCombinedStillUnmapped(jobs, func(job models.PersistenceContainerAppsJob) []string {
+		return job.StillUnmapped
+	})
+}
+
+func persistenceVMExtensionsCombinedStillUnmapped(extensions []models.PersistenceVMExtension) []string {
+	return persistenceCombinedStillUnmapped(extensions, func(extension models.PersistenceVMExtension) []string {
+		return extension.StillUnmapped
+	})
+}
+
+func persistenceCombinedStillUnmapped[T any](values []T, itemsFor func(T) []string) []string {
 	items := []string{}
 	seen := map[string]struct{}{}
-	for _, job := range jobs {
-		for _, item := range job.StillUnmapped {
+	for _, value := range values {
+		for _, item := range itemsFor(value) {
 			if _, ok := seen[item]; ok {
 				continue
 			}
@@ -2339,6 +3284,18 @@ func renderNaturalJoin(values []string) string {
 		prefix := strings.Join(values[:len(values)-1], ", ")
 		return prefix + ", and " + values[len(values)-1]
 	}
+}
+
+func quoteInlineValues(values []string) []string {
+	quoted := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		quoted = append(quoted, "`"+trimmed+"`")
+	}
+	return quoted
 }
 
 func renderScopeName(scopeID string) string {

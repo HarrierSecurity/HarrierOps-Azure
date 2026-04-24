@@ -21,8 +21,8 @@ var persistenceAzureMLSteps = []persistenceAzureMLStepDefinition{
 	{Action: "create or modify workspace", APISurface: "Microsoft.MachineLearningServices/workspaces"},
 	{Action: "attach or reuse compute", APISurface: "computes"},
 	{Action: "add or modify jobs or pipelines", APISurface: "jobs / pipelines"},
-	{Action: "create or modify schedule", APISurface: "schedules"},
 	{Action: "attach or reuse exec ctx", APISurface: "workspace identity"},
+	{Action: "create or modify schedule", APISurface: "schedules"},
 	{Action: "expose or reuse endpoint", APISurface: "onlineEndpoints"},
 }
 

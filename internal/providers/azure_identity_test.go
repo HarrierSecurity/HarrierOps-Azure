@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -29,6 +30,57 @@ func TestManagedIdentityNarrativeUsesLogicAppSpecificFollowup(t *testing.T) {
 	}
 	if !strings.Contains(summary, "Logic App 'la-inbound-redeploy'") {
 		t.Fatalf("expected Logic App summary, got %q", summary)
+	}
+}
+
+func TestRoleDefinitionDetailFromMapCollectsManagementActionLists(t *testing.T) {
+	detail := roleDefinitionDetailFromMap(map[string]any{
+		"name": "custom-role-id",
+		"properties": map[string]any{
+			"roleName": "Container Apps Job Operator",
+			"permissions": []any{
+				map[string]any{
+					"actions":        []any{"Microsoft.App/jobs/write", "Microsoft.App/jobs/read", "Microsoft.App/jobs/write"},
+					"notActions":     []any{"Microsoft.App/jobs/delete"},
+					"dataActions":    []any{"Microsoft.App/jobs/executions/logs/read"},
+					"notDataActions": []any{"Microsoft.App/jobs/secrets/read"},
+				},
+			},
+		},
+	})
+
+	if detail.roleName != "Container Apps Job Operator" {
+		t.Fatalf("expected role name to be collected, got %q", detail.roleName)
+	}
+	if got, want := strings.Join(detail.actions, ","), "Microsoft.App/jobs/read,Microsoft.App/jobs/write"; got != want {
+		t.Fatalf("expected deduped sorted actions %q, got %q", want, got)
+	}
+	if got, want := strings.Join(detail.notActions, ","), "Microsoft.App/jobs/delete"; got != want {
+		t.Fatalf("expected notActions %q, got %q", want, got)
+	}
+	if got, want := strings.Join(detail.dataActions, ","), "Microsoft.App/jobs/executions/logs/read"; got != want {
+		t.Fatalf("expected dataActions %q, got %q", want, got)
+	}
+	if got, want := strings.Join(detail.notDataActions, ","), "Microsoft.App/jobs/secrets/read"; got != want {
+		t.Fatalf("expected notDataActions %q, got %q", want, got)
+	}
+}
+
+func TestResolveRoleDefinitionDetailKeepsBuiltInFastPathNameOnly(t *testing.T) {
+	detail, err := resolveRoleDefinitionDetail(
+		context.Background(),
+		nil,
+		"/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+		map[string]roleDefinitionDetail{},
+	)
+	if err != nil {
+		t.Fatalf("expected built-in fast path to avoid role-definition client, got %v", err)
+	}
+	if detail.roleName != "Owner" {
+		t.Fatalf("expected Owner role name, got %q", detail.roleName)
+	}
+	if len(detail.actions) != 0 {
+		t.Fatalf("expected built-in fast path to avoid synthetic action collection, got %v", detail.actions)
 	}
 }
 

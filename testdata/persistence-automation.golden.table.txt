@@ -31,6 +31,7 @@ This walkthrough shows the strongest currently visible Automation persistence pa
    The strongest visible execution context here is the Automation Account identity `aa-hybrid-prod-mi`, which already holds Contributor at resource group rg-ops.
 
 - Current identity can create durable triggers for the runbook, including schedules, schedule links, and webhooks.
+   Visible schedule definitions here include `baseline-nightly: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T01:00:00Z; enabled=true`, `cert-rotation-weekly: frequency=Week; interval=1; timezone=UTC; start=2026-04-13T02:00:00Z; enabled=true; weekdays=Sunday`, and `nightly-reconcile: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T04:00:00Z; enabled=true`, plus 1 more.
 
 - Current identity can repurpose an existing Azure Automation Account instead of creating a new one.
    Nearby maintenance- or schedule-themed names visible from the current environment include `Baseline-Config`, `Nightly-Reconcile`, `Reapply-Agent`, and `Lab-Maintenance`.
@@ -42,7 +43,7 @@ aa-hybrid-prod     | rg-ops         | 6/7 published; schedules 4; webhooks 2; pr
 aa-lab-quiet       | rg-lab         | 1/2 published; schedules 1; webhooks 0; primary schedule | connections, variables                                         
 
 
-Still unmapped
-- the exact runbook code, content source, or operator intent behind this Automation surface
-- the exact downstream resources, workflows, or credentials this automation path would modify
-- the full schedule cadence, webhook URI, or trigger usefulness beyond the currently modeled metadata
+Not collected by default
+- the current command does not retrieve runbook code bodies, runbook package contents, or content source payloads, so operator intent is not inferred from Automation content here
+- the current command does not resolve the exact downstream resources, workflows, or credentials this automation path would modify without reading or executing runbook logic
+- the current command does not print webhook URI material, run job history, or runtime-side trigger success, so it does not prove a trigger is reachable or useful at execution time

@@ -622,6 +622,33 @@ func graphListObjects(ctx context.Context, token string, rawURL string) ([]map[s
 	return items, nil
 }
 
+func graphListObjectsLimit(ctx context.Context, token string, rawURL string, limit int) ([]map[string]any, bool, error) {
+	if limit <= 0 {
+		items, err := graphListObjects(ctx, token, rawURL)
+		return items, false, err
+	}
+	nextURL := rawURL
+	items := []map[string]any{}
+	for nextURL != "" {
+		payload, err := authorizedJSONGetWithToken(ctx, token, nextURL)
+		if err != nil {
+			return nil, false, err
+		}
+		pageItems := listValue(payload, "value")
+		for index, item := range pageItems {
+			if mapped, ok := item.(map[string]any); ok {
+				items = append(items, mapped)
+				if len(items) >= limit {
+					truncated := index < len(pageItems)-1 || mapStringValue(payload, "@odata.nextLink") != ""
+					return items, truncated, nil
+				}
+			}
+		}
+		nextURL = mapStringValue(payload, "@odata.nextLink")
+	}
+	return items, false, nil
+}
+
 func graphGetObject(ctx context.Context, token string, rawURL string) (map[string]any, error) {
 	return authorizedJSONGetWithToken(ctx, token, rawURL)
 }

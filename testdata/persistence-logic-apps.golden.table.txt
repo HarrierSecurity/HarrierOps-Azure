@@ -1,17 +1,19 @@
 HO-Azure :: attack-path-focused Azure recon
 context :: tenant=auto subscription=auto output=table
 
-[persistence] Logic App persistence means a stored workflow plus a trigger plus access that remains valid, not malware living on a host.
-Workflow capability
-action                              | api surface                           | status
+[persistence] Logic Apps persistence means a stored workflow plus trigger posture plus connector or identity context that Azure can run again later, not malware living on a host.
+Logic Apps capability
 
-create or modify workflow           | Microsoft.Logic/workflows             | yes   
-edit workflow definition            | workflow definition                   | yes   
-attach or reuse exec ctx            | workflow identity / connections       | yes   
-define or modify trigger            | request, recurrence, or event trigger | yes   
-enable workflow                     | workflow state                        | yes   
-add or repurpose downstream actions | workflow actions / connectors         | yes   
-
+╭─────────────────────────────────────┬───────────────────────────────────────┬────────╮
+│ action                              │ api surface                           │ status │
+├─────────────────────────────────────┼───────────────────────────────────────┼────────┤
+│ create or modify workflow           │ Microsoft.Logic/workflows             │ yes    │
+│ edit workflow definition            │ workflow definition                   │ yes    │
+│ attach or reuse exec ctx            │ workflow identity / connections       │ yes    │
+│ define or modify trigger            │ request, recurrence, or event trigger │ yes    │
+│ enable workflow                     │ workflow state                        │ yes    │
+│ add or repurpose downstream actions │ workflow actions / connectors         │ yes    │
+╰─────────────────────────────────────┴───────────────────────────────────────┴────────╯
 This walkthrough shows the strongest currently visible Logic App persistence path. The inventory below lists the other visible workflows without repeating the same narrative.
 - Current identity can create a new Logic App or modify this existing workflow.
 
@@ -40,8 +42,9 @@ la-nightly-sync     | rg-workflow    | persistence-capable; recurrence Day/1  | 
 la-event-router     | rg-workflow    | execution-capable-only; api-connection | `ua-workflow-router` with Contributor at resource group `rg-workflow`          
 
 
-Still unmapped
-- the exact workflow definition, connector secret material, or operator intent behind this Logic App
-- the exact callback URL, access signature, or upstream caller identity behind the visible trigger posture
-- the exact downstream payloads, connection credentials, or whether each visible action category reaches a high-value target
-- whether a later definition change would turn this workflow into durable request or recurrence-backed re-entry
+Not collected by default
+- the current command does not print full workflow definitions, connector secret material, or connection credential values, so operator intent is not inferred from hidden workflow content here
+- the current command does not print callback URLs, access signatures, or other trigger secret material behind the visible trigger posture
+- the current command does not invoke request triggers, validate upstream caller auth, or prove runtime-side trigger success
+- the current command does not resolve exact downstream payloads or high-value target impact without deeper workflow and connector inspection
+- the current command does not prove whether a later definition change would turn this workflow into durable request or recurrence-backed re-entry

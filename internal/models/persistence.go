@@ -41,6 +41,7 @@ type PersistenceAutomationAccountState struct {
 	PublishedRunbookCount            *int                    `json:"published_runbook_count,omitempty"`
 	PublishedRunbookNames            []string                `json:"published_runbook_names"`
 	ScheduleCount                    *int                    `json:"schedule_count,omitempty"`
+	ScheduleDefinitions              []string                `json:"schedule_definitions"`
 	JobScheduleCount                 *int                    `json:"job_schedule_count,omitempty"`
 	WebhookCount                     *int                    `json:"webhook_count,omitempty"`
 	HybridWorkerGroupCount           *int                    `json:"hybrid_worker_group_count,omitempty"`
@@ -224,6 +225,110 @@ type PersistenceWebJobsOutput struct {
 	BackingCommands    []string              `json:"backing_commands"`
 	WebJobs            []PersistenceWebJob   `json:"webjobs"`
 	Issues             []Issue               `json:"issues"`
+}
+
+type PersistenceContainerAppsJobState struct {
+	EnvironmentID                    *string                     `json:"environment_id,omitempty"`
+	TriggerType                      *string                     `json:"trigger_type,omitempty"`
+	ScheduleExpression               *string                     `json:"schedule_expression,omitempty"`
+	EventRules                       []ContainerAppsJobEventRule `json:"event_rules,omitempty"`
+	ContainerImages                  []string                    `json:"container_images,omitempty"`
+	Command                          []string                    `json:"command,omitempty"`
+	Parallelism                      *int                        `json:"parallelism,omitempty"`
+	ReplicaCompletionCount           *int                        `json:"replica_completion_count,omitempty"`
+	ReplicaRetryLimit                *int                        `json:"replica_retry_limit,omitempty"`
+	ReplicaTimeout                   *int                        `json:"replica_timeout,omitempty"`
+	IdentityType                     *string                     `json:"identity_type,omitempty"`
+	WorkloadPrincipalID              *string                     `json:"workload_principal_id,omitempty"`
+	WorkloadClientID                 *string                     `json:"workload_client_id,omitempty"`
+	WorkloadIdentityIDs              []string                    `json:"workload_identity_ids,omitempty"`
+	SecretCount                      *int                        `json:"secret_count,omitempty"`
+	KeyVaultSecretCount              *int                        `json:"key_vault_secret_count,omitempty"`
+	RegistryServers                  []string                    `json:"registry_servers,omitempty"`
+	RegistryIdentityCount            *int                        `json:"registry_identity_count,omitempty"`
+	RegistryPasswordRefCount         *int                        `json:"registry_password_ref_count,omitempty"`
+	StrongestVisibleExecutionContext *PersistenceRoleContext     `json:"strongest_visible_execution_context,omitempty"`
+	NearbyThematicNames              []string                    `json:"nearby_thematic_names,omitempty"`
+}
+
+type PersistenceContainerAppsJob struct {
+	ID                      string                           `json:"id"`
+	Name                    string                           `json:"container_apps_job"`
+	ResourceGroup           string                           `json:"resource_group"`
+	Location                string                           `json:"location"`
+	CapabilitySteps         []PersistenceCapabilityStep      `json:"capability_steps"`
+	CurrentIdentityContext  *PersistenceRoleContext          `json:"current_identity_context,omitempty"`
+	ExecutionContextOptions []string                         `json:"execution_context_options"`
+	CurrentState            PersistenceContainerAppsJobState `json:"current_state"`
+	StillUnmapped           []string                         `json:"still_unmapped"`
+	Summary                 string                           `json:"summary"`
+	RelatedIDs              []string                         `json:"related_ids"`
+}
+
+type PersistenceContainerAppsJobsOutput struct {
+	Metadata           ScopedCommandMetadata         `json:"metadata"`
+	GroupedCommandName string                        `json:"grouped_command_name"`
+	Surface            string                        `json:"surface"`
+	InputMode          string                        `json:"input_mode"`
+	CommandState       string                        `json:"command_state"`
+	Summary            string                        `json:"summary"`
+	BackingCommands    []string                      `json:"backing_commands"`
+	ContainerAppsJobs  []PersistenceContainerAppsJob `json:"container_apps_jobs"`
+	Issues             []Issue                       `json:"issues"`
+}
+
+type PersistenceVMExtensionState struct {
+	TargetKind                       string                  `json:"target_kind"`
+	TargetName                       string                  `json:"target_name"`
+	TargetID                         string                  `json:"target_id"`
+	Publisher                        *string                 `json:"publisher,omitempty"`
+	ExtensionType                    *string                 `json:"extension_type,omitempty"`
+	TypeHandlerVersion               *string                 `json:"type_handler_version,omitempty"`
+	AutoUpgradeMinorVersion          *bool                   `json:"auto_upgrade_minor_version,omitempty"`
+	EnableAutomaticUpgrade           *bool                   `json:"enable_automatic_upgrade,omitempty"`
+	FileURIHosts                     []string                `json:"file_uri_hosts,omitempty"`
+	FileURICount                     *int                    `json:"file_uri_count,omitempty"`
+	CommandClue                      *string                 `json:"command_clue,omitempty"`
+	PublicSettingKeys                []string                `json:"public_setting_keys,omitempty"`
+	ProtectedSettingsPresent         *bool                   `json:"protected_settings_present,omitempty"`
+	KeyVaultProtectedSettings        *bool                   `json:"key_vault_protected_settings,omitempty"`
+	SuppressFailures                 *bool                   `json:"suppress_failures,omitempty"`
+	ForceUpdateTag                   *string                 `json:"force_update_tag,omitempty"`
+	RerunClues                       []string                `json:"rerun_clues,omitempty"`
+	ProvisionAfterExtensions         []string                `json:"provision_after_extensions,omitempty"`
+	ProvisioningState                *string                 `json:"provisioning_state,omitempty"`
+	InstanceViewStatuses             []string                `json:"instance_view_statuses,omitempty"`
+	TargetIdentityIDs                []string                `json:"target_identity_ids,omitempty"`
+	StrongestVisibleExecutionContext *PersistenceRoleContext `json:"strongest_visible_execution_context,omitempty"`
+	VMSSOrchestrationMode            *string                 `json:"vmss_orchestration_mode,omitempty"`
+	VMSSUpgradeMode                  *string                 `json:"vmss_upgrade_mode,omitempty"`
+	NearbyThematicNames              []string                `json:"nearby_thematic_names,omitempty"`
+}
+
+type PersistenceVMExtension struct {
+	ID                      string                      `json:"id"`
+	Name                    string                      `json:"vm_extension"`
+	ResourceGroup           string                      `json:"resource_group"`
+	Location                string                      `json:"location"`
+	CapabilitySteps         []PersistenceCapabilityStep `json:"capability_steps"`
+	CurrentIdentityContext  *PersistenceRoleContext     `json:"current_identity_context,omitempty"`
+	ExecutionContextOptions []string                    `json:"execution_context_options"`
+	CurrentState            PersistenceVMExtensionState `json:"current_state"`
+	StillUnmapped           []string                    `json:"still_unmapped"`
+	Summary                 string                      `json:"summary"`
+	RelatedIDs              []string                    `json:"related_ids"`
+}
+
+type PersistenceVMExtensionsOutput struct {
+	Metadata           ScopedCommandMetadata    `json:"metadata"`
+	GroupedCommandName string                   `json:"grouped_command_name"`
+	Surface            string                   `json:"surface"`
+	InputMode          string                   `json:"input_mode"`
+	CommandState       string                   `json:"command_state"`
+	Summary            string                   `json:"summary"`
+	BackingCommands    []string                 `json:"backing_commands"`
+	VMExtensions       []PersistenceVMExtension `json:"vm_extensions"`
+	Issues             []Issue                  `json:"issues"`
 }
 
 type PersistenceAzureMLWorkspaceState struct {

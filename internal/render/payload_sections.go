@@ -22,6 +22,8 @@ func payloadFindings(payload any) []models.Finding {
 		return cloneFindings(out.Findings)
 	case models.ContainerAppsOutput:
 		return cloneFindings(out.Findings)
+	case models.ContainerAppsJobsOutput:
+		return cloneFindings(out.Findings)
 	case models.ContainerInstancesOutput:
 		return cloneFindings(out.Findings)
 	case models.CrossTenantOutput:
@@ -62,6 +64,8 @@ func payloadFindings(payload any) []models.Finding {
 		return tokenCredentialFindings(out.Findings)
 	case models.VmsOutput:
 		return vmFindings(out.Findings)
+	case models.VMExtensionsOutput:
+		return cloneFindings(out.Findings)
 	case models.VmssOutput:
 		return cloneFindings(out.Findings)
 	case models.WorkloadsOutput:
@@ -96,6 +100,8 @@ func payloadIssues(payload any) []models.Issue {
 	case models.ChainsOverviewOutput:
 		return cloneIssues(out.Issues)
 	case models.ContainerAppsOutput:
+		return cloneIssues(out.Issues)
+	case models.ContainerAppsJobsOutput:
 		return cloneIssues(out.Issues)
 	case models.ContainerInstancesOutput:
 		return cloneIssues(out.Issues)
@@ -137,6 +143,10 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.PersistenceWebJobsOutput:
 		return cloneIssues(out.Issues)
+	case models.PersistenceContainerAppsJobsOutput:
+		return cloneIssues(out.Issues)
+	case models.PersistenceVMExtensionsOutput:
+		return cloneIssues(out.Issues)
 	case models.PersistenceAzureMLOutput:
 		return cloneIssues(out.Issues)
 	case models.PersistenceFunctionsOutput:
@@ -162,6 +172,8 @@ func payloadIssues(payload any) []models.Issue {
 	case models.TokensCredentialsOutput:
 		return cloneIssues(out.Issues)
 	case models.VmsOutput:
+		return cloneIssues(out.Issues)
+	case models.VMExtensionsOutput:
 		return cloneIssues(out.Issues)
 	case models.VmssOutput:
 		return cloneIssues(out.Issues)

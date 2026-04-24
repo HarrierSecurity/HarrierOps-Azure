@@ -49,6 +49,10 @@ func persistenceCSVRenderer(payload any) (string, error) {
 		return persistenceAppServiceCSV(out)
 	case models.PersistenceWebJobsOutput:
 		return persistenceWebJobsCSV(out)
+	case models.PersistenceContainerAppsJobsOutput:
+		return persistenceContainerAppsJobsCSV(out)
+	case models.PersistenceVMExtensionsOutput:
+		return persistenceVMExtensionsCSV(out)
 	case models.PersistenceAzureMLOutput:
 		return persistenceAzureMLCSV(out)
 	case models.PersistenceFunctionsOutput:
@@ -78,6 +82,27 @@ func encodeCSV(headers []string, rows [][]string) (string, error) {
 		return "", err
 	}
 	return buffer.String(), nil
+}
+
+type csvColumn[T any] struct {
+	header string
+	value  func(T) string
+}
+
+func encodeCSVColumns[T any](columns []csvColumn[T], values []T) (string, error) {
+	headers := make([]string, 0, len(columns))
+	for _, column := range columns {
+		headers = append(headers, column.header)
+	}
+	rows := make([][]string, 0, len(values))
+	for _, value := range values {
+		row := make([]string, 0, len(columns))
+		for _, column := range columns {
+			row = append(row, column.value(value))
+		}
+		rows = append(rows, row)
+	}
+	return encodeCSV(headers, rows)
 }
 
 func rbacCSV(payload models.RbacOutput) (string, error) {
@@ -121,6 +146,7 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 			intPtrString(account.PublishedRunbookCount),
 			jsonStringSlice(account.PublishedRunbookNames),
 			intPtrString(account.ScheduleCount),
+			jsonStringSlice(account.ScheduleDefinitions),
 			intPtrString(account.JobScheduleCount),
 			intPtrString(account.WebhookCount),
 			intPtrString(account.HybridWorkerGroupCount),
@@ -162,6 +188,7 @@ func automationCSV(payload models.AutomationOutput) (string, error) {
 		"published_runbook_count",
 		"published_runbook_names",
 		"schedule_count",
+		"schedule_definitions",
 		"job_schedule_count",
 		"webhook_count",
 		"hybrid_worker_group_count",
@@ -401,6 +428,7 @@ func persistenceAutomationCSV(payload models.PersistenceAutomationOutput) (strin
 			intPtrString(account.CurrentState.PublishedRunbookCount),
 			jsonStringSlice(account.CurrentState.PublishedRunbookNames),
 			intPtrString(account.CurrentState.ScheduleCount),
+			jsonStringSlice(account.CurrentState.ScheduleDefinitions),
 			intPtrString(account.CurrentState.JobScheduleCount),
 			intPtrString(account.CurrentState.WebhookCount),
 			intPtrString(account.CurrentState.HybridWorkerGroupCount),
@@ -440,6 +468,7 @@ func persistenceAutomationCSV(payload models.PersistenceAutomationOutput) (strin
 		"published_runbook_count",
 		"published_runbook_names",
 		"schedule_count",
+		"schedule_definitions",
 		"job_schedule_count",
 		"webhook_count",
 		"hybrid_worker_group_count",
@@ -603,6 +632,180 @@ func persistenceWebJobsCSV(payload models.PersistenceWebJobsOutput) (string, err
 		"summary",
 		"related_ids",
 	}, rows)
+}
+
+func persistenceContainerAppsJobsCSV(payload models.PersistenceContainerAppsJobsOutput) (string, error) {
+	return encodeCSVColumns(persistenceContainerAppsJobsCSVColumns(), payload.ContainerAppsJobs)
+}
+
+func persistenceContainerAppsJobsCSVColumns() []csvColumn[models.PersistenceContainerAppsJob] {
+	return []csvColumn[models.PersistenceContainerAppsJob]{
+		{"id", func(job models.PersistenceContainerAppsJob) string { return job.ID }},
+		{"container_apps_job", func(job models.PersistenceContainerAppsJob) string { return job.Name }},
+		{"resource_group", func(job models.PersistenceContainerAppsJob) string { return job.ResourceGroup }},
+		{"location", func(job models.PersistenceContainerAppsJob) string { return job.Location }},
+		{"capability_steps", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(persistenceCapabilityStepsCSV(job.CapabilitySteps))
+		}},
+		{"current_identity_context", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(persistenceRoleContextCSV(job.CurrentIdentityContext))
+		}},
+		{"execution_context_options", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(job.ExecutionContextOptions)
+		}},
+		{"environment_id", func(job models.PersistenceContainerAppsJob) string {
+			return valueOrEmpty(job.CurrentState.EnvironmentID)
+		}},
+		{"trigger_type", func(job models.PersistenceContainerAppsJob) string { return valueOrEmpty(job.CurrentState.TriggerType) }},
+		{"schedule_expression", func(job models.PersistenceContainerAppsJob) string {
+			return valueOrEmpty(job.CurrentState.ScheduleExpression)
+		}},
+		{"event_rules", func(job models.PersistenceContainerAppsJob) string {
+			return containerAppsJobEventRulesCSV(job.CurrentState.EventRules)
+		}},
+		{"container_images", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(job.CurrentState.ContainerImages)
+		}},
+		{"command", func(job models.PersistenceContainerAppsJob) string { return jsonStringSlice(job.CurrentState.Command) }},
+		{"parallelism", func(job models.PersistenceContainerAppsJob) string { return intPtrString(job.CurrentState.Parallelism) }},
+		{"replica_completion_count", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.ReplicaCompletionCount)
+		}},
+		{"replica_retry_limit", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.ReplicaRetryLimit)
+		}},
+		{"replica_timeout", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.ReplicaTimeout)
+		}},
+		{"identity_type", func(job models.PersistenceContainerAppsJob) string {
+			return valueOrEmpty(job.CurrentState.IdentityType)
+		}},
+		{"workload_principal_id", func(job models.PersistenceContainerAppsJob) string {
+			return valueOrEmpty(job.CurrentState.WorkloadPrincipalID)
+		}},
+		{"workload_client_id", func(job models.PersistenceContainerAppsJob) string {
+			return valueOrEmpty(job.CurrentState.WorkloadClientID)
+		}},
+		{"workload_identity_ids", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(job.CurrentState.WorkloadIdentityIDs)
+		}},
+		{"secret_count", func(job models.PersistenceContainerAppsJob) string { return intPtrString(job.CurrentState.SecretCount) }},
+		{"key_vault_secret_count", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.KeyVaultSecretCount)
+		}},
+		{"registry_servers", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(job.CurrentState.RegistryServers)
+		}},
+		{"registry_identity_count", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.RegistryIdentityCount)
+		}},
+		{"registry_password_ref_count", func(job models.PersistenceContainerAppsJob) string {
+			return intPtrString(job.CurrentState.RegistryPasswordRefCount)
+		}},
+		{"strongest_visible_execution_context", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(persistenceRoleContextCSV(job.CurrentState.StrongestVisibleExecutionContext))
+		}},
+		{"nearby_thematic_names", func(job models.PersistenceContainerAppsJob) string {
+			return jsonStringSlice(job.CurrentState.NearbyThematicNames)
+		}},
+		{"still_unmapped", func(job models.PersistenceContainerAppsJob) string { return jsonStringSlice(job.StillUnmapped) }},
+		{"summary", func(job models.PersistenceContainerAppsJob) string { return job.Summary }},
+		{"related_ids", func(job models.PersistenceContainerAppsJob) string { return jsonStringSlice(job.RelatedIDs) }},
+	}
+}
+
+func persistenceVMExtensionsCSV(payload models.PersistenceVMExtensionsOutput) (string, error) {
+	return encodeCSVColumns(persistenceVMExtensionsCSVColumns(), payload.VMExtensions)
+}
+
+func persistenceVMExtensionsCSVColumns() []csvColumn[models.PersistenceVMExtension] {
+	return []csvColumn[models.PersistenceVMExtension]{
+		{"id", func(extension models.PersistenceVMExtension) string { return extension.ID }},
+		{"vm_extension", func(extension models.PersistenceVMExtension) string { return extension.Name }},
+		{"resource_group", func(extension models.PersistenceVMExtension) string { return extension.ResourceGroup }},
+		{"location", func(extension models.PersistenceVMExtension) string { return extension.Location }},
+		{"capability_steps", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(persistenceCapabilityStepsCSV(extension.CapabilitySteps))
+		}},
+		{"current_identity_context", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(persistenceRoleContextCSV(extension.CurrentIdentityContext))
+		}},
+		{"execution_context_options", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.ExecutionContextOptions)
+		}},
+		{"target_kind", func(extension models.PersistenceVMExtension) string { return extension.CurrentState.TargetKind }},
+		{"target_name", func(extension models.PersistenceVMExtension) string { return extension.CurrentState.TargetName }},
+		{"target_id", func(extension models.PersistenceVMExtension) string { return extension.CurrentState.TargetID }},
+		{"publisher", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.Publisher)
+		}},
+		{"extension_type", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.ExtensionType)
+		}},
+		{"type_handler_version", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.TypeHandlerVersion)
+		}},
+		{"auto_upgrade_minor_version", func(extension models.PersistenceVMExtension) string {
+			return boolPtrString(extension.CurrentState.AutoUpgradeMinorVersion)
+		}},
+		{"enable_automatic_upgrade", func(extension models.PersistenceVMExtension) string {
+			return boolPtrString(extension.CurrentState.EnableAutomaticUpgrade)
+		}},
+		{"file_uri_hosts", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.FileURIHosts)
+		}},
+		{"file_uri_count", func(extension models.PersistenceVMExtension) string {
+			return intPtrString(extension.CurrentState.FileURICount)
+		}},
+		{"command_clue", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.CommandClue)
+		}},
+		{"public_setting_keys", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.PublicSettingKeys)
+		}},
+		{"protected_settings_present", func(extension models.PersistenceVMExtension) string {
+			return boolPtrString(extension.CurrentState.ProtectedSettingsPresent)
+		}},
+		{"key_vault_protected_settings", func(extension models.PersistenceVMExtension) string {
+			return boolPtrString(extension.CurrentState.KeyVaultProtectedSettings)
+		}},
+		{"suppress_failures", func(extension models.PersistenceVMExtension) string {
+			return boolPtrString(extension.CurrentState.SuppressFailures)
+		}},
+		{"force_update_tag", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.ForceUpdateTag)
+		}},
+		{"rerun_clues", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.RerunClues)
+		}},
+		{"provision_after_extensions", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.ProvisionAfterExtensions)
+		}},
+		{"provisioning_state", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.ProvisioningState)
+		}},
+		{"instance_view_statuses", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.InstanceViewStatuses)
+		}},
+		{"target_identity_ids", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.TargetIdentityIDs)
+		}},
+		{"strongest_visible_execution_context", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(persistenceRoleContextCSV(extension.CurrentState.StrongestVisibleExecutionContext))
+		}},
+		{"vmss_orchestration_mode", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.VMSSOrchestrationMode)
+		}},
+		{"vmss_upgrade_mode", func(extension models.PersistenceVMExtension) string {
+			return valueOrEmpty(extension.CurrentState.VMSSUpgradeMode)
+		}},
+		{"nearby_thematic_names", func(extension models.PersistenceVMExtension) string {
+			return jsonStringSlice(extension.CurrentState.NearbyThematicNames)
+		}},
+		{"still_unmapped", func(extension models.PersistenceVMExtension) string { return jsonStringSlice(extension.StillUnmapped) }},
+		{"summary", func(extension models.PersistenceVMExtension) string { return extension.Summary }},
+		{"related_ids", func(extension models.PersistenceVMExtension) string { return jsonStringSlice(extension.RelatedIDs) }},
+	}
 }
 
 func persistenceAzureMLCSV(payload models.PersistenceAzureMLOutput) (string, error) {
@@ -1535,6 +1738,66 @@ func containerAppsCSV(payload models.ContainerAppsOutput) (string, error) {
 	}, rows)
 }
 
+func containerAppsJobsCSV(payload models.ContainerAppsJobsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.ContainerAppsJobs))
+	for _, job := range payload.ContainerAppsJobs {
+		rows = append(rows, []string{
+			join(job.Command, ";"),
+			join(job.ContainerImages, ";"),
+			valueOrEmpty(job.EnvironmentID),
+			containerAppsJobEventRulesCSV(job.EventRules),
+			job.ID,
+			intPtrString(job.KeyVaultSecretCount),
+			job.Location,
+			job.Name,
+			intPtrString(job.Parallelism),
+			intPtrString(job.RegistryIdentityCount),
+			intPtrString(job.RegistryPasswordRefCount),
+			join(job.RegistryServers, ";"),
+			join(job.RelatedIDs, ";"),
+			intPtrString(job.ReplicaCompletionCount),
+			intPtrString(job.ReplicaRetryLimit),
+			intPtrString(job.ReplicaTimeout),
+			job.ResourceGroup,
+			valueOrEmpty(job.ScheduleExpression),
+			intPtrString(job.SecretCount),
+			job.Summary,
+			valueOrEmpty(job.TriggerType),
+			valueOrEmpty(job.WorkloadClientID),
+			join(job.WorkloadIdentityIDs, ";"),
+			valueOrEmpty(job.WorkloadIdentityType),
+			valueOrEmpty(job.WorkloadPrincipalID),
+		})
+	}
+	return encodeCSV([]string{
+		"command",
+		"container_images",
+		"environment_id",
+		"event_rules",
+		"id",
+		"key_vault_secret_count",
+		"location",
+		"name",
+		"parallelism",
+		"registry_identity_count",
+		"registry_password_ref_count",
+		"registry_servers",
+		"related_ids",
+		"replica_completion_count",
+		"replica_retry_limit",
+		"replica_timeout",
+		"resource_group",
+		"schedule_expression",
+		"secret_count",
+		"summary",
+		"trigger_type",
+		"workload_client_id",
+		"workload_identity_ids",
+		"workload_identity_type",
+		"workload_principal_id",
+	}, rows)
+}
+
 func containerInstancesCSV(payload models.ContainerInstancesOutput) (string, error) {
 	rows := make([][]string, 0, len(payload.ContainerInstances))
 	for _, item := range payload.ContainerInstances {
@@ -1766,6 +2029,76 @@ func vmsCSV(payload models.VmsOutput) (string, error) {
 		"public_ips",
 		"resource_group",
 		"vm_type",
+	}, rows)
+}
+
+func vmExtensionsCSV(payload models.VMExtensionsOutput) (string, error) {
+	rows := make([][]string, 0, len(payload.VMExtensions))
+	for _, extension := range payload.VMExtensions {
+		rows = append(rows, []string{
+			boolPtrString(extension.AutoUpgradeMinorVersion),
+			valueOrEmpty(extension.CommandClue),
+			boolPtrString(extension.EnableAutomaticUpgrade),
+			valueOrEmpty(extension.ExtensionType),
+			join(extension.FileURIHosts, ";"),
+			intPtrString(extension.FileURICount),
+			valueOrEmpty(extension.ForceUpdateTag),
+			extension.ID,
+			join(extension.InstanceViewStatuses, ";"),
+			boolPtrString(extension.KeyVaultProtectedSettings),
+			extension.Location,
+			extension.Name,
+			boolPtrString(extension.ProtectedSettingsPresent),
+			join(extension.ProvisionAfterExtensions, ";"),
+			valueOrEmpty(extension.ProvisioningState),
+			valueOrEmpty(extension.Publisher),
+			join(extension.PublicSettingKeys, ";"),
+			join(extension.RelatedIDs, ";"),
+			extension.ResourceGroup,
+			join(extension.RerunClues, ";"),
+			join(extension.SourceClues, ";"),
+			extension.Summary,
+			boolPtrString(extension.SuppressFailures),
+			extension.TargetID,
+			join(extension.TargetIdentityIDs, ";"),
+			extension.TargetKind,
+			extension.TargetName,
+			valueOrEmpty(extension.TypeHandlerVersion),
+			valueOrEmpty(extension.VMSSOrchestrationMode),
+			valueOrEmpty(extension.VMSSUpgradeMode),
+		})
+	}
+	return encodeCSV([]string{
+		"auto_upgrade_minor_version",
+		"command_clue",
+		"enable_automatic_upgrade",
+		"extension_type",
+		"file_uri_hosts",
+		"file_uri_count",
+		"force_update_tag",
+		"id",
+		"instance_view_statuses",
+		"key_vault_protected_settings",
+		"location",
+		"name",
+		"protected_settings_present",
+		"provision_after_extensions",
+		"provisioning_state",
+		"publisher",
+		"public_setting_keys",
+		"related_ids",
+		"resource_group",
+		"rerun_clues",
+		"source_clues",
+		"summary",
+		"suppress_failures",
+		"target_id",
+		"target_identity_ids",
+		"target_kind",
+		"target_name",
+		"type_handler_version",
+		"vmss_orchestration_mode",
+		"vmss_upgrade_mode",
 	}, rows)
 }
 
@@ -2494,6 +2827,27 @@ func intJoin(values []int, separator string) string {
 		parts = append(parts, fmt.Sprintf("%d", value))
 	}
 	return join(parts, separator)
+}
+
+func containerAppsJobEventRulesCSV(rules []models.ContainerAppsJobEventRule) string {
+	if len(rules) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		section := rule.Name
+		if rule.Type != "" {
+			section += ":" + rule.Type
+		}
+		if len(rule.AuthSecretRefs) > 0 {
+			section += ":auth=" + join(rule.AuthSecretRefs, "|")
+		}
+		if rule.Identity != nil && *rule.Identity != "" {
+			section += ":identity=" + *rule.Identity
+		}
+		parts = append(parts, section)
+	}
+	return join(parts, ";")
 }
 
 func boolPtrString(value *bool) string {

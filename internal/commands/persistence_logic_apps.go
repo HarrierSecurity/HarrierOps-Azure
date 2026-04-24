@@ -217,12 +217,13 @@ func persistenceLogicAppIdentityName(workflow models.LogicAppWorkflowAsset) stri
 
 func persistenceLogicAppStillUnmapped(workflow models.LogicAppWorkflowAsset) []string {
 	items := []string{
-		"the exact workflow definition, connector secret material, or operator intent behind this Logic App",
-		"the exact callback URL, access signature, or upstream caller identity behind the visible trigger posture",
-		"the exact downstream payloads, connection credentials, or whether each visible action category reaches a high-value target",
+		"the current command does not print full workflow definitions, connector secret material, or connection credential values, so operator intent is not inferred from hidden workflow content here",
+		"the current command does not print callback URLs, access signatures, or other trigger secret material behind the visible trigger posture",
+		"the current command does not invoke request triggers, validate upstream caller auth, or prove runtime-side trigger success",
+		"the current command does not resolve exact downstream payloads or high-value target impact without deeper workflow and connector inspection",
 	}
 	if !persistenceLogicAppIsDurable(workflow) {
-		items = append(items, "whether a later definition change would turn this workflow into durable request or recurrence-backed re-entry")
+		items = append(items, "the current command does not prove whether a later definition change would turn this workflow into durable request or recurrence-backed re-entry")
 	}
 	return dedupeStrings(items)
 }

@@ -20,9 +20,9 @@ type persistenceFunctionStepDefinition struct {
 var persistenceFunctionSteps = []persistenceFunctionStepDefinition{
 	{Action: "create or modify function app", APISurface: "Microsoft.Web/sites"},
 	{Action: "deploy or replace code", APISurface: "zip deploy / run-from-package / publish"},
-	{Action: "attach or reuse exec ctx", APISurface: "function identity / app settings"},
-	{Action: "change app settings or deployment config", APISurface: "app settings / site config"},
 	{Action: "repurpose trigger posture", APISurface: "HTTP, timer, queue, or event trigger"},
+	{Action: "change app settings or deployment config", APISurface: "app settings / site config"},
+	{Action: "attach or reuse exec ctx", APISurface: "function identity / app settings"},
 	{Action: "restart or enable function host", APISurface: "site state / restart action"},
 }
 
