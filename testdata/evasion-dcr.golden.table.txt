@@ -1,0 +1,45 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[evasion] DCR evasion means Azure Monitor collection, data flow, destination, association, and transformation posture can quietly reshape what defender telemetry says without proving log-content loss by default.
+DCR evasion capability
+
+╭──────────────────────────────────────────┬─────────────────────────────────────────────────────────┬──────────────────────╮
+│ action                                   │ api surface                                             │ status               │
+├──────────────────────────────────────────┼─────────────────────────────────────────────────────────┼──────────────────────┤
+│ choose or create DCR                     │ Microsoft.Insights/dataCollectionRules/write            │ yes                  │
+│ associate monitored scope                │ Microsoft.Insights/dataCollectionRuleAssociations/write │ yes                  │
+│ select data sources and streams          │ dataSources / dataFlows.streams                         │ yes                  │
+│ configure data flows and transformations │ dataFlows.transformKql                                  │ yes                  │
+│ select destinations                      │ destinations / dataFlows.destinations                   │ yes                  │
+│ save or re-associate rule                │ DCR write plus association write                        │ yes                  │
+│ shape defender truth                     │ streams, dataFlows, destinations, transformKql          │ yes                  │
+│ preserve Azure-side config               │ stored DCR and association resources                    │ yes                  │
+│ blend as monitoring change               │ DCR metadata and ARM posture                            │ visible posture only │
+╰──────────────────────────────────────────┴─────────────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible DCR truth-disruption path. The inventory below lists the other visible DCRs without repeating the same narrative.
+
+Operator read
+DCR "dcr-prod-host" ranks 5/5 for quiet truth-disruption posture; 1 transformation clue(s); high-signal streams: Microsoft-WindowsEvent, Microsoft-Syslog; destinations: logAnalytics; current identity can affect both rule content and association scope from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible DCR write control and association write control.
+Downstream effect: transformations can alter selected high-signal data while collection remains configured; current identity has visible rule and association write control
+First boundary: this is DCR management-plane posture, not log-content proof, runtime agent proof, or downstream detector failure.
+Transformation posture: transformation posture is visible on a DCR with high-signal streams.
+Destination posture: operator-selected destinations visible: logAnalytics.
+Association scope: vm-web-01.
+
+Visible DCRs
+dcr               | rank | streams                                  | destinations | transforms | current identity
+
+dcr-prod-host     | 5/5  | Microsoft-Syslog, Microsoft-WindowsEvent | logAnalytics | 1          | DCR + association write
+dcr-ama-migration | 2/5  | Custom-AppText_CL, Microsoft-Perf        | eventHubs    | 0          | DCR + association write
+
+
+Not collected by default
+item                                  | classification      | reason
+
+transformKql body                     | operational anomaly | Presence, length, and fingerprint are enough for posture; printing full transform logic can expose sensitive filtering logic and encourages overclaiming intent.
+log arrival or missing-record proof   | proof boundary      | Management-plane DCR posture cannot prove which records arrived, were dropped, or were later queried from Log Analytics.
+agent applied-state                   | product-model gap   | DCR association shows intended scope, not that the Azure Monitor Agent applied the rule on the target at runtime.
+activity-log history and actor timing | API/noise           | Broad activity-log pulls can be noisy and are not required for the default posture view; use history only when sequencing is explicitly needed.
+expected SOC destination baseline     | scope/sequencing    | Destination drift needs a defended expected-workspace model before the tool can say the current destination is wrong.

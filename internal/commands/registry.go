@@ -12,14 +12,17 @@ import (
 )
 
 type Request struct {
-	Tenant             string
-	Subscription       string
-	DevOpsOrganization string
-	ChainFamily        string
-	PersistenceSurface string
-	Output             models.OutputMode
-	RoleTrustsMode     models.RoleTrustsMode
-	OutDir             string
+	Tenant                   string
+	Subscription             string
+	DevOpsOrganization       string
+	ChainFamily              string
+	PersistenceSurface       string
+	EvasionSurface           string
+	ResourceHijackingSurface string
+	PathMaskingSurface       string
+	Output                   models.OutputMode
+	RoleTrustsMode           models.RoleTrustsMode
+	OutDir                   string
 }
 
 type Response struct {
@@ -35,8 +38,67 @@ type Definition struct {
 	Handler  Handler
 }
 
+type handlerFactory func(providers.Provider, func() time.Time) Handler
+
 type Registry struct {
 	definitions map[string]Definition
+}
+
+var commandHandlers = map[string]handlerFactory{
+	"acr":                 acrHandler,
+	"aks":                 aksHandler,
+	"api-mgmt":            apiMgmtHandler,
+	"app-credentials":     appCredentialsHandler,
+	"app-services":        appServicesHandler,
+	"appinsights":         appInsightsHandler,
+	"application-gateway": applicationGatewayHandler,
+	"arm-deployments":     armDeploymentsHandler,
+	"auth-policies":       authPoliciesHandler,
+	"automation":          automationHandler,
+	"azure-ml":            azureMLHandler,
+	"chains":              chainsHandler,
+	"container-apps":      containerAppsHandler,
+	"container-apps-jobs": containerAppsJobsHandler,
+	"container-instances": containerInstancesHandler,
+	"cross-tenant":        crossTenantHandler,
+	"databases":           databasesHandler,
+	"dcr":                 dcrHandler,
+	"devops":              devopsHandler,
+	"diagnostic-settings": diagnosticSettingsHandler,
+	"dns":                 dnsHandler,
+	"endpoints":           endpointsHandler,
+	"env-vars":            envVarsHandler,
+	"event-grid":          eventGridHandler,
+	"evasion":             evasionHandler,
+	"functions":           functionsHandler,
+	"inventory":           inventoryHandler,
+	"keyvault":            keyVaultHandler,
+	"lighthouse":          lighthouseHandler,
+	"logic-apps":          logicAppsHandler,
+	"managed-identities":  managedIdentitiesHandler,
+	"monitoring-sinks":    monitoringSinksHandler,
+	"network-effective":   networkEffectiveHandler,
+	"network-ports":       networkPortsHandler,
+	"nics":                nicsHandler,
+	"pathmasking":         pathMaskingHandler,
+	"permissions":         permissionsHandler,
+	"persistence":         persistenceHandler,
+	"principals":          principalsHandler,
+	"privesc":             privescHandler,
+	"rbac":                rbacHandler,
+	"relay":               relayHandler,
+	"resource-trusts":     resourceTrustsHandler,
+	"resourcehijacking":   resourceHijackingHandler,
+	"role-trusts":         roleTrustsHandler,
+	"snapshots-disks":     snapshotsDisksHandler,
+	"storage":             storageHandler,
+	"tokens-credentials":  tokensCredentialsHandler,
+	"vm-extensions":       vmExtensionsHandler,
+	"vms":                 vmsHandler,
+	"vmss":                vmssHandler,
+	"webjobs":             webJobsHandler,
+	"whoami":              whoAmIHandler,
+	"workloads":           workloadsHandler,
 }
 
 func NewRegistry(provider providers.Provider, now func() time.Time) *Registry {
@@ -53,102 +115,11 @@ func NewRegistry(provider providers.Provider, now func() time.Time) *Registry {
 }
 
 func handlerFor(name string, provider providers.Provider, now func() time.Time) Handler {
-	switch name {
-	case "whoami":
-		return whoAmIHandler(provider, now)
-	case "inventory":
-		return inventoryHandler(provider, now)
-	case "automation":
-		return automationHandler(provider, now)
-	case "devops":
-		return devopsHandler(provider, now)
-	case "acr":
-		return acrHandler(provider, now)
-	case "databases":
-		return databasesHandler(provider, now)
-	case "storage":
-		return storageHandler(provider, now)
-	case "snapshots-disks":
-		return snapshotsDisksHandler(provider, now)
-	case "keyvault":
-		return keyVaultHandler(provider, now)
-	case "application-gateway":
-		return applicationGatewayHandler(provider, now)
-	case "dns":
-		return dnsHandler(provider, now)
-	case "aks":
-		return aksHandler(provider, now)
-	case "api-mgmt":
-		return apiMgmtHandler(provider, now)
-	case "app-credentials":
-		return appCredentialsHandler(provider, now)
-	case "app-services":
-		return appServicesHandler(provider, now)
-	case "functions":
-		return functionsHandler(provider, now)
-	case "webjobs":
-		return webJobsHandler(provider, now)
-	case "azure-ml":
-		return azureMLHandler(provider, now)
-	case "event-grid":
-		return eventGridHandler(provider, now)
-	case "logic-apps":
-		return logicAppsHandler(provider, now)
-	case "container-apps":
-		return containerAppsHandler(provider, now)
-	case "container-apps-jobs":
-		return containerAppsJobsHandler(provider, now)
-	case "container-instances":
-		return containerInstancesHandler(provider, now)
-	case "arm-deployments":
-		return armDeploymentsHandler(provider, now)
-	case "endpoints":
-		return endpointsHandler(provider, now)
-	case "network-ports":
-		return networkPortsHandler(provider, now)
-	case "network-effective":
-		return networkEffectiveHandler(provider, now)
-	case "nics":
-		return nicsHandler(provider, now)
-	case "vms":
-		return vmsHandler(provider, now)
-	case "vm-extensions":
-		return vmExtensionsHandler(provider, now)
-	case "vmss":
-		return vmssHandler(provider, now)
-	case "workloads":
-		return workloadsHandler(provider, now)
-	case "rbac":
-		return rbacHandler(provider, now)
-	case "principals":
-		return principalsHandler(provider, now)
-	case "permissions":
-		return permissionsHandler(provider, now)
-	case "privesc":
-		return privescHandler(provider, now)
-	case "lighthouse":
-		return lighthouseHandler(provider, now)
-	case "cross-tenant":
-		return crossTenantHandler(provider, now)
-	case "role-trusts":
-		return roleTrustsHandler(provider, now)
-	case "auth-policies":
-		return authPoliciesHandler(provider, now)
-	case "resource-trusts":
-		return resourceTrustsHandler(provider, now)
-	case "managed-identities":
-		return managedIdentitiesHandler(provider, now)
-	case "env-vars":
-		return envVarsHandler(provider, now)
-	case "tokens-credentials":
-		return tokensCredentialsHandler(provider, now)
-	case "chains":
-		return chainsHandler(provider, now)
-	case "persistence":
-		return persistenceHandler(provider, now)
-	default:
+	factory, ok := commandHandlers[name]
+	if !ok {
 		return nil
 	}
+	return factory(provider, now)
 }
 
 func (registry *Registry) Run(ctx context.Context, name string, request Request) (Response, error) {

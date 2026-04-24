@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"harrierops-azure/internal/contracts"
@@ -253,41 +254,67 @@ func runCommandOutput[T any](ctx context.Context, request Request, handler Handl
 }
 
 type asyncCommandOutput[T any] struct {
-	result chan asyncCommandResult[T]
+	call *commandOutputCall
+	name string
 }
 
-type asyncCommandResult[T any] struct {
-	value T
+type commandOutputCall struct {
+	done  chan struct{}
+	value any
 	err   error
 }
 
 type commandOutputGroup struct {
 	limiter chan struct{}
+	mu      *sync.Mutex
+	calls   map[string]*commandOutputCall
 }
 
 func newCommandOutputGroup(limit int) commandOutputGroup {
 	if limit < 1 {
 		limit = 1
 	}
-	return commandOutputGroup{limiter: make(chan struct{}, limit)}
+	return commandOutputGroup{
+		limiter: make(chan struct{}, limit),
+		mu:      &sync.Mutex{},
+		calls:   map[string]*commandOutputCall{},
+	}
 }
 
 func runGroupedCommandOutput[T any](group commandOutputGroup, ctx context.Context, request Request, handler Handler, name string) asyncCommandOutput[T] {
-	result := make(chan asyncCommandResult[T], 1)
+	group.mu.Lock()
+	if call, ok := group.calls[name]; ok {
+		group.mu.Unlock()
+		return asyncCommandOutput[T]{call: call, name: name}
+	}
+	call := &commandOutputCall{done: make(chan struct{})}
+	group.calls[name] = call
+	group.mu.Unlock()
+
 	go func() {
 		group.limiter <- struct{}{}
 		defer func() {
 			<-group.limiter
 		}()
 		value, err := runCommandOutput[T](ctx, request, handler, name)
-		result <- asyncCommandResult[T]{value: value, err: err}
+		call.value = value
+		call.err = err
+		close(call.done)
 	}()
-	return asyncCommandOutput[T]{result: result}
+	return asyncCommandOutput[T]{call: call, name: name}
 }
 
 func (future asyncCommandOutput[T]) wait() (T, error) {
-	result := <-future.result
-	return result.value, result.err
+	var zero T
+	<-future.call.done
+	if future.call.err != nil {
+		return zero, future.call.err
+	}
+	value, ok := future.call.value.(T)
+	if !ok {
+		return zero, fmt.Errorf("unexpected payload type for %s: %T", future.name, future.call.value)
+	}
+	return value, nil
 }
 
 func buildDatabaseTargetView(output models.DatabasesOutput) credentialPathTargetView {

@@ -25,6 +25,15 @@ type sectionHelpTopic struct {
 	OperatorGoal string
 }
 
+type groupedCommandDescriptor struct {
+	UsageLabel   string
+	ListLabel    string
+	Example      string
+	SetSelector  func(*Options, string)
+	SurfaceNames func() []string
+	SurfaceLine  func(string) (string, bool)
+}
+
 var (
 	helpFlags = map[string]struct{}{
 		"-h":     {},
@@ -75,6 +84,78 @@ var (
 		"ai": {
 			Summary:      "Reserved for future coverage.",
 			OperatorGoal: "Reserved for future coverage.",
+		},
+	}
+	groupedCommandDescriptors = map[string]groupedCommandDescriptor{
+		"chains": {
+			UsageLabel:   "family",
+			ListLabel:    "Current families",
+			Example:      "ho-azure chains deployment-path --output table",
+			SetSelector:  func(options *Options, selector string) { options.ChainFamily = selector },
+			SurfaceNames: contracts.FamilyNames,
+			SurfaceLine: func(name string) (string, bool) {
+				family, ok := contracts.Family(name)
+				if !ok {
+					return "", false
+				}
+				return fmt.Sprintf("%s: %s", family.Name, family.Summary), true
+			},
+		},
+		"persistence": {
+			UsageLabel:   "surface",
+			ListLabel:    "Current surfaces",
+			Example:      "ho-azure persistence automation --output table",
+			SetSelector:  func(options *Options, selector string) { options.PersistenceSurface = selector },
+			SurfaceNames: contracts.PersistenceSurfaceNames,
+			SurfaceLine: func(name string) (string, bool) {
+				surface, ok := contracts.PersistenceSurface(name)
+				if !ok {
+					return "", false
+				}
+				return fmt.Sprintf("%s: %s", surface.Name, surface.Summary), true
+			},
+		},
+		"evasion": {
+			UsageLabel:   "surface",
+			ListLabel:    "Current surfaces",
+			Example:      "ho-azure evasion dcr --output table",
+			SetSelector:  func(options *Options, selector string) { options.EvasionSurface = selector },
+			SurfaceNames: contracts.EvasionSurfaceNames,
+			SurfaceLine: func(name string) (string, bool) {
+				surface, ok := contracts.EvasionSurface(name)
+				if !ok {
+					return "", false
+				}
+				return fmt.Sprintf("%s: %s", surface.Name, surface.Summary), true
+			},
+		},
+		"resourcehijacking": {
+			UsageLabel:   "surface",
+			ListLabel:    "Current surfaces",
+			Example:      "ho-azure resourcehijacking api-mgmt --output table",
+			SetSelector:  func(options *Options, selector string) { options.ResourceHijackingSurface = selector },
+			SurfaceNames: contracts.ResourceHijackingSurfaceNames,
+			SurfaceLine: func(name string) (string, bool) {
+				surface, ok := contracts.ResourceHijackingSurface(name)
+				if !ok {
+					return "", false
+				}
+				return fmt.Sprintf("%s: %s", surface.Name, surface.Summary), true
+			},
+		},
+		"pathmasking": {
+			UsageLabel:   "surface",
+			ListLabel:    "Current surfaces",
+			Example:      "ho-azure pathmasking relay --output table",
+			SetSelector:  func(options *Options, selector string) { options.PathMaskingSurface = selector },
+			SurfaceNames: contracts.PathMaskingSurfaceNames,
+			SurfaceLine: func(name string) (string, bool) {
+				surface, ok := contracts.PathMaskingSurface(name)
+				if !ok {
+					return "", false
+				}
+				return fmt.Sprintf("%s: %s", surface.Name, surface.Summary), true
+			},
 		},
 	}
 )
@@ -135,14 +216,17 @@ func (app *App) Run(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	response, err := app.registry.Run(context.Background(), commandName, commands.Request{
-		Tenant:             options.Tenant,
-		Subscription:       options.Subscription,
-		DevOpsOrganization: options.DevOpsOrganization,
-		ChainFamily:        options.ChainFamily,
-		PersistenceSurface: options.PersistenceSurface,
-		Output:             options.Output,
-		RoleTrustsMode:     options.RoleTrustsMode,
-		OutDir:             options.OutDir,
+		Tenant:                   options.Tenant,
+		Subscription:             options.Subscription,
+		DevOpsOrganization:       options.DevOpsOrganization,
+		ChainFamily:              options.ChainFamily,
+		PersistenceSurface:       options.PersistenceSurface,
+		EvasionSurface:           options.EvasionSurface,
+		ResourceHijackingSurface: options.ResourceHijackingSurface,
+		PathMaskingSurface:       options.PathMaskingSurface,
+		Output:                   options.Output,
+		RoleTrustsMode:           options.RoleTrustsMode,
+		OutDir:                   options.OutDir,
 	})
 	if err != nil {
 		if contract.Status != contracts.StatusImplemented {
@@ -177,15 +261,18 @@ func (app *App) Run(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 type Options struct {
-	Tenant             string
-	Subscription       string
-	DevOpsOrganization string
-	ChainFamily        string
-	PersistenceSurface string
-	Output             models.OutputMode
-	RoleTrustsMode     models.RoleTrustsMode
-	OutDir             string
-	Debug              bool
+	Tenant                   string
+	Subscription             string
+	DevOpsOrganization       string
+	ChainFamily              string
+	PersistenceSurface       string
+	EvasionSurface           string
+	ResourceHijackingSurface string
+	PathMaskingSurface       string
+	Output                   models.OutputMode
+	RoleTrustsMode           models.RoleTrustsMode
+	OutDir                   string
+	Debug                    bool
 }
 
 func parseOptions(commandName string, args []string, stderr io.Writer) (Options, error) {
@@ -228,42 +315,15 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 		}
 	}
 
-	if commandName == "chains" && len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		if args[0] != "help" {
-			options.ChainFamily = args[0]
-		}
-		args = args[1:]
-	}
-	if commandName == "persistence" && len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		if args[0] != "help" {
-			options.PersistenceSurface = args[0]
-		}
-		args = args[1:]
-	}
+	args = consumeGroupedSelectorBeforeFlags(commandName, args, &options)
 
 	if err := flags.Parse(args); err != nil {
 		return Options{}, err
 	}
 	remainingArgs := flags.Args()
-	if commandName == "chains" {
-		switch len(remainingArgs) {
-		case 0:
-		case 1:
-			if remainingArgs[0] != "help" {
-				options.ChainFamily = remainingArgs[0]
-			}
-		default:
-			return Options{}, fmt.Errorf("unexpected arguments: %s", strings.Join(remainingArgs, " "))
-		}
-	} else if commandName == "persistence" {
-		switch len(remainingArgs) {
-		case 0:
-		case 1:
-			if remainingArgs[0] != "help" {
-				options.PersistenceSurface = remainingArgs[0]
-			}
-		default:
-			return Options{}, fmt.Errorf("unexpected arguments: %s", strings.Join(remainingArgs, " "))
+	if groupedCommandAcceptsSelector(commandName) {
+		if err := consumeGroupedSelectorAfterFlags(commandName, remainingArgs, &options); err != nil {
+			return Options{}, err
 		}
 	} else if len(remainingArgs) != 0 {
 		return Options{}, fmt.Errorf("unexpected arguments: %s", strings.Join(remainingArgs, " "))
@@ -272,6 +332,41 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 		options.OutDir = filepath.Clean(options.OutDir)
 	}
 	return options, nil
+}
+
+func consumeGroupedSelectorBeforeFlags(commandName string, args []string, options *Options) []string {
+	if !groupedCommandAcceptsSelector(commandName) || len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		return args
+	}
+	setGroupedSelector(commandName, args[0], options)
+	return args[1:]
+}
+
+func consumeGroupedSelectorAfterFlags(commandName string, args []string, options *Options) error {
+	switch len(args) {
+	case 0:
+		return nil
+	case 1:
+		setGroupedSelector(commandName, args[0], options)
+		return nil
+	default:
+		return fmt.Errorf("unexpected arguments: %s", strings.Join(args, " "))
+	}
+}
+
+func groupedCommandAcceptsSelector(commandName string) bool {
+	_, ok := groupedCommandDescriptors[commandName]
+	return ok
+}
+
+func setGroupedSelector(commandName string, selector string, options *Options) {
+	if selector == "help" {
+		return
+	}
+	descriptor, ok := groupedCommandDescriptors[commandName]
+	if ok {
+		descriptor.SetSelector(options, selector)
+	}
 }
 
 func (app *App) rootHelp() string {
@@ -303,7 +398,7 @@ func (app *App) rootHelp() string {
 	}
 	builder.WriteString("\nNotes:\n")
 	builder.WriteString("  - Shared flags such as --tenant, --subscription, --output, and --outdir work before or after the command.\n")
-	builder.WriteString("  - Grouped `chains` and `persistence` help stays available while additional grouped surfaces land.\n")
+	builder.WriteString("  - Grouped `chains`, `persistence`, `evasion`, `resourcehijacking`, and `pathmasking` help stays available while additional grouped surfaces land.\n")
 	builder.WriteString("  - Default output prefers exact claims when proven and bounded weaker claims when they stay honest and useful.\n")
 	return builder.String()
 }
@@ -342,26 +437,15 @@ func (app *App) commandHelp(name string) string {
 	}
 	builder.WriteString("\nExample:\n")
 	builder.WriteString(fmt.Sprintf("  %s\n", commandExample(contract.Name)))
-	if name == "chains" {
-		builder.WriteString("\nUsage:\n  ho-azure chains [family|help] [flags]\n")
-		builder.WriteString("\nCurrent families:\n")
-		for _, familyName := range contracts.FamilyNames() {
-			family, ok := contracts.Family(familyName)
+	if descriptor, ok := groupedCommandDescriptors[name]; ok {
+		builder.WriteString(fmt.Sprintf("\nUsage:\n  ho-azure %s [%s|help] [flags]\n", name, descriptor.UsageLabel))
+		builder.WriteString("\n" + descriptor.ListLabel + ":\n")
+		for _, surfaceName := range descriptor.SurfaceNames() {
+			line, ok := descriptor.SurfaceLine(surfaceName)
 			if !ok {
 				continue
 			}
-			builder.WriteString(fmt.Sprintf("  %s: %s\n", family.Name, family.Summary))
-		}
-	}
-	if name == "persistence" {
-		builder.WriteString("\nUsage:\n  ho-azure persistence [surface|help] [flags]\n")
-		builder.WriteString("\nCurrent surfaces:\n")
-		for _, surfaceName := range contracts.PersistenceSurfaceNames() {
-			surface, ok := contracts.PersistenceSurface(surfaceName)
-			if !ok {
-				continue
-			}
-			builder.WriteString(fmt.Sprintf("  %s: %s\n", surface.Name, surface.Summary))
+			builder.WriteString("  " + line + "\n")
 		}
 	}
 	builder.WriteString("\nNotes:\n")
@@ -413,11 +497,10 @@ func commandExample(name string) string {
 		return "ho-azure --devops-organization contoso devops --output table"
 	case "role-trusts":
 		return "ho-azure role-trusts --mode full --output table"
-	case "chains":
-		return "ho-azure chains deployment-path --output table"
-	case "persistence":
-		return "ho-azure persistence automation --output table"
 	default:
+		if descriptor, ok := groupedCommandDescriptors[name]; ok {
+			return descriptor.Example
+		}
 		return fmt.Sprintf("ho-azure %s --output table", name)
 	}
 }

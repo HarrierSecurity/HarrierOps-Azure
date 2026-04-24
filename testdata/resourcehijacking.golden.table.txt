@@ -1,0 +1,15 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[resourcehijacking] Walking the current identity through existing Azure resources that can be commandeered, redirected, replaced, or repurposed.
+ho-azure resourcehijacking
+
+╭────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ surface    │ summary                                                                                                                                                                        │
+├────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ api-mgmt   │ Review API Management services for gateway, backend, subscription, named-value, and identity posture that can redirect a trusted API surface.                                  │
+│ automation │ Review Azure Automation accounts for published runbook, schedule, webhook, hybrid worker, secure asset, and identity posture that can repurpose trusted operations automation. │
+│ logic-apps │ Review Logic Apps for workflow definition, trigger, downstream action, connector, and identity posture that can repurpose trusted automation.                                  │
+╰────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 resourcehijacking surface(s) available; run a surface to rank visible posture by takeover value.

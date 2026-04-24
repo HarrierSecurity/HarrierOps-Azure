@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -1153,6 +1154,34 @@ func authorizedJSONGetWithToken(ctx context.Context, bearerToken string, rawURL 
 		return nil, err
 	}
 	return payload, nil
+}
+
+func authorizedTextGet(ctx context.Context, credential azcore.TokenCredential, scope string, rawURL string) (string, error) {
+	token, err := accessToken(ctx, credential, scope)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "text/plain")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("GET %s: %s", rawURL, resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
 
 func normalizePrincipalType(current string, candidate string) string {

@@ -1,0 +1,45 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[dcr] Reviewing Data Collection Rules for collection, stream, destination, association, and transformation posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure dcr
+
+╭───────────────────┬────────────────────────────────┬────────────────────────────────────┬───────────────────────────────────┬──────────────┬──────────────╮
+│ dcr               │ scope                          │ streams                            │ destinations                      │ transforms   │ associations │
+├───────────────────┼────────────────────────────────┼────────────────────────────────────┼───────────────────────────────────┼──────────────┼──────────────┤
+│ dcr-prod-host     │ rg=rg-monitor; location=eastus │ 2 stream(s); high-signal:          │ soc-workspace (logAnalytics) ->   │ 1 present    │ vm-web-01    │
+│                   │                                │ Microsoft-WindowsEvent,            │ law-soc-prod                      │              │              │
+│                   │                                │ Microsoft-Syslog; sources: syslog, │                                   │              │              │
+│                   │                                │ windowsEventLogs                   │                                   │              │              │
+│ dcr-ama-migration │ rg=rg-monitor; location=eastus │ 2 stream(s); sources: logFiles,    │ migration-eventhub (eventHubs) -> │ none visible │ vmss-batch   │
+│                   │                                │ performanceCounters                │ send                              │              │              │
+╰───────────────────┴────────────────────────────────┴────────────────────────────────────┴───────────────────────────────────┴──────────────┴──────────────╯
+
+Takeaway: 2 DCR(s) visible; 1 show transformation posture, 1 carry high-signal streams, and 2 have visible associations.
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ operator notes                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ dcr-prod-host: DCR "dcr-prod-host" has 2 data source(s), 2 data flow(s), 1 destination(s), and 1 │
+│ association(s); 1 transformation clue(s) present; high-signal streams: Microsoft-WindowsEvent,   │
+│ Microsoft-Syslog; destinations: logAnalytics.                                                    │
+│ Evasion read: transformation posture is visible on high-signal streams, so logs may still arrive │
+│ while selected records or fields are filtered or reshaped before storage.                        │
+│ The command does not print transformKql or claim malicious filtering.                            │
+│ Destination read: current destinations are named, but this command does not claim they are wrong │
+│ without an expected workspace baseline.                                                          │
+│ Association read: the visible association scope shows where the DCR is intended to apply;        │
+│ runtime agent applied-state is not proven.                                                       │
+│ dcr-ama-migration: DCR "dcr-ama-migration" has 2 data source(s), 1 data flow(s), 1               │
+│ destination(s), and 1 association(s); destinations: eventHubs.                                   │
+│ Destination read: current destinations are named, but this command does not claim they are wrong │
+│ without an expected workspace baseline.                                                          │
+│ Association read: the visible association scope shows where the DCR is intended to apply;        │
+│ runtime agent applied-state is not proven.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Not collected by default:
+- log arrival/filtering proof: proof boundary; querying workspace or sink contents can be noisy and would change this from management-plane posture review into evidence validation
+- agent applied-state proof: proof boundary; this command shows configured DCR associations, not whether every target agent applied the rule
+- activity-log history: API/noise; actor, timing, quick-revert, and maintenance-window proof belongs in an explicit history mode

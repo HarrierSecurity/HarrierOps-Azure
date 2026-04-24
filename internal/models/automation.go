@@ -14,6 +14,9 @@ type AutomationAccountAsset struct {
 	RunbookCount           *int     `json:"runbook_count"`
 	PublishedRunbookCount  *int     `json:"published_runbook_count"`
 	PublishedRunbookNames  []string `json:"published_runbook_names"`
+	RunbookTypes           []string `json:"runbook_types"`
+	RunbookCommandClues    []string `json:"runbook_command_clues"`
+	RunbookResourceClues   []string `json:"runbook_resource_clues"`
 	ScheduleCount          *int     `json:"schedule_count"`
 	ScheduleDefinitions    []string `json:"schedule_definitions"`
 	JobScheduleCount       *int     `json:"job_schedule_count"`

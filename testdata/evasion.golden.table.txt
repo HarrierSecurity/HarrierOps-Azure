@@ -1,0 +1,15 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[evasion] Walking the current identity through Azure-native evasion surfaces by visible truth-disruption posture.
+ho-azure evasion
+
+╭─────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ surface             │ summary                                                                                                                                              │
+├─────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ appinsights         │ Review Application Insights components and instrumented app settings for visible sampling, filtering, and logging posture clues.                     │
+│ dcr                 │ Review Data Collection Rules for collection, stream, destination, association, and transformation posture that can quietly reshape monitoring truth. │
+│ diagnostic-settings │ Review diagnostic settings for source resources, exported categories, metrics, destinations, and visible telemetry-routing posture.                  │
+╰─────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Takeaway: 3 evasion surface(s) available; run a surface to rank visible posture by family-specific disruption value.

@@ -60,6 +60,26 @@ var (
 		"attach or reuse exec ctx",
 		"expose or reuse endpoint",
 	}
+	containerAppsJobStepActions = []string{
+		"create or reuse job in environment",
+		"point job at image or command",
+		"choose trigger mode",
+		"set execution shape and access posture",
+		"deploy or update stored job definition",
+		"start or rely on later executions",
+		"preserve or reuse execution path",
+	}
+	vmExtensionStepActions = []string{
+		"modify VM extension configuration",
+		"reuse VM or VMSS target",
+		"add or modify extension attachment",
+		"provide script or command source",
+		"configure extension execution",
+		"deliver config to VM agent",
+		"hand off extension execution to VM agent",
+		"update extension later",
+		"preserve control-plane execution path",
+	}
 )
 
 func capabilitySteps(actions []string, defaultStatus string, overrides map[string]string) []models.PersistenceCapabilityStep {
@@ -103,6 +123,21 @@ func TestPersistenceAutomationTableUsesSingleWalkthroughForMultipleAccounts(t *t
 	}
 	if !strings.Contains(output, "aa-one") || !strings.Contains(output, "aa-two") {
 		t.Fatalf("expected both Automation accounts in compact inventory, got:\n%s", output)
+	}
+	if !strings.Contains(output, "The Automation account is the Azure-side container for runbooks, schedules, webhooks, identity, and secure assets; no VM or host login is required to keep this path in Azure.") {
+		t.Fatalf("expected Automation walkthrough to carry account-container framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "A runbook is the stored container first; it becomes useful execution only after content is added and a published version exists.") {
+		t.Fatalf("expected Automation walkthrough to carry runbook stored-object framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Automation keeps draft and published runbook versions; publishing is the step that makes the stored content runnable in Azure.") {
+		t.Fatalf("expected Automation walkthrough to carry draft/published boundary, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Schedules, job schedules, webhooks, or upstream services such as Logic Apps and Functions are the durable rerun anchors; a runbook without one is stored code but not a complete persistence path.") {
+		t.Fatalf("expected Automation walkthrough to carry durable trigger framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "When triggered, Azure spins up a worker, loads the published runbook, executes under the selected identity or credential context, and then stops; persistence is the code, identity, and trigger remaining configured.") {
+		t.Fatalf("expected Automation walkthrough to carry runbook execution lifecycle, got:\n%s", output)
 	}
 }
 
@@ -314,6 +349,24 @@ func TestPersistenceLogicAppsTableUsesSingleWalkthroughForMultipleWorkflows(t *t
 	if !strings.Contains(output, "Nearby maintenance- or schedule-themed names visible from the current environment include `nightly-sync` and `maintenance-router`.") {
 		t.Fatalf("expected nearby thematic Logic App names line, got:\n%s", output)
 	}
+	if !strings.Contains(output, "A Logic App is a workflow resource stored in Azure: the trigger starts it, and the actions decide what it does next.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry workflow-resource framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Consumption-style workflows are managed directly from the workflow definition; Standard Logic Apps behave more like a host with workflows, app settings, and package or deployment paths inside it.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry Consumption vs Standard boundary, got:\n%s", output)
+	}
+	if !strings.Contains(output, "That identity or connection is the power layer: it determines which Azure services, secrets, storage paths, external endpoints, or other automation the workflow can reach.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry identity/connector power framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "The visible request trigger makes this workflow externally callable if the callback URL or caller path is usable; this command does not print trigger secret material.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry request-trigger boundary, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Logic Apps do not need a traditional script to be useful; the action graph is the execution logic.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry action-graph execution framing, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Persistence here is the stored workflow, reachable trigger, and valid identity or connector context remaining in Azure so the path can be reused later.") {
+		t.Fatalf("expected Logic Apps walkthrough to carry persistence closeout framing, got:\n%s", output)
+	}
 }
 
 func TestPersistenceAutomationTableCarriesVisibilityWhenControlNotProven(t *testing.T) {
@@ -415,6 +468,9 @@ func TestPersistenceFunctionsTableStopsWalkthroughAtFirstBrokenStep(t *testing.T
 	if !strings.Contains(output, "Because the current identity already controls this Function App, zip deploy, publish, or package replacement are part of the defended Functions persistence path here.") {
 		t.Fatalf("expected Functions walkthrough to explain the defended deploy path on its own line, got:\n%s", output)
 	}
+	if !strings.Contains(output, "The Function App can exist without meaningful deployed logic; the package or project is the runnable payload Azure loads when a trigger fires.") {
+		t.Fatalf("expected Functions walkthrough to explain package/project payload boundary, got:\n%s", output)
+	}
 	if !strings.Contains(output, "Visible deployment posture includes storage=plain-text.") {
 		t.Fatalf("expected Functions walkthrough to split deployment posture into follow-on lines, got:\n%s", output)
 	}
@@ -438,6 +494,9 @@ func TestPersistenceFunctionsTableStopsWalkthroughAtFirstBrokenStep(t *testing.T
 	}
 	if !strings.Contains(output, "The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.") {
 		t.Fatalf("expected Functions walkthrough to explain the management-plane boundary, got:\n%s", output)
+	}
+	if !strings.Contains(output, "That includes function keys or caller auth actually in hand, upstream Service Bus, queue, storage, or binding access, and any runtime-side restriction beyond the visible trigger metadata.") {
+		t.Fatalf("expected Functions walkthrough to carry binding-access runtime boundary, got:\n%s", output)
 	}
 	if !strings.Contains(output, "Current identity does not yet have a proven path to attach or reuse execution context for this Function App.") {
 		t.Fatalf("expected Functions walkthrough to show the first broken step, got:\n%s", output)
@@ -481,6 +540,142 @@ func TestPersistenceAutomationTableStopsWalkthroughAtFirstBrokenStep(t *testing.
 	}
 }
 
+func TestPersistenceLogicAppsTableStopsWhenOnlyReadVisibilityIsProven(t *testing.T) {
+	output := persistenceLogicAppsTable(models.PersistenceLogicAppsOutput{
+		Workflows: []models.PersistenceLogicAppWorkflow{
+			{
+				Name:            "wf-prod",
+				ResourceGroup:   "rg-prod",
+				CapabilitySteps: capabilitySteps(logicAppStepActions, "not proven", nil),
+				CurrentState: models.PersistenceLogicAppWorkflowState{
+					Classification: "request-triggered",
+					TriggerTypes:   []string{"Request"},
+				},
+			},
+		},
+	})
+
+	if !strings.Contains(output, "Current identity does not yet have a proven path to create a new Logic App or modify this existing workflow.") {
+		t.Fatalf("expected Logic Apps walkthrough to show the first unproven capability, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Higher permissions are required to complete the remaining persistence steps for this path.") {
+		t.Fatalf("expected Logic Apps walkthrough to include the reduced-visibility stop line, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can change the stored workflow definition Azure will execute here.") {
+		t.Fatalf("expected Logic Apps walkthrough to stop before later write actions, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can define or modify request, recurrence, or event trigger posture for this Logic App.") {
+		t.Fatalf("expected Logic Apps walkthrough to stop before trigger actions, got:\n%s", output)
+	}
+}
+
+func TestPersistenceAzureMLTableStopsWhenOnlyReadVisibilityIsProven(t *testing.T) {
+	output := persistenceAzureMLTable(models.PersistenceAzureMLOutput{
+		Workspaces: []models.PersistenceAzureMLWorkspace{
+			{
+				Name:                    "ml-prod",
+				ResourceGroup:           "rg-ml",
+				CapabilitySteps:         capabilitySteps(azureMLStepActions, "not proven", nil),
+				ExecutionContextOptions: []string{"managed identity"},
+				CurrentState: models.PersistenceAzureMLWorkspaceState{
+					Classification: "execution-capable",
+					ComputeCount:   intPtr(1),
+				},
+			},
+		},
+	})
+
+	if !strings.Contains(output, "Current identity does not have a proven path to create or modify this Azure ML workspace from current RBAC evidence.") {
+		t.Fatalf("expected Azure ML walkthrough to show the first unproven capability, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Higher permissions are required to complete the remaining persistence steps for this path.") {
+		t.Fatalf("expected Azure ML walkthrough to include the reduced-visibility stop line, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can attach or reuse Azure ML compute for this workspace") {
+		t.Fatalf("expected Azure ML walkthrough to stop before compute actions, got:\n%s", output)
+	}
+	if strings.Contains(output, "In Azure ML, persistence can live in saved notebooks") {
+		t.Fatalf("expected Azure ML walkthrough to stop before stored-code details, got:\n%s", output)
+	}
+}
+
+func TestPersistenceWebJobsTableStopsWhenOnlyReadVisibilityIsProven(t *testing.T) {
+	output := persistenceWebJobsTable(models.PersistenceWebJobsOutput{
+		WebJobs: []models.PersistenceWebJob{
+			{
+				Name:            "nightly-sync",
+				ResourceGroup:   "rg-app",
+				CapabilitySteps: capabilitySteps(webJobStepActions, "not proven", nil),
+				CurrentState: models.PersistenceWebJobState{
+					Mode:          "continuous",
+					ParentAppName: "app-prod",
+				},
+			},
+		},
+	})
+
+	if !strings.Contains(output, "Current identity does not yet have a proven path to create or reuse the parent App Service host that carries this WebJob.") {
+		t.Fatalf("expected WebJobs walkthrough to show the first unproven capability, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Higher permissions are required to complete the remaining persistence steps for this path.") {
+		t.Fatalf("expected WebJobs walkthrough to include the reduced-visibility stop line, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can add or replace the WebJob package that the App Service will run.") {
+		t.Fatalf("expected WebJobs walkthrough to stop before package actions, got:\n%s", output)
+	}
+}
+
+func TestPersistenceContainerAppsJobsTableStopsWhenOnlyReadVisibilityIsProven(t *testing.T) {
+	output := persistenceContainerAppsJobsTable(models.PersistenceContainerAppsJobsOutput{
+		ContainerAppsJobs: []models.PersistenceContainerAppsJob{
+			{
+				Name:            "job-sync",
+				ResourceGroup:   "rg-app",
+				CapabilitySteps: capabilitySteps(containerAppsJobStepActions, "not proven", nil),
+				CurrentState: models.PersistenceContainerAppsJobState{
+					TriggerType: models.StringPtr("Schedule"),
+				},
+			},
+		},
+	})
+
+	if !strings.Contains(output, "Current identity does not yet have a proven path to create a new Container Apps job or reuse this existing job definition in its environment.") {
+		t.Fatalf("expected Container Apps Jobs walkthrough to show the first unproven capability, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Higher permissions are required to complete the remaining persistence steps for this path.") {
+		t.Fatalf("expected Container Apps Jobs walkthrough to include the reduced-visibility stop line, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can point this Container Apps Job at an image or command Azure will execute later.") {
+		t.Fatalf("expected Container Apps Jobs walkthrough to stop before image or command actions, got:\n%s", output)
+	}
+}
+
+func TestPersistenceVMExtensionsTableStopsWhenOnlyReadVisibilityIsProven(t *testing.T) {
+	output := persistenceVMExtensionsTable(models.PersistenceVMExtensionsOutput{
+		VMExtensions: []models.PersistenceVMExtension{
+			{
+				Name:            "CustomScriptExtension",
+				ResourceGroup:   "rg-vm",
+				CapabilitySteps: capabilitySteps(vmExtensionStepActions, "not proven", nil),
+				CurrentState: models.PersistenceVMExtensionState{
+					TargetKind: "vm",
+					TargetName: "vm-prod",
+				},
+			},
+		},
+	})
+
+	if !strings.Contains(output, "Current identity does not yet have a proven path to modify VM extension configuration on this VM or VMSS.") {
+		t.Fatalf("expected VM Extensions walkthrough to show the first unproven capability, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Higher permissions are required to complete the remaining persistence steps for this path.") {
+		t.Fatalf("expected VM Extensions walkthrough to include the reduced-visibility stop line, got:\n%s", output)
+	}
+	if strings.Contains(output, "Current identity can reuse this VM or VMSS target as the execution host for the extension.") {
+		t.Fatalf("expected VM Extensions walkthrough to stop before target reuse actions, got:\n%s", output)
+	}
+}
+
 func TestPersistenceAzureMLTableUsesComputeAndResolvedIdentityTruth(t *testing.T) {
 	output := persistenceAzureMLTable(models.PersistenceAzureMLOutput{
 		Workspaces: []models.PersistenceAzureMLWorkspace{
@@ -517,6 +712,9 @@ func TestPersistenceAzureMLTableUsesComputeAndResolvedIdentityTruth(t *testing.T
 	}
 	if !strings.Contains(output, "In Azure ML, persistence can live in saved notebooks, jobs, pipelines, scheduled jobs, and environment definitions.") {
 		t.Fatalf("expected Azure ML walkthrough to mention stored execution logic locations, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Notebooks are interactive code surfaces, while jobs and pipelines are the scheduled or triggered execution surfaces.") {
+		t.Fatalf("expected Azure ML walkthrough to distinguish interactive and scheduled execution surfaces, got:\n%s", output)
 	}
 	if !strings.Contains(output, "When a notebook, job, or pipeline runs later, it executes with the attached identity plus the linked workspace resources Azure ML will use at runtime.") {
 		t.Fatalf("expected Azure ML walkthrough to explain re-triggered execution flow, got:\n%s", output)

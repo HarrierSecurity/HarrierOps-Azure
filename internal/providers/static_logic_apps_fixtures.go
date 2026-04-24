@@ -129,7 +129,41 @@ func staticLogicAppRelatedIDs(subscriptionID string, workflow staticLogicAppWork
 	if workflow.identity != nil {
 		relatedIDs = append(relatedIDs, staticLogicAppIdentityID(subscriptionID, *workflow.identity))
 	}
+	relatedIDs = append(relatedIDs, staticLogicAppResourceRefs(subscriptionID, workflow)...)
 	return relatedIDs
+}
+
+func staticLogicAppConnectorRefs(workflow staticLogicAppWorkflowFixture) []string {
+	switch workflow.name {
+	case "la-nightly-sync":
+		return []string{"azureblob"}
+	case "la-event-router":
+		return []string{"eventgrid"}
+	default:
+		return []string{}
+	}
+}
+
+func staticLogicAppParameterNames(workflow staticLogicAppWorkflowFixture) []string {
+	switch workflow.name {
+	case "la-inbound-redeploy":
+		return []string{"automationAccountName", "runbookName"}
+	case "la-nightly-sync":
+		return []string{"storageAccountName"}
+	default:
+		return []string{}
+	}
+}
+
+func staticLogicAppResourceRefs(subscriptionID string, workflow staticLogicAppWorkflowFixture) []string {
+	switch workflow.name {
+	case "la-inbound-redeploy":
+		return []string{"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod"}
+	case "la-event-router":
+		return []string{"/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"}
+	default:
+		return []string{}
+	}
 }
 
 func staticLogicAppOperatorSignal() string {

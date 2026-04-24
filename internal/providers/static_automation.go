@@ -28,6 +28,9 @@ func (StaticProvider) Automation(_ context.Context, tenant string, subscription 
 				RunbookCount:           intPtr(2),
 				PublishedRunbookCount:  intPtr(1),
 				PublishedRunbookNames:  []string{"Lab-Maintenance"},
+				RunbookTypes:           []string{"PowerShell"},
+				RunbookCommandClues:    []string{},
+				RunbookResourceClues:   []string{},
 				ScheduleCount:          intPtr(1),
 				ScheduleDefinitions:    []string{"lab-maintenance-daily: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T03:00:00Z; enabled=true"},
 				JobScheduleCount:       intPtr(1),
@@ -51,7 +54,7 @@ func (StaticProvider) Automation(_ context.Context, tenant string, subscription 
 				ConsequenceTypes:       []string{"run-recurring-execution", "reintroduce-config", "consume-secret-backed-deployment-material"},
 				MissingExecutionPath:   false,
 				MissingTargetMapping:   true,
-				Summary:                "Automation account 'aa-lab-quiet' has no managed identity visible from the current read path. Visible execution shape: 1/2 published runbook(s); 1 schedule(s), 1 job schedule(s), 0 webhook(s); no Hybrid Runbook Worker groups visible. Secure asset posture: credentials 0, certificates 0, connections 1, variables 2 (1 encrypted).",
+				Summary:                "Automation account 'aa-lab-quiet' has no managed identity visible from the current read path. Visible execution shape: 1/2 published runbook(s); types PowerShell; runbook content clues not collected by default; 1 schedule(s), 1 job schedule(s), 0 webhook(s); no Hybrid Runbook Worker groups visible. Secure asset posture: credentials 0, certificates 0, connections 1, variables 2 (1 encrypted).",
 				RelatedIDs:             []string{"/subscriptions/" + subscriptionID + "/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet"},
 			},
 			{
@@ -70,6 +73,9 @@ func (StaticProvider) Automation(_ context.Context, tenant string, subscription 
 				RunbookCount:          intPtr(7),
 				PublishedRunbookCount: intPtr(6),
 				PublishedRunbookNames: []string{"Baseline-Config", "Nightly-Reconcile", "Redeploy-App", "Reapply-Agent", "Sync-Secrets", "Rotate-Certs"},
+				RunbookTypes:          []string{"PowerShell", "Python3"},
+				RunbookCommandClues:   []string{},
+				RunbookResourceClues:  []string{},
 				ScheduleCount:         intPtr(4),
 				ScheduleDefinitions: []string{
 					"baseline-nightly: frequency=Day; interval=1; timezone=UTC; start=2026-04-13T01:00:00Z; enabled=true",
@@ -108,7 +114,7 @@ func (StaticProvider) Automation(_ context.Context, tenant string, subscription 
 				ConsequenceTypes:     []string{"run-recurring-execution", "reintroduce-config", "consume-secret-backed-deployment-material"},
 				MissingExecutionPath: false,
 				MissingTargetMapping: true,
-				Summary:              "Automation account 'aa-hybrid-prod' uses managed identity (SystemAssigned). Visible execution shape: 6/7 published runbook(s); 4 schedule(s), 5 job schedule(s), 2 webhook(s); 1 Hybrid Runbook Worker group(s). Secure asset posture: credentials 2, certificates 1, connections 2, variables 5 (4 encrypted).",
+				Summary:              "Automation account 'aa-hybrid-prod' uses managed identity (SystemAssigned). Visible execution shape: 6/7 published runbook(s); types PowerShell, Python3; runbook content clues not collected by default; 4 schedule(s), 5 job schedule(s), 2 webhook(s); 1 Hybrid Runbook Worker group(s). Secure asset posture: credentials 2, certificates 1, connections 2, variables 5 (4 encrypted).",
 				RelatedIDs: []string{
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod",
 					"/subscriptions/" + subscriptionID + "/resourceGroups/rg-ops/providers/Microsoft.Automation/automationAccounts/aa-hybrid-prod/identities/system",

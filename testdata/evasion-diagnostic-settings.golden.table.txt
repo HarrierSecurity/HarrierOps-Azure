@@ -1,0 +1,44 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[evasion] Diagnostic settings evasion means selected Azure resource categories, metrics, and destinations can change what telemetry is exported and where defenders must look, without proving sink contents by default.
+Diagnostic settings evasion capability
+
+╭─────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬──────────────────────╮
+│ action                              │ api surface                                                                      │ status               │
+├─────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+│ create or modify diagnostic setting │ Microsoft.Insights/diagnosticSettings/write                                      │ yes                  │
+│ pick source resource                │ source resource ARM scope                                                        │ yes                  │
+│ choose exported categories          │ logs, metrics, category groups                                                   │ yes                  │
+│ choose destination sink             │ workspaceId, storageAccountId, eventHubAuthorizationRuleId, marketplacePartnerId │ yes                  │
+│ save or edit setting                │ diagnosticSettings/write                                                         │ yes                  │
+│ shape visibility                    │ selected categories and destination IDs                                          │ yes                  │
+│ reuse later                         │ stored diagnostic setting                                                        │ yes                  │
+│ blend as monitoring admin           │ diagnostic setting metadata                                                      │ visible posture only │
+╰─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible diagnostic-settings truth-disruption path. The inventory below lists the other visible sources without repeating the same narrative.
+
+Operator read
+source "app-prod" ranks 5/5 for diagnostic-settings truth-disruption posture; supported but not exported: AppServiceConsoleLogs, AppServiceHTTPLogs; current identity can modify diagnostic settings from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible diagnostic settings write control.
+Downstream effect: supported high-signal categories are not exported by visible settings; current identity has visible diagnostic settings write control
+First boundary: this is diagnostic-settings management-plane posture, not sink-content proof, history proof, or detector-failure proof.
+Export posture: no visible diagnostic settings on this source.
+Destination posture: no destination visible.
+
+Visible Sources
+source     | rank | type                              | destinations | not exported                              | current identity
+
+app-prod   | 5/5  | Microsoft.Web/sites               | none visible | AppServiceConsoleLogs, AppServiceHTTPLogs | diagnostic settings write
+kv-prod    | 5/5  | Microsoft.KeyVault/vaults         | logAnalytics | AuditEvent                                | diagnostic settings write
+stdataprod | 5/5  | Microsoft.Storage/storageAccounts | eventHubs    | StorageDelete                             | diagnostic settings write
+
+
+Not collected by default
+item                              | classification   | reason
+
+supported category catalog        | API/noise        | Default output attempts the supported-category catalog, but Azure can reject category reads for some source types; those are reported as collection issues rather than treated as unsupported categories.
+activity-log change history       | API/noise        | Actor, timing, quick revert, and maintenance-window proof require history collection outside the default posture view.
+sink contents                     | proof boundary   | Log Analytics, Storage, Event Hub, or partner sink contents are data/content evidence, not management-plane posture.
+detector wiring                   | proof boundary   | Sentinel and defender rule dependencies are not inspected, so the command cannot claim a detection failed.
+expected SOC destination baseline | scope/sequencing | Destination drift needs a defended expected sink model before the tool can call the current sink wrong.

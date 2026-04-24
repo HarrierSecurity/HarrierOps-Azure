@@ -1,0 +1,19 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[relay] Reviewing Azure Relay namespaces and Hybrid Connections for private-path rendezvous posture.
+table view is compact by design; the JSON artifact keeps the fuller visible field set
+ho-azure relay
+
+╭───────────────────┬────────────────┬────────────────────┬────────────┬───────────┬───────────────────────────────┬───────────────────────────────────────────────────────╮
+│ namespace         │ resource group │ hybrid connections │ auth rules │ listeners │ app attachments               │ endpoint                                              │
+├───────────────────┼────────────────┼────────────────────┼────────────┼───────────┼───────────────────────────────┼───────────────────────────────────────────────────────┤
+│ relay-hybrid-prod │ rg-integration │ 1                  │ 2          │ 1         │ onprem-orders->app-public-api │ https://relay-hybrid-prod.servicebus.windows.net:443/ │
+╰───────────────────┴────────────────┴────────────────────┴────────────┴───────────┴───────────────────────────────┴───────────────────────────────────────────────────────╯
+
+Takeaway: 1 Relay namespace(s) visible; review Hybrid Connections for cloud rendezvous and private-path masking posture.
+
+Not collected by default:
+- authorization keys: recon safety; authorization rules are counted, but key material is not retrieved or printed
+- listener runtime state: proof boundary; listener counts do not prove a current listener process, host, or session
+- backend process and traffic contents: proof boundary; Relay posture does not identify the private backend process or inspect traffic payloads

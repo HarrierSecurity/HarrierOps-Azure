@@ -69,6 +69,9 @@ func logicAppWorkflowAsset(workflow map[string]any) models.LogicAppWorkflowAsset
 	triggerTypes := logicAppTriggerTypes(definition)
 	recurrenceSummary := logicAppRecurrenceSummary(definition)
 	downstreamActionKinds := logicAppDownstreamActionKinds(definition)
+	connectorReferences := logicAppConnectorReferences(definition)
+	parameterNames := logicAppParameterNames(definition)
+	resourceReferences := logicAppDownstreamResourceReferences(definition)
 	externallyCallableRequestTrigger := logicAppHasRequestTrigger(definition)
 	classification := logicAppClassification(externallyCallableRequestTrigger, recurrenceSummary != nil, identityType != nil, len(downstreamActionKinds) > 0)
 	identityIDs := logicAppIdentityIDs(workflowID, identity)
@@ -86,18 +89,26 @@ func logicAppWorkflowAsset(workflow map[string]any) models.LogicAppWorkflowAsset
 		PrincipalID:                      stringPtr(mapStringValue(identity, "principalId", "principal_id")),
 		ClientID:                         stringPtr(mapStringValue(identity, "clientId", "client_id")),
 		IdentityIDs:                      identityIDs,
+		TriggerCount:                     len(mapValue(definition, "triggers")),
+		ActionCount:                      logicAppActionCount(definition),
+		BranchCount:                      logicAppBranchCount(definition),
 		TriggerTypes:                     triggerTypes,
 		ExternallyCallableRequestTrigger: externallyCallableRequestTrigger,
 		RecurrenceSummary:                recurrenceSummary,
 		DownstreamActionKinds:            downstreamActionKinds,
+		ConnectorReferences:              connectorReferences,
+		ParameterNames:                   parameterNames,
+		DownstreamResourceReferences:     resourceReferences,
 		Summary: logicAppOperatorSummary(
 			externallyCallableRequestTrigger,
 			recurrenceSummary,
 			identityType,
 			downstreamActionKinds,
+			connectorReferences,
+			resourceReferences,
 			classification,
 		),
-		RelatedIDs: dedupeStrings(append([]string{workflowID}, identityIDs...)),
+		RelatedIDs: dedupeStrings(append(append([]string{workflowID}, identityIDs...), resourceReferences...)),
 	}
 }
 
@@ -188,6 +199,93 @@ func logicAppDownstreamActionKinds(definition map[string]any) []string {
 	return dedupeStrings(categories)
 }
 
+func logicAppActionCount(definition map[string]any) int {
+	count := 0
+	logicAppWalkActions(mapValue(definition, "actions"), func(action map[string]any) {
+		count++
+	})
+	return count
+}
+
+func logicAppBranchCount(definition map[string]any) int {
+	count := 0
+	logicAppWalkActions(mapValue(definition, "actions"), func(action map[string]any) {
+		if len(mapValue(action, "actions")) > 0 || len(mapValue(mapValue(action, "else"), "actions")) > 0 || len(mapValue(action, "cases")) > 0 {
+			count++
+		}
+	})
+	return count
+}
+
+func logicAppConnectorReferences(definition map[string]any) []string {
+	values := []string{}
+	logicAppWalkActions(mapValue(definition, "actions"), func(action map[string]any) {
+		values = append(values, logicAppStringMatches(action, func(value string) bool {
+			normalized := strings.ToLower(value)
+			return strings.Contains(normalized, "/managedapis/") ||
+				strings.Contains(normalized, "apiconnections") ||
+				strings.Contains(normalized, "serviceproviderconnections")
+		})...)
+	})
+	return dedupeStrings(logicAppShortRefs(values))
+}
+
+func logicAppParameterNames(definition map[string]any) []string {
+	return sortedKeys(mapValue(definition, "parameters"))
+}
+
+func logicAppDownstreamResourceReferences(definition map[string]any) []string {
+	values := []string{}
+	logicAppWalkActions(mapValue(definition, "actions"), func(action map[string]any) {
+		values = append(values, logicAppStringMatches(action, func(value string) bool {
+			normalized := strings.ToLower(value)
+			return strings.Contains(normalized, "/subscriptions/") && strings.Contains(normalized, "/providers/")
+		})...)
+	})
+	return dedupeStrings(values)
+}
+
+func logicAppStringMatches(value any, match func(string) bool) []string {
+	values := []string{}
+	switch typed := value.(type) {
+	case map[string]any:
+		for _, child := range typed {
+			values = append(values, logicAppStringMatches(child, match)...)
+		}
+	case []any:
+		for _, child := range typed {
+			values = append(values, logicAppStringMatches(child, match)...)
+		}
+	case string:
+		if match(typed) && !logicAppLooksSecretString(typed) {
+			values = append(values, typed)
+		}
+	}
+	return values
+}
+
+func logicAppShortRefs(values []string) []string {
+	result := []string{}
+	for _, value := range values {
+		if name := resourceNameFromID(value); name != "" {
+			result = append(result, name)
+			continue
+		}
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func logicAppLooksSecretString(value string) bool {
+	normalized := strings.ToLower(value)
+	return strings.Contains(normalized, "sig=") ||
+		strings.Contains(normalized, "code=") ||
+		strings.Contains(normalized, "token=") ||
+		strings.Contains(normalized, "secret=") ||
+		strings.Contains(normalized, "sharedaccesssignature")
+}
+
 func logicAppWalkActions(actions map[string]any, visit func(map[string]any)) {
 	for _, rawAction := range actions {
 		action, ok := rawAction.(map[string]any)
@@ -250,6 +348,8 @@ func logicAppOperatorSummary(
 	recurrenceSummary *string,
 	identityType *string,
 	downstreamActionKinds []string,
+	connectorReferences []string,
+	resourceReferences []string,
 	classification string,
 ) string {
 	parts := []string{}
@@ -272,6 +372,12 @@ func logicAppOperatorSummary(
 	}
 	if len(downstreamActionKinds) > 0 {
 		parts = append(parts, "Visible actions touch "+strings.Join(downstreamActionKinds, ", ")+".")
+	}
+	if len(connectorReferences) > 0 {
+		parts = append(parts, "Connector references are visible ("+strings.Join(connectorReferences, ", ")+").")
+	}
+	if len(resourceReferences) > 0 {
+		parts = append(parts, fmt.Sprintf("%d downstream resource reference(s) are visible.", len(resourceReferences)))
 	}
 	return strings.TrimSpace(strings.Join(parts, " "))
 }

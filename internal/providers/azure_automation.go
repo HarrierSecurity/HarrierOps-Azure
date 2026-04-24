@@ -80,6 +80,9 @@ func automationAccountSummary(
 	clientID := stringPtr(mapStringValue(identity, "clientId", "client_id"))
 	identityIDs := automationIdentityIDs(accountID, identity)
 	publishedRunbookCount := automationPublishedRunbookCount(runbooks)
+	runbookTypes := automationRunbookTypes(runbooks)
+	runbookCommandClues := []string{}
+	runbookResourceClues := []string{}
 	encryptedVariableCount := automationEncryptedVariableCount(variables)
 	startModes := automationStartModes(
 		publishedRunbookCount,
@@ -139,6 +142,9 @@ func automationAccountSummary(
 		RunbookCount:           automationCount(runbooks),
 		PublishedRunbookCount:  publishedRunbookCount,
 		PublishedRunbookNames:  publishedRunbookNames,
+		RunbookTypes:           runbookTypes,
+		RunbookCommandClues:    runbookCommandClues,
+		RunbookResourceClues:   runbookResourceClues,
 		ScheduleCount:          automationCount(schedules),
 		ScheduleDefinitions:    automationScheduleDefinitions(schedules),
 		JobScheduleCount:       automationCount(jobSchedules),
@@ -167,6 +173,9 @@ func automationAccountSummary(
 			identityType,
 			automationCount(runbooks),
 			publishedRunbookCount,
+			runbookTypes,
+			runbookCommandClues,
+			runbookResourceClues,
 			automationCount(schedules),
 			automationCount(jobSchedules),
 			automationCount(webhooks),
@@ -310,6 +319,87 @@ func automationPublishedRunbookNames(runbooks []map[string]any) []string {
 	}
 	sort.Strings(names)
 	return dedupeStrings(names)
+}
+
+func automationRunbookTypes(runbooks []map[string]any) []string {
+	values := []string{}
+	for _, runbook := range runbooks {
+		properties := mapValue(runbook, "properties")
+		values = append(values, firstNonEmpty(mapStringValue(properties, "runbookType", "runbook_type"), mapStringValue(runbook, "runbookType", "runbook_type")))
+	}
+	sort.Strings(values)
+	return dedupeStrings(values)
+}
+
+func automationRunbookContentClues(ctx context.Context, session azureSession, accountID string, runbooks []map[string]any, issues *[]models.Issue) ([]string, []string) {
+	commandClues := []string{}
+	resourceClues := []string{}
+	for _, runbook := range runbooks {
+		name := automationRunbookName(runbook)
+		runbookID := firstNonEmpty(mapStringValue(runbook, "id"), strings.TrimRight(accountID, "/")+"/runbooks/"+name)
+		if name == "" || runbookID == "" {
+			continue
+		}
+		content, err := authorizedTextGet(ctx, session.credential, armManagementScope, armURL(strings.TrimRight(runbookID, "/")+"/content", armAutomationAPIVersion))
+		if err != nil {
+			*issues = append(*issues, issueFromError("automation.runbook_content["+name+"]", err))
+			continue
+		}
+		commandClues = append(commandClues, automationRunbookCommandClues(content)...)
+		resourceClues = append(resourceClues, automationRunbookResourceClues(content)...)
+	}
+	sort.Strings(commandClues)
+	sort.Strings(resourceClues)
+	return dedupeStrings(commandClues), dedupeStrings(resourceClues)
+}
+
+func automationRunbookCommandClues(content string) []string {
+	normalized := strings.ToLower(content)
+	values := []string{}
+	for _, candidate := range []struct {
+		needle string
+		label  string
+	}{
+		{"connect-azaccount", "connect-azaccount"},
+		{"get-az", "get-az"},
+		{"set-az", "set-az"},
+		{"new-az", "new-az"},
+		{"remove-az", "remove-az"},
+		{"restart-az", "restart-az"},
+		{"start-az", "start-az"},
+		{"stop-az", "stop-az"},
+		{"invoke-restmethod", "invoke-restmethod"},
+		{"invoke-webrequest", "invoke-webrequest"},
+		{"kubectl", "kubectl"},
+		{"az ", "azure-cli"},
+	} {
+		if strings.Contains(normalized, candidate.needle) {
+			values = append(values, candidate.label)
+		}
+	}
+	return values
+}
+
+func automationRunbookResourceClues(content string) []string {
+	normalized := strings.ToLower(content)
+	values := []string{}
+	for _, candidate := range []struct {
+		needle string
+		label  string
+	}{
+		{"microsoft.web/sites", "app-service"},
+		{"microsoft.compute/virtualmachines", "virtual-machine"},
+		{"microsoft.automation/automationaccounts", "automation"},
+		{"microsoft.keyvault/vaults", "key-vault"},
+		{"microsoft.storage/storageaccounts", "storage"},
+		{"microsoft.containerservice/managedclusters", "aks"},
+		{"management.azure.com", "azure-management-api"},
+	} {
+		if strings.Contains(normalized, candidate.needle) {
+			values = append(values, candidate.label)
+		}
+	}
+	return values
 }
 
 func automationRunbookNamesFromTriggers(items []map[string]any) []string {
@@ -604,6 +694,9 @@ func automationOperatorSummary(
 	identityType *string,
 	runbookCount *int,
 	publishedRunbookCount *int,
+	runbookTypes []string,
+	runbookCommandClues []string,
+	runbookResourceClues []string,
 	scheduleCount *int,
 	jobScheduleCount *int,
 	webhookCount *int,
@@ -619,7 +712,7 @@ func automationOperatorSummary(
 		identityClause = "uses managed identity (" + stringPtrValue(identityType) + ")"
 	}
 	return "Automation account '" + accountName + "' " + identityClause + ". " +
-		"Visible execution shape: " + automationRunbookClause(runbookCount, publishedRunbookCount) + "; " +
+		"Visible execution shape: " + automationRunbookClause(runbookCount, publishedRunbookCount, runbookTypes, runbookCommandClues, runbookResourceClues) + "; " +
 		automationTriggerClause(scheduleCount, jobScheduleCount, webhookCount) + "; " +
 		automationWorkerClause(hybridWorkerGroupCount) + ". " +
 		"Secure asset posture: " + automationAssetClause(
@@ -631,14 +724,26 @@ func automationOperatorSummary(
 	) + "."
 }
 
-func automationRunbookClause(runbookCount *int, publishedRunbookCount *int) string {
+func automationRunbookClause(runbookCount *int, publishedRunbookCount *int, runbookTypes []string, commandClues []string, resourceClues []string) string {
 	if runbookCount == nil {
 		return "runbook visibility unreadable"
 	}
+	parts := []string{}
 	if publishedRunbookCount == nil {
-		return stringValue(*runbookCount) + " runbook(s)"
+		parts = append(parts, stringValue(*runbookCount)+" runbook(s)")
+	} else {
+		parts = append(parts, stringValue(*publishedRunbookCount)+"/"+stringValue(*runbookCount)+" published runbook(s)")
 	}
-	return stringValue(*publishedRunbookCount) + "/" + stringValue(*runbookCount) + " published runbook(s)"
+	if len(runbookTypes) > 0 {
+		parts = append(parts, "types "+strings.Join(runbookTypes, ", "))
+	}
+	if len(commandClues) > 0 {
+		parts = append(parts, "command clues "+strings.Join(commandClues, ", "))
+	}
+	if len(resourceClues) > 0 {
+		parts = append(parts, "resource clues "+strings.Join(resourceClues, ", "))
+	}
+	return strings.Join(parts, "; ")
 }
 
 func automationTriggerClause(scheduleCount *int, jobScheduleCount *int, webhookCount *int) string {

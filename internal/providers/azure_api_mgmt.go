@@ -11,6 +11,8 @@ import (
 	"harrierops-azure/internal/models"
 )
 
+const armApiManagementAPIVersion = "2024-05-01"
+
 func (provider AzureProvider) ApiMgmt(ctx context.Context, tenant string, subscription string) (ApiMgmtFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
 	if err != nil {
@@ -64,6 +66,7 @@ func (provider AzureProvider) ApiMgmt(ctx context.Context, tenant string, subscr
 			var subscriptions []map[string]any
 			var backends []map[string]any
 			var namedValues []map[string]any
+			var policies []map[string]any
 
 			if resourceGroup != "" && serviceName != "" {
 				scopePrefix := "api_mgmt[" + resourceGroup + "/" + serviceName + "]."
@@ -71,9 +74,10 @@ func (provider AzureProvider) ApiMgmt(ctx context.Context, tenant string, subscr
 				subscriptions, issues = apiMgmtSubscriptionList(ctx, subscriptionClient, resourceGroup, serviceName, scopePrefix+"subscriptions", issues)
 				backends, issues = apiMgmtBackendList(ctx, backendClient, resourceGroup, serviceName, scopePrefix+"backends", issues)
 				namedValues, issues = apiMgmtNamedValueList(ctx, namedValueClient, resourceGroup, serviceName, scopePrefix+"named_values", issues)
+				policies, issues = apiMgmtPolicyList(ctx, session, serviceID, apis, scopePrefix+"policies", issues)
 			}
 
-			apiMgmtServices = append(apiMgmtServices, apiMgmtServiceSummary(hydrated, apis, subscriptions, backends, namedValues))
+			apiMgmtServices = append(apiMgmtServices, apiMgmtServiceSummary(hydrated, apis, subscriptions, backends, namedValues, policies))
 		}
 	}
 
@@ -169,12 +173,43 @@ func apiMgmtNamedValueList(
 	return rows, issues
 }
 
+func apiMgmtPolicyList(
+	ctx context.Context,
+	session azureSession,
+	serviceID string,
+	apis []map[string]any,
+	scope string,
+	issues []models.Issue,
+) ([]map[string]any, []models.Issue) {
+	policies := []map[string]any{}
+	servicePolicies, err := armListObjects(ctx, session.credential, strings.TrimRight(serviceID, "/")+"/policies", armApiManagementAPIVersion)
+	if err != nil {
+		issues = append(issues, issueFromError(scope+".service", err))
+	} else {
+		policies = append(policies, servicePolicies...)
+	}
+	for _, api := range apis {
+		apiID := mapStringValue(api, "id")
+		if apiID == "" {
+			continue
+		}
+		apiPolicies, err := armListObjects(ctx, session.credential, strings.TrimRight(apiID, "/")+"/policies", armApiManagementAPIVersion)
+		if err != nil {
+			issues = append(issues, issueFromError(scope+"["+firstNonEmpty(mapStringValue(api, "name"), resourceNameFromID(apiID), "api")+"].api", err))
+			continue
+		}
+		policies = append(policies, apiPolicies...)
+	}
+	return policies, issues
+}
+
 func apiMgmtServiceSummary(
 	service map[string]any,
 	apis []map[string]any,
 	subscriptions []map[string]any,
 	backends []map[string]any,
 	namedValues []map[string]any,
+	policies []map[string]any,
 ) models.ApiMgmtServiceAsset {
 	properties := mapValue(service, "properties")
 	identity := mapValue(service, "identity")
@@ -215,6 +250,8 @@ func apiMgmtServiceSummary(
 		ActiveSubscriptionCount:      apiMgmtActiveSubscriptionCount(subscriptions),
 		BackendCount:                 apiMgmtCountPtr(backends),
 		BackendHostnames:             apiMgmtBackendHostnames(backends),
+		PolicyCount:                  apiMgmtCountPtr(policies),
+		PolicyControlTypes:           apiMgmtPolicyControlTypes(policies),
 		NamedValueCount:              apiMgmtCountPtr(namedValues),
 		NamedValueSecretCount:        apiMgmtNamedValueSecretCount(namedValues),
 		NamedValueKeyVaultCount:      apiMgmtNamedValueKeyVaultCount(namedValues),
@@ -233,6 +270,8 @@ func apiMgmtServiceSummary(
 			apiMgmtActiveSubscriptionCount(subscriptions),
 			apiMgmtCountPtr(backends),
 			apiMgmtBackendHostnames(backends),
+			apiMgmtCountPtr(policies),
+			apiMgmtPolicyControlTypes(policies),
 			apiMgmtCountPtr(namedValues),
 			apiMgmtNamedValueSecretCount(namedValues),
 			apiMgmtNamedValueKeyVaultCount(namedValues),
@@ -357,6 +396,36 @@ func apiMgmtBackendHostnames(backends []map[string]any) []string {
 	return dedupeStrings(values)
 }
 
+func apiMgmtPolicyControlTypes(policies []map[string]any) []string {
+	if policies == nil {
+		return []string{}
+	}
+	values := []string{}
+	for _, policy := range policies {
+		text := strings.ToLower(firstNonEmpty(
+			mapStringValue(policy, "value"),
+			mapStringValue(mapValue(policy, "properties"), "value", "policyContent", "policy_content"),
+		))
+		switch {
+		case strings.Contains(text, "<set-backend-service") || strings.Contains(text, "<forward-request"):
+			values = append(values, "backend-routing")
+		}
+		if strings.Contains(text, "<rewrite-uri") || strings.Contains(text, "<set-query-parameter") {
+			values = append(values, "request-rewrite")
+		}
+		if strings.Contains(text, "<set-header") || strings.Contains(text, "<authentication-") || strings.Contains(text, "<validate-jwt") {
+			values = append(values, "header-auth")
+		}
+		if strings.Contains(text, "<choose") || strings.Contains(text, "<when ") {
+			values = append(values, "conditional-routing")
+		}
+		if strings.Contains(text, "<send-request") || strings.Contains(text, "<send-one-way-request") {
+			values = append(values, "side-request")
+		}
+	}
+	return dedupeStrings(values)
+}
+
 func apiMgmtNamedValueSecretCount(namedValues []map[string]any) *int {
 	if namedValues == nil {
 		return nil
@@ -427,6 +496,8 @@ func apiMgmtOperatorSummary(
 	activeSubscriptionCount *int,
 	backendCount *int,
 	backendHostnames []string,
+	policyCount *int,
+	policyControlTypes []string,
 	namedValueCount *int,
 	namedValueSecretCount *int,
 	namedValueKeyVaultCount *int,
@@ -470,6 +541,9 @@ func apiMgmtOperatorSummary(
 	if backendCount != nil {
 		inventoryParts = append(inventoryParts, intText(*backendCount)+" backends")
 	}
+	if policyCount != nil {
+		inventoryParts = append(inventoryParts, intText(*policyCount)+" policy scope(s)")
+	}
 	if namedValueCount != nil {
 		inventoryParts = append(inventoryParts, intText(*namedValueCount)+" named values")
 	}
@@ -488,6 +562,9 @@ func apiMgmtOperatorSummary(
 	}
 	if len(backendHostnames) > 0 {
 		depthParts = append(depthParts, "backend hosts "+strings.Join(backendHostnames, ", "))
+	}
+	if len(policyControlTypes) > 0 {
+		depthParts = append(depthParts, "policy controls "+strings.Join(policyControlTypes, ", "))
 	}
 
 	depthPhrase := ""

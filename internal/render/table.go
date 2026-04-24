@@ -13,72 +13,6 @@ import (
 
 const findingNoteWrapWidth = 100
 
-var commandNarration = map[string]string{
-	"whoami":              "Checking caller context and active subscription scope.",
-	"inventory":           "Scoping the visible Azure resource footprint.",
-	"automation":          "Reviewing Azure Automation accounts for identity, execution, webhook, worker, and secure-asset posture.",
-	"app-credentials":     "Reviewing application and service-principal authentication material, federated trust, and visible current-identity control paths.",
-	"devops":              "Reviewing Azure DevOps build definitions for trusted source inputs, visible injection surfaces, and Azure-facing change paths.",
-	"app-services":        "Reviewing App Service runtime, hostname, identity, deployment, and config cues that change follow-on paths.",
-	"acr":                 "Reviewing Azure Container Registry login, auth, network, and registry automation/trust cues.",
-	"databases":           "Reviewing relational database server posture across Azure SQL, PostgreSQL Flexible, and MySQL Flexible.",
-	"dns":                 "Reviewing public and private DNS zone inventory and namespace boundaries.",
-	"aks":                 "Reviewing AKS control-plane endpoint, identity, auth posture, and Azure-side federation and addon cues.",
-	"api-mgmt":            "Reviewing API Management gateway hostnames, identity, subscription, backend, and secret posture.",
-	"functions":           "Reviewing Function App runtime, trigger, storage binding, identity, and deployment posture.",
-	"webjobs":             "Reviewing App Service WebJobs for background execution mode, rerun posture, and inherited app context.",
-	"azure-ml":            "Reviewing Azure ML runtime, scheduling, endpoint, identity, and storage-linked workspace posture.",
-	"event-grid":          "Reviewing Event Grid trigger routes, destination types, and visible execution-capable follow-on paths.",
-	"logic-apps":          "Reviewing Logic Apps trigger posture, identity context, and safe downstream action relationships.",
-	"container-apps-jobs": "Reviewing Container Apps Jobs trigger, execution, image, identity, secret, and registry posture.",
-	"arm-deployments":     "Reviewing ARM deployment history for config exposure and linked content.",
-	"endpoints":           "Mapping reachable IP and hostname surfaces from compute and web workloads.",
-	"network-effective":   "Prioritizing likely public-IP reachability by combining visible endpoint and NSG evidence.",
-	"env-vars":            "Reviewing App Service and Function App settings for exposed config paths and likely credential or secret follow-on.",
-	"network-ports":       "Tracing likely inbound port exposure from visible NIC and subnet NSG rules.",
-	"tokens-credentials":  "Correlating token-minting workloads, credential-bearing metadata paths, and the next likely follow-on.",
-	"rbac":                "Collecting raw RBAC assignments across the current subscription.",
-	"principals":          "Mapping visible principals, identity footholds, and follow-on candidates.",
-	"permissions":         "Ranking principals by high-impact RBAC exposure and the next likely follow-on.",
-	"privesc":             "Triage likely privilege-escalation and workload identity abuse paths.",
-	"role-trusts":         "Reviewing high-signal identity trust edges and the clearest next review without implying delegated or admin consent.",
-	"cross-tenant":        "Reviewing outside-tenant trust, delegated management, and tenant policy cues that most change control or pivot paths.",
-	"lighthouse":          "Reviewing Azure Lighthouse delegations for cross-tenant management scope and high-impact access cues.",
-	"auth-policies":       "Reviewing tenant auth controls that widen guest, consent, app-creation, or sign-in abuse paths.",
-	"managed-identities":  "Mapping workload-linked managed identities and their visible privilege cues.",
-	"keyvault":            "Reviewing Key Vault exposure, access-model weakness, and destructive leverage cues.",
-	"resource-trusts":     "Correlating resource trust surfaces across public network and private-link paths.",
-	"storage":             "Checking storage exposure and network posture for likely data targets.",
-	"snapshots-disks":     "Reviewing managed disks and snapshots for offline-copy, sharing/export, and encryption posture with highest-value targets first.",
-	"nics":                "Enumerating NIC attachments, IP context, and network boundary references.",
-	"workloads":           "Joining workload assets with identity context and visible ingress paths.",
-	"vms":                 "Summarizing reachable compute assets and identity-bearing workloads.",
-	"vm-extensions":       "Reviewing VM Extensions handler, source, protected-settings, and rerun posture.",
-	"vmss":                "Reviewing Virtual Machine Scale Sets (VMSS) for fleet posture, identity, and frontend network cues.",
-	"chains":              "Correlating grouped chain evidence with conservative cross-command joins.",
-	"persistence":         "Walking the current identity through Azure-native persistence surfaces one service at a time.",
-}
-
-var commandCompactIntroHint = map[string]string{
-	"aks":                "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"acr":                "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"api-mgmt":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"env-vars":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"functions":          "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"azure-ml":           "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"event-grid":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"logic-apps":         "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"tokens-credentials": "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-	"vm-extensions":      "table view is compact by design; the JSON artifact keeps the fuller visible field set",
-}
-
-var chainsFamilyTableRenderers = map[string]func(models.ChainsOutput) string{
-	"compute-control": chainsComputeControlTable,
-	"credential-path": chainsCredentialPathTable,
-	"deployment-path": chainsDeploymentPathTable,
-	"escalation-path": chainsEscalationPathTable,
-}
-
 func chainsTableRenderer(payload any) (string, error) {
 	switch out := payload.(type) {
 	case models.ChainsOverviewOutput:
@@ -137,11 +71,19 @@ func renderStructuredTableWithTitle(title string, headers []string, rows [][]str
 			return cellStyle
 		})
 
-	body := strings.TrimRight(table.String(), "\n") + "\n"
+	body := trimTrailingLineSpaces(strings.TrimRight(table.String(), "\n")) + "\n"
 	if !includeTitle {
 		return body
 	}
 	return titleStyle.Render(title) + "\n\n" + body
+}
+
+func trimTrailingLineSpaces(value string) string {
+	lines := strings.Split(value, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func renderListTable(title string, headers []string, rows [][]string, emptyRow []string, takeaway string) string {
@@ -187,8 +129,47 @@ func renderTablePrelude(command string, context models.RenderContext, payload an
 }
 
 func commandNarrationForPayload(command string, payload any) string {
-	if command != "persistence" {
+	if command != "persistence" && command != "evasion" && command != "resourcehijacking" && command != "pathmasking" {
 		return commandNarration[command]
+	}
+
+	if command == "evasion" {
+		switch payload.(type) {
+		case models.EvasionAppInsightsOutput:
+			return "Application Insights evasion means visible instrumentation, sampling, filtering, and logging-level posture can reduce retained telemetry while the app still emits health signals."
+		case models.EvasionDCROutput:
+			return "DCR evasion means Azure Monitor collection, data flow, destination, association, and transformation posture can quietly reshape what defender telemetry says without proving log-content loss by default."
+		case models.EvasionDiagnosticSettingsOutput:
+			return "Diagnostic settings evasion means selected Azure resource categories, metrics, and destinations can change what telemetry is exported and where defenders must look, without proving sink contents by default."
+		default:
+			return commandNarration[command]
+		}
+	}
+
+	if command == "resourcehijacking" {
+		switch payload.(type) {
+		case models.ResourceHijackingAPIMOutput:
+			return "APIM resource hijacking means the trusted API gateway can keep answering while backend or routing posture changes behind it."
+		case models.ResourceHijackingAutomationOutput:
+			return "Automation resource hijacking means trusted runbooks, schedules, webhooks, identities, or worker context can be repurposed as ordinary operations automation."
+		case models.ResourceHijackingLogicAppsOutput:
+			return "Logic Apps resource hijacking means a trusted workflow, trigger, connector path, or identity context can be repurposed while the automation resource remains familiar."
+		default:
+			return commandNarration[command]
+		}
+	}
+
+	if command == "pathmasking" {
+		switch payload.(type) {
+		case models.PathMaskingAPIMOutput:
+			return "APIM path masking means the API gateway can preserve a public contract while backend, route, or policy indirection hides the true downstream path."
+		case models.PathMaskingLogicAppsOutput:
+			return "Logic Apps path masking means a trusted workflow can act as the visible relay while downstream actions, connectors, or identities carry the real path."
+		case models.PathMaskingRelayOutput:
+			return "Relay path masking means Azure exposes the cloud rendezvous point while the private listener, backend host, and traffic contents stay beyond management-plane proof."
+		default:
+			return commandNarration[command]
+		}
 	}
 
 	switch payload.(type) {
@@ -422,6 +403,135 @@ func armDeploymentsTable(payload models.ArmDeploymentsOutput) string {
 		func(f models.ArmDeploymentFinding) string { return f.Description },
 	)
 	return output + "\nTakeaway: " + armDeploymentsTakeaway(payload) + "\n"
+}
+
+func dcrTable(payload models.DCROutput) string {
+	rows := make([][]string, 0, len(payload.DCRs))
+	notes := []string{}
+	for _, dcr := range payload.DCRs {
+		rows = append(rows, []string{
+			dcr.Name,
+			dcrScopeContext(dcr),
+			wrapTableNote(dcrStreamContext(dcr), 34),
+			wrapTableNote(dcrDestinationContext(dcr), 34),
+			dcrTransformationContext(dcr),
+			dcrAssociationContext(dcr),
+		})
+		notes = append(notes, dcrOperatorNote(dcr))
+	}
+	output := renderListTable("ho-azure dcr", []string{
+		"dcr", "scope", "streams", "destinations", "transforms", "associations",
+	}, rows, []string{"no Data Collection Rules visible", "", "", "", "", ""}, dcrTakeaway(payload))
+	if len(notes) > 0 {
+		output += "\n" + renderWrappedDetailTableWithWidth("operator notes", strings.Join(notes, "\n"), 96)
+	}
+	output += "\nNot collected by default:\n"
+	output += "- log arrival/filtering proof: proof boundary; querying workspace or sink contents can be noisy and would change this from management-plane posture review into evidence validation\n"
+	output += "- agent applied-state proof: proof boundary; this command shows configured DCR associations, not whether every target agent applied the rule\n"
+	output += "- activity-log history: API/noise; actor, timing, quick-revert, and maintenance-window proof belongs in an explicit history mode\n"
+	return output
+}
+
+func dcrScopeContext(dcr models.DCRAsset) string {
+	parts := []string{}
+	if dcr.ResourceGroup != "" {
+		parts = append(parts, "rg="+dcr.ResourceGroup)
+	}
+	if dcr.Location != "" {
+		parts = append(parts, "location="+dcr.Location)
+	}
+	if stringPtrValue(dcr.Kind) != "" {
+		parts = append(parts, "kind="+stringPtrValue(dcr.Kind))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, "; ")
+}
+
+func dcrStreamContext(dcr models.DCRAsset) string {
+	if len(dcr.Streams) == 0 {
+		return "no streams visible"
+	}
+	parts := []string{fmt.Sprintf("%d stream(s)", len(dcr.Streams))}
+	if len(dcr.HighSignalStreams) > 0 {
+		parts = append(parts, "high-signal: "+strings.Join(dcr.HighSignalStreams, ", "))
+	}
+	if len(dcr.DataSourceTypes) > 0 {
+		parts = append(parts, "sources: "+strings.Join(dcr.DataSourceTypes, ", "))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func dcrDestinationContext(dcr models.DCRAsset) string {
+	if len(dcr.Destinations) == 0 {
+		return "no destinations visible"
+	}
+	parts := []string{}
+	for _, destination := range dcr.Destinations {
+		label := destination.Name + " (" + destination.Type + ")"
+		if stringPtrValue(destination.ResourceID) != "" {
+			label += " -> " + resourceNameFromIDForTable(stringPtrValue(destination.ResourceID))
+		}
+		parts = append(parts, label)
+	}
+	return strings.Join(parts, "; ")
+}
+
+func dcrTransformationContext(dcr models.DCRAsset) string {
+	if dcr.TransformationCount == 0 {
+		return "none visible"
+	}
+	return fmt.Sprintf("%d present", dcr.TransformationCount)
+}
+
+func dcrAssociationContext(dcr models.DCRAsset) string {
+	if dcr.AssociationCount == 0 {
+		return "none visible"
+	}
+	if dcr.AssociationCount == 1 && len(dcr.Associations) == 1 {
+		return resourceNameFromIDForTable(dcr.Associations[0].TargetID)
+	}
+	return fmt.Sprintf("%d target(s)", dcr.AssociationCount)
+}
+
+func dcrOperatorNote(dcr models.DCRAsset) string {
+	parts := []string{dcr.Name + ": " + dcr.Summary}
+	if dcr.TransformationCount > 0 && len(dcr.HighSignalStreams) > 0 {
+		parts = append(parts, "Evasion read: transformation posture is visible on high-signal streams, so logs may still arrive while selected records or fields are filtered or reshaped before storage. The command does not print transformKql or claim malicious filtering.")
+	} else if dcr.TransformationCount > 0 {
+		parts = append(parts, "Evasion read: transformation posture is visible, but the command needs stream/context evidence before calling it high-impact.")
+	} else if len(dcr.HighSignalStreams) > 0 {
+		parts = append(parts, "Evasion read: high-signal streams are visible; removing, narrowing, or rerouting those streams would change defender truth, but current output only shows configured posture.")
+	}
+	if len(dcr.Destinations) > 0 {
+		parts = append(parts, "Destination read: current destinations are named, but this command does not claim they are wrong without an expected workspace baseline.")
+	}
+	if dcr.AssociationCount > 0 {
+		parts = append(parts, "Association read: the visible association scope shows where the DCR is intended to apply; runtime agent applied-state is not proven.")
+	}
+	return strings.Join(parts, " ")
+}
+
+func dcrTakeaway(payload models.DCROutput) string {
+	if len(payload.DCRs) == 0 {
+		return "no Data Collection Rules were visible from the current read path."
+	}
+	transformed := 0
+	highSignal := 0
+	associated := 0
+	for _, dcr := range payload.DCRs {
+		if dcr.TransformationCount > 0 {
+			transformed++
+		}
+		if len(dcr.HighSignalStreams) > 0 {
+			highSignal++
+		}
+		if dcr.AssociationCount > 0 {
+			associated++
+		}
+	}
+	return fmt.Sprintf("%d DCR(s) visible; %d show transformation posture, %d carry high-signal streams, and %d have visible associations.", len(payload.DCRs), transformed, highSignal, associated)
 }
 
 func appServicesTakeaway(payload models.AppServicesOutput) string {
@@ -2003,6 +2113,9 @@ func apiMgmtInventoryContext(service models.ApiMgmtServiceAsset) string {
 	if service.NamedValueCount != nil {
 		parts = append(parts, "named-values="+intText(*service.NamedValueCount))
 	}
+	if service.PolicyCount != nil {
+		parts = append(parts, "policies="+intText(*service.PolicyCount))
+	}
 	if len(parts) == 0 {
 		return "-"
 	}
@@ -2055,6 +2168,9 @@ func apiMgmtPostureContext(service models.ApiMgmtServiceAsset) string {
 	}
 	if service.NamedValueKeyVaultCount != nil {
 		parts = append(parts, "kv-backed="+intText(*service.NamedValueKeyVaultCount))
+	}
+	if len(service.PolicyControlTypes) > 0 {
+		parts = append(parts, "policy-controls="+strings.Join(service.PolicyControlTypes, ","))
 	}
 	if len(parts) == 0 {
 		return "-"
@@ -2148,6 +2264,21 @@ func valueOrFallback(value *string, fallback string) string {
 	return *value
 }
 
+func stringPtrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func resourceNameFromIDForTable(resourceID string) string {
+	parts := strings.Split(strings.Trim(resourceID, "/"), "/")
+	if len(parts) == 0 {
+		return resourceID
+	}
+	return parts[len(parts)-1]
+}
+
 func stringOrFallback(value string, fallback string) string {
 	if strings.TrimSpace(value) == "" {
 		return fallback
@@ -2195,8 +2326,19 @@ func automationIdentityContext(item models.AutomationAccountAsset) string {
 }
 
 func automationExecutionContext(item models.AutomationAccountAsset) string {
-	return "published=" + intOrUnknown(item.PublishedRunbookCount) + "/" + intOrUnknown(item.RunbookCount) +
-		"; job-schedules=" + intOrUnknown(item.JobScheduleCount)
+	parts := []string{"published=" + intOrUnknown(item.PublishedRunbookCount) + "/" + intOrUnknown(item.RunbookCount) +
+		"; job-schedules=" + intOrUnknown(item.JobScheduleCount),
+	}
+	if len(item.RunbookTypes) > 0 {
+		parts = append(parts, "types="+strings.Join(item.RunbookTypes, ", "))
+	}
+	if len(item.RunbookCommandClues) > 0 {
+		parts = append(parts, "command-clues="+strings.Join(item.RunbookCommandClues, ", "))
+	}
+	if len(item.RunbookResourceClues) > 0 {
+		parts = append(parts, "resource-clues="+strings.Join(item.RunbookResourceClues, ", "))
+	}
+	return strings.Join(parts, "; ")
 }
 
 func automationTriggerContext(item models.AutomationAccountAsset) string {

@@ -16,10 +16,16 @@ type LogicAppWorkflowAsset struct {
 	PrincipalID                      *string  `json:"principal_id,omitempty"`
 	ClientID                         *string  `json:"client_id,omitempty"`
 	IdentityIDs                      []string `json:"identity_ids"`
+	TriggerCount                     int      `json:"trigger_count"`
+	ActionCount                      int      `json:"action_count"`
+	BranchCount                      int      `json:"branch_count"`
 	TriggerTypes                     []string `json:"trigger_types"`
 	ExternallyCallableRequestTrigger bool     `json:"externally_callable_request_trigger"`
 	RecurrenceSummary                *string  `json:"recurrence_summary,omitempty"`
 	DownstreamActionKinds            []string `json:"downstream_action_kinds"`
+	ConnectorReferences              []string `json:"connector_references"`
+	ParameterNames                   []string `json:"parameter_names"`
+	DownstreamResourceReferences     []string `json:"downstream_resource_references"`
 	Summary                          string   `json:"summary"`
 	RelatedIDs                       []string `json:"related_ids"`
 }

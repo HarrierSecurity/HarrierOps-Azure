@@ -41,7 +41,7 @@ This walkthrough shows the strongest currently visible WebJobs persistence path.
    Nearby maintenance- or sync-themed WebJob names visible from the current environment include `nightly-reconcile`.
 
 Visible WebJobs
-webjob            | parent app     | visible state                                                                                                                                   | execution context                                                                    
+webjob            | parent app     | visible state                                                                                                                                   | execution context
 
 queue-worker      | app-public-api | continuous; status Running; run command visible; parent hostname app-public-api.azurewebsites.net                                               | `app-public-api-system` with no Azure role-assignment rows found for its principal ID
 nightly-reconcile | app-public-api | scheduled; status Success; latest trigger Schedule; schedule 0 0 * * * *; run command visible; parent hostname app-public-api.azurewebsites.net | `app-public-api-system` with no Azure role-assignment rows found for its principal ID

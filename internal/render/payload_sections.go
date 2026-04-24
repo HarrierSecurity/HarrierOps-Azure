@@ -10,6 +10,8 @@ func payloadFindings(payload any) []models.Finding {
 		return cloneFindings(out.Findings)
 	case models.ApiMgmtOutput:
 		return cloneFindings(out.Findings)
+	case models.AppInsightsOutput:
+		return cloneFindings(out.Findings)
 	case models.AppServicesOutput:
 		return cloneFindings(out.Findings)
 	case models.ApplicationGatewayOutput:
@@ -29,6 +31,8 @@ func payloadFindings(payload any) []models.Finding {
 	case models.CrossTenantOutput:
 		return cloneFindings(out.Findings)
 	case models.DatabasesOutput:
+		return cloneFindings(out.Findings)
+	case models.DiagnosticSettingsOutput:
 		return cloneFindings(out.Findings)
 	case models.DevopsOutput:
 		return cloneFindings(out.Findings)
@@ -56,6 +60,8 @@ func payloadFindings(payload any) []models.Finding {
 		return cloneFindings(out.Findings)
 	case models.ResourceTrustsOutput:
 		return resourceTrustFindings(out.Findings)
+	case models.RelayOutput:
+		return cloneFindings(out.Findings)
 	case models.SnapshotsDisksOutput:
 		return cloneFindings(out.Findings)
 	case models.StorageOutput:
@@ -83,6 +89,8 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.ApiMgmtOutput:
 		return cloneIssues(out.Issues)
+	case models.AppInsightsOutput:
+		return cloneIssues(out.Issues)
 	case models.AppCredentialsOutput:
 		return cloneIssues(out.Issues)
 	case models.AppServicesOutput:
@@ -107,7 +115,17 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.CrossTenantOutput:
 		return cloneIssues(out.Issues)
+	case models.EvasionDCROutput:
+		return cloneIssues(out.Issues)
+	case models.EvasionDiagnosticSettingsOutput:
+		return cloneIssues(out.Issues)
+	case models.EvasionAppInsightsOutput:
+		return cloneIssues(out.Issues)
+	case models.EvasionOverviewOutput:
+		return cloneIssues(out.Issues)
 	case models.DatabasesOutput:
+		return cloneIssues(out.Issues)
+	case models.DiagnosticSettingsOutput:
 		return cloneIssues(out.Issues)
 	case models.DevopsOutput:
 		return cloneIssues(out.Issues)
@@ -155,13 +173,31 @@ func payloadIssues(payload any) []models.Issue {
 		return cloneIssues(out.Issues)
 	case models.PersistenceOverviewOutput:
 		return cloneIssues(out.Issues)
+	case models.PathMaskingAPIMOutput:
+		return cloneIssues(out.Issues)
+	case models.PathMaskingLogicAppsOutput:
+		return cloneIssues(out.Issues)
+	case models.PathMaskingRelayOutput:
+		return cloneIssues(out.Issues)
+	case models.PathMaskingOverviewOutput:
+		return cloneIssues(out.Issues)
 	case models.PrincipalsOutput:
 		return cloneIssues(out.Issues)
 	case models.PrivescOutput:
 		return cloneIssues(out.Issues)
 	case models.RbacOutput:
 		return cloneIssues(out.Issues)
+	case models.ResourceHijackingAPIMOutput:
+		return cloneIssues(out.Issues)
+	case models.ResourceHijackingAutomationOutput:
+		return cloneIssues(out.Issues)
+	case models.ResourceHijackingLogicAppsOutput:
+		return cloneIssues(out.Issues)
+	case models.ResourceHijackingOverviewOutput:
+		return cloneIssues(out.Issues)
 	case models.ResourceTrustsOutput:
+		return cloneIssues(out.Issues)
+	case models.RelayOutput:
 		return cloneIssues(out.Issues)
 	case models.RoleTrustsOutput:
 		return cloneIssues(out.Issues)

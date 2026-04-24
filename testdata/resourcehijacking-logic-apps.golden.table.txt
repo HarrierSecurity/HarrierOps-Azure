@@ -1,0 +1,40 @@
+HO-Azure :: attack-path-focused Azure recon
+context :: tenant=auto subscription=auto output=table
+
+[resourcehijacking] Logic Apps resource hijacking means a trusted workflow, trigger, connector path, or identity context can be repurposed while the automation resource remains familiar.
+Logic Apps resourcehijacking capability
+
+╭─────────────────────────────────────┬───────────────────────────────────────────────────────┬──────────────────────╮
+│ action                              │ api surface                                           │ status               │
+├─────────────────────────────────────┼───────────────────────────────────────────────────────┼──────────────────────┤
+│ select trusted workflow             │ Microsoft.Logic/workflows                             │ visible posture only │
+│ edit workflow definition            │ workflow definition                                   │ yes                  │
+│ repurpose trigger                   │ request, recurrence, api-connection, or event trigger │ yes                  │
+│ reuse connector or identity context │ workflow identity and connection references           │ yes                  │
+│ blend as integration maintenance    │ workflow configuration                                │ visible posture only │
+╰─────────────────────────────────────┴───────────────────────────────────────────────────────┴──────────────────────╯
+This walkthrough shows the strongest currently visible Logic App takeover path. The inventory below lists the other visible workflows without repeating the same narrative.
+
+Operator read
+workflow "la-inbound-redeploy" ranks 5/5 for Logic App resource-hijack posture; 1 trigger type(s); 2 downstream action kind(s); current identity can modify workflow posture from visible RBAC.
+Current identity: Current foothold `azurefox-lab-sp` has visible Logic App workflow write control.
+Downstream effect: external trigger, downstream action posture, and workflow identity are visible; current identity has visible Logic App workflow write control
+First boundary: this is Logic App management-plane posture, not run-history proof, connector data proof, or secret-material proof.
+Posture: externally callable request trigger; trigger types request; downstream actions automation, external-http; 1 downstream resource reference(s); managed identity posture.
+
+Visible Logic Apps
+workflow            | rank | triggers       | actions                   | identity       | current identity
+
+la-inbound-redeploy | 5/5  | request        | automation, external-http | SystemAssigned | workflow write
+la-event-router     | 4/5  | api-connection | function, messaging       | UserAssigned   | workflow write
+la-nightly-sync     | 3/5  | recurrence     | storage, connector        |                | workflow write
+
+
+Not collected by default
+item                          | classification  | reason
+
+full workflow definition body | collector issue | The helper reports trigger and downstream action posture but does not print complete workflow JSON by default.
+connector credential values   | recon safety    | Connector secrets and connection credential material are not safe default output.
+run history                   | proof boundary  | Management-plane posture cannot prove the modified workflow ran or completed downstream actions.
+data handled by actions       | proof boundary  | The command does not inspect connector or action payload content.
+activity history              | API/noise       | Broad workflow change history is not needed for default posture and should be a narrow follow-up for timing or actor proof.

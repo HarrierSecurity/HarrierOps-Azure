@@ -1,0 +1,130 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "pathmasking",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "pathmasking",
+  "surface": "relay",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review Azure Relay namespaces and Hybrid Connections for cloud rendezvous points that can blur the path to private listeners or internal services.",
+  "backing_commands": [
+    "relay",
+    "permissions",
+    "rbac"
+  ],
+  "targets": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.Relay/namespaces/relay-hybrid-prod",
+      "relay_namespace": "relay-hybrid-prod",
+      "resource_group": "rg-integration",
+      "location": "eastus",
+      "masking_rank": 5,
+      "masking_reason": "Hybrid Connection, authorization rule, listener-count, and App Service attachment posture are visible; current identity has visible Relay namespace or Hybrid Connection write control",
+      "capability_steps": [
+        {
+          "action": "select Relay namespace",
+          "api_surface": "Microsoft.Relay/namespaces",
+          "status": "visible posture only",
+          "downstream_effect": "Azure becomes the visible rendezvous point while the listener and backend can stay off the direct public path.",
+          "boundary": "Namespace posture does not prove a listener is currently connected."
+        },
+        {
+          "action": "identify Hybrid Connections",
+          "api_surface": "Microsoft.Relay/namespaces/hybridConnections",
+          "status": "visible posture only",
+          "downstream_effect": "Hybrid Connections show named private-path channels that can bridge callers toward internal services.",
+          "boundary": "Hybrid Connection posture does not identify the backend process."
+        },
+        {
+          "action": "review authorization rules",
+          "api_surface": "Microsoft.Relay/namespaces/authorizationRules",
+          "status": "visible posture only",
+          "downstream_effect": "Authorization rules show where management-plane control could sustain or reshape send/listen access paths.",
+          "boundary": "The command does not retrieve keys or prove data-plane use."
+        },
+        {
+          "action": "change namespace or connection posture",
+          "api_surface": "Relay namespace and Hybrid Connection configuration",
+          "status": "yes",
+          "downstream_effect": "Can add, remove, or reconfigure the cloud rendezvous path while preserving an Azure-native integration story.",
+          "boundary": "Write capability is inferred only from visible management-plane RBAC."
+        },
+        {
+          "action": "blend as private connectivity",
+          "api_surface": "Relay service configuration",
+          "status": "visible posture only",
+          "downstream_effect": "Normal cover stories include hybrid integration, firewall avoidance for approved apps, partner connectivity, and private service migration.",
+          "boundary": "Cover story is not an intent claim."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "Relay write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible Relay namespace or Hybrid Connection write control."
+      },
+      "current_state": {
+        "service_bus_endpoint": "https://relay-hybrid-prod.servicebus.windows.net:443/",
+        "hybrid_connection_count": 1,
+        "authorization_rule_count": 2,
+        "hybrid_connection_names": [
+          "onprem-orders"
+        ],
+        "listener_summary": "onprem-orders=1",
+        "app_service_attachments": [
+          "onprem-orders-\u003eapp-public-api"
+        ],
+        "posture": "1 Hybrid Connection(s); 2 authorization rule(s); listener counts onprem-orders=1; 1 App Service Hybrid Connection attachment(s)"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "listener runtime state",
+          "classification": "proof boundary",
+          "reason": "Management-plane posture and listener counts do not prove a current listener process, host, or session."
+        },
+        {
+          "name": "backend process and host",
+          "classification": "proof boundary",
+          "reason": "Relay names and endpoints do not identify the private service or process behind the listener."
+        },
+        {
+          "name": "traffic contents",
+          "classification": "proof boundary",
+          "reason": "The command does not inspect Relay traffic or payloads."
+        },
+        {
+          "name": "authorization keys",
+          "classification": "recon safety",
+          "reason": "Authorization rules are counted, but key material is not retrieved or printed."
+        },
+        {
+          "name": "App Service backend internals",
+          "classification": "proof boundary",
+          "reason": "App Service Hybrid Connection attachments can show reachability posture, but they do not identify the private listener host, process, or traffic contents."
+        }
+      ],
+      "summary": "namespace \"relay-hybrid-prod\" ranks 5/5 for Relay pathmasking posture; 1 Hybrid Connection(s); 2 authorization rule(s); 1 App Service attachment(s); current identity can change Relay path posture from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.Relay/namespaces/relay-hybrid-prod",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-integration/providers/Microsoft.Relay/namespaces/relay-hybrid-prod/hybridConnections/onprem-orders",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api/hybridConnectionNamespaces/relay-hybrid-prod/relays/onprem-orders",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Web/sites/app-public-api"
+      ]
+    }
+  ],
+  "issues": []
+}

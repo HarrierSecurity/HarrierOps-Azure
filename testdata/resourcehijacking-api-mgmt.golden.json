@@ -1,0 +1,143 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "resourcehijacking",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": "11111111-1111-1111-1111-111111111111",
+    "subscription_id": "22222222-2222-2222-2222-222222222222",
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "resourcehijacking",
+  "surface": "api-mgmt",
+  "input_mode": "live",
+  "command_state": "implemented",
+  "summary": "Review API Management services for gateway, backend, subscription, named-value, and identity posture that can redirect a trusted API surface.",
+  "backing_commands": [
+    "api-mgmt",
+    "permissions",
+    "rbac"
+  ],
+  "targets": [
+    {
+      "id": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ApiManagement/service/apim-edge-01",
+      "api_management_service": "apim-edge-01",
+      "resource_group": "rg-apps",
+      "location": "eastus",
+      "takeover_rank": 5,
+      "takeover_reason": "trusted gateway, backend target, and consumer/subscription posture are all visible; current identity has visible APIM backend or policy write control",
+      "capability_steps": [
+        {
+          "action": "select trusted gateway",
+          "api_surface": "Microsoft.ApiManagement/service",
+          "status": "visible posture only",
+          "downstream_effect": "Keeps clients on the existing APIM hostname and API surface.",
+          "boundary": "Gateway posture does not prove traffic volume."
+        },
+        {
+          "action": "identify backend control point",
+          "api_surface": "Microsoft.ApiManagement/service/backends",
+          "status": "visible posture only",
+          "downstream_effect": "Shows where APIM can forward requests behind the stable front door.",
+          "boundary": "Backend hostnames do not prove ownership or runtime reachability."
+        },
+        {
+          "action": "change backend or routing policy",
+          "api_surface": "APIM backend or policy write",
+          "status": "yes",
+          "downstream_effect": "Can redirect selected API traffic while the published APIM surface remains healthy.",
+          "boundary": "This command does not collect policy XML bodies by default."
+        },
+        {
+          "action": "preserve subscriptions and named values",
+          "api_surface": "APIM subscriptions and named values",
+          "status": "yes",
+          "downstream_effect": "Existing consumers, subscription gates, and stored config can keep the route looking operational.",
+          "boundary": "Named-value values and secrets are not printed."
+        },
+        {
+          "action": "blend as API operations change",
+          "api_surface": "APIM service configuration",
+          "status": "visible posture only",
+          "downstream_effect": "Normal cover stories include backend migration, failover, version routing, and blue/green release work.",
+          "boundary": "Cover story is not an intent claim."
+        }
+      ],
+      "current_identity_context": {
+        "name": "azurefox-lab-sp",
+        "kind": "current-foothold",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role_names": [
+          "Owner"
+        ],
+        "scope_ids": [
+          "/subscriptions/22222222-2222-2222-2222-222222222222"
+        ],
+        "control_label": "APIM backend/policy write",
+        "summary": "Current foothold `azurefox-lab-sp` has visible APIM backend or policy write control."
+      },
+      "current_state": {
+        "state": "Succeeded",
+        "public_network_access": "Enabled",
+        "virtual_network_type": "External",
+        "gateway_hostnames": [
+          "apim-edge-01.azure-api.net",
+          "api.contoso.com"
+        ],
+        "backend_hostnames": [
+          "orders-internal.contoso.local"
+        ],
+        "api_count": 2,
+        "subscription_count": 3,
+        "active_subscription_count": 2,
+        "backend_count": 1,
+        "policy_count": 2,
+        "policy_control_types": [
+          "backend-routing",
+          "conditional-routing",
+          "header-auth",
+          "request-rewrite"
+        ],
+        "named_value_secret_count": 1,
+        "named_value_key_vault_count": 1,
+        "workload_identity_type": "SystemAssigned",
+        "posture": "2 gateway hostname(s); 1 backend hostname(s); policy controls: backend-routing, conditional-routing, header-auth, request-rewrite; 2 active subscription(s); secret or Key Vault named-value posture"
+      },
+      "not_collected_by_default": [
+        {
+          "name": "policy XML bodies",
+          "classification": "recon safety",
+          "reason": "The flat helper parses safe policy control types, but does not print raw policy XML or named-value expansions."
+        },
+        {
+          "name": "named-value values",
+          "classification": "recon safety",
+          "reason": "Default output reports secret and Key Vault named-value counts without printing stored values."
+        },
+        {
+          "name": "live request flow",
+          "classification": "proof boundary",
+          "reason": "Management-plane posture cannot prove traffic was routed, captured, or modified."
+        },
+        {
+          "name": "backend ownership",
+          "classification": "proof boundary",
+          "reason": "A backend hostname does not prove who controls that endpoint or whether it is reachable."
+        },
+        {
+          "name": "activity history",
+          "classification": "API/noise",
+          "reason": "Broad APIM history pulls are not needed for default posture and should be a narrow follow-up only when timing or actor proof matters."
+        }
+      ],
+      "summary": "service \"apim-edge-01\" ranks 5/5 for APIM resource-hijack posture; 2 gateway hostname(s); 1 backend hostname(s); current identity can modify APIM backend or policy posture from visible RBAC.",
+      "related_ids": [
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.ApiManagement/service/apim-edge-01",
+        "99990000-0000-0000-0000-000000000001",
+        "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-apps/providers/Microsoft.Network/publicIPAddresses/pip-apim-edge-01"
+      ]
+    }
+  ],
+  "issues": []
+}

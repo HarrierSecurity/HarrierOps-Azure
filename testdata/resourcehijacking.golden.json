@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "schema_version": "1.4.0",
+    "command": "resourcehijacking",
+    "generated_at": "2026-04-13T12:00:00Z",
+    "tenant_id": null,
+    "subscription_id": null,
+    "devops_organization": null,
+    "token_source": null,
+    "auth_mode": null
+  },
+  "grouped_command_name": "resourcehijacking",
+  "command_state": "implemented",
+  "current_behavior": "Grouped resourcehijacking walkthroughs. Use `ho-azure resourcehijacking` or `ho-azure resourcehijacking help` to list surfaces, then `ho-azure resourcehijacking \u003csurface\u003e` to run an implemented surface.",
+  "planned_input_modes": [
+    "live"
+  ],
+  "preferred_artifact_order": [
+    "loot",
+    "json"
+  ],
+  "selected_surface": null,
+  "surfaces": [
+    {
+      "surface": "api-mgmt",
+      "state": "implemented",
+      "summary": "Review API Management services for gateway, backend, subscription, named-value, and identity posture that can redirect a trusted API surface.",
+      "operator_question": "How far can current access take me through APIM backend and routing-control levers before the proof boundary moves into policy bodies, traffic logs, or backend ownership?",
+      "backing_commands": [
+        "api-mgmt",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "automation",
+      "state": "implemented",
+      "summary": "Review Azure Automation accounts for published runbook, schedule, webhook, hybrid worker, secure asset, and identity posture that can repurpose trusted operations automation.",
+      "operator_question": "How far can current access take me through Automation runbook, trigger, execution context, and account-control levers before the proof boundary moves into script content, job output, or runtime host state?",
+      "backing_commands": [
+        "automation",
+        "permissions",
+        "rbac"
+      ]
+    },
+    {
+      "surface": "logic-apps",
+      "state": "implemented",
+      "summary": "Review Logic Apps for workflow definition, trigger, downstream action, connector, and identity posture that can repurpose trusted automation.",
+      "operator_question": "How far can current access take me through Logic App trigger, workflow, action, and identity levers before the proof boundary moves into run history, connector data, or secret material?",
+      "backing_commands": [
+        "logic-apps",
+        "permissions",
+        "rbac"
+      ]
+    }
+  ],
+  "issues": []
+}

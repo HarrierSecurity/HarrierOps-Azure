@@ -429,7 +429,7 @@ func renderAlignedPipeTable(headers []string, rows [][]string) string {
 			}
 			rendered = append(rendered, strings.Join(parts, " | "))
 		}
-		return strings.Join(rendered, "\n")
+		return trimTrailingLineSpaces(strings.Join(rendered, "\n"))
 	}
 
 	var builder strings.Builder
@@ -461,21 +461,25 @@ func persistenceAutomationExplanation(account models.PersistenceAutomationAccoun
 	if persistenceCapabilityStatus(account.CapabilitySteps, "create or modify account") != "yes" {
 		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, "  The Automation account is the Azure-side container for runbooks, schedules, webhooks, identity, and secure assets; no VM or host login is required to keep this path in Azure.")
 
 	lines = append(lines, "- "+persistenceAutomationRunbookBullet(account))
 	if persistenceCapabilityStatus(account.CapabilitySteps, "add or edit runbook") != "yes" {
 		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, "  A runbook is the stored container first; it becomes useful execution only after content is added and a published version exists.")
 
 	lines = append(lines, "- "+persistenceAutomationCodeBullet(account))
 	if persistenceCapabilityStatus(account.CapabilitySteps, "upload or replace code") != "yes" {
 		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, "  This is the runnable content layer: PowerShell or Python runbook content can call Azure APIs, reach storage or Key Vault, make outbound calls, or drive host actions through control-plane paths.")
 
 	lines = append(lines, "- "+persistenceAutomationPublishBullet(account))
 	if persistenceCapabilityStatus(account.CapabilitySteps, "publish runbook") != "yes" {
 		return persistenceTruncatedWalkthrough(lines, []string{"  " + persistenceAutomationVisibilityLine(account)}, account.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, "  Automation keeps draft and published runbook versions; publishing is the step that makes the stored content runnable in Azure.")
 
 	lines = append(lines, "- "+persistenceAutomationExecutionContextBullet(account))
 	if persistenceCapabilityStatus(account.CapabilitySteps, "attach or reuse exec ctx") != "yes" {
@@ -498,7 +502,9 @@ func persistenceAutomationExplanation(account models.PersistenceAutomationAccoun
 	if len(account.CurrentState.ScheduleDefinitions) > 0 {
 		lines = append(lines, "  Visible schedule definitions here include "+persistenceAutomationScheduleDefinitionSummary(account.CurrentState.ScheduleDefinitions)+".")
 	}
+	lines = append(lines, "  Schedules, job schedules, webhooks, or upstream services such as Logic Apps and Functions are the durable rerun anchors; a runbook without one is stored code but not a complete persistence path.")
 	lines = append(lines, "- "+persistenceAutomationRepurposeBullet(account))
+	lines = append(lines, "  When triggered, Azure spins up a worker, loads the published runbook, executes under the selected identity or credential context, and then stops; persistence is the code, identity, and trigger remaining configured.")
 	if nearby := persistenceAutomationNearbyNamesLine(account.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
@@ -617,29 +623,95 @@ func persistenceCapabilityStatus(steps []models.PersistenceCapabilityStep, actio
 }
 
 func persistenceLogicAppExplanation(workflow models.PersistenceLogicAppWorkflow) string {
-	lines := []string{
-		"- " + persistenceLogicAppWorkflowBullet(workflow),
-		"- " + persistenceLogicAppDefinitionBullet(workflow),
-		"- " + persistenceLogicAppExecutionContextBullet(workflow),
-		"  Managed identity or connector-backed actions may provide that execution context.",
-		"  In Logic Apps, the payload is the stored workflow definition and action chain Azure will execute later.",
+	visibilityLines := persistenceLogicAppVisibilityLines(workflow)
+	lines := []string{"- " + persistenceLogicAppWorkflowBullet(workflow)}
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "create or modify workflow") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, "  A Logic App is a workflow resource stored in Azure: the trigger starts it, and the actions decide what it does next.")
+
+	lines = append(lines, "- "+persistenceLogicAppDefinitionBullet(workflow))
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "edit workflow definition") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, "  In Logic Apps, the payload is the stored workflow definition and action chain Azure will execute later.")
+	lines = append(lines, "  Consumption-style workflows are managed directly from the workflow definition; Standard Logic Apps behave more like a host with workflows, app settings, and package or deployment paths inside it.")
+
+	lines = append(lines, "- "+persistenceLogicAppExecutionContextBullet(workflow))
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "attach or reuse exec ctx") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, "  Managed identity or connector-backed actions may provide that execution context.")
+	lines = append(lines, "  That identity or connection is the power layer: it determines which Azure services, secrets, storage paths, external endpoints, or other automation the workflow can reach.")
 	if workflow.CurrentIdentityContext != nil && strings.TrimSpace(workflow.CurrentIdentityContext.Summary) != "" {
 		lines = append(lines, "  "+workflow.CurrentIdentityContext.Summary)
 	}
 	if ctx := workflow.CurrentState.StrongestVisibleExecutionContext; ctx != nil && strings.TrimSpace(ctx.Summary) != "" {
 		lines = append(lines, "  "+ctx.Summary)
 	}
-	lines = append(lines,
-		"- "+persistenceLogicAppTriggerBullet(workflow),
-		"- "+persistenceLogicAppEnableBullet(workflow),
-		"- "+persistenceLogicAppActionBullet(workflow),
-		"- "+persistenceLogicAppRepurposeBullet(workflow),
-	)
+
+	lines = append(lines, "- "+persistenceLogicAppTriggerBullet(workflow))
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "define or modify trigger") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceLogicAppTriggerWalkthrough(workflow)...)
+
+	lines = append(lines, "- "+persistenceLogicAppEnableBullet(workflow))
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "enable workflow") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, "  Once saved and enabled, Azure listens for the trigger and starts the workflow when the trigger fires; no user needs to stay logged in.")
+
+	lines = append(lines, "- "+persistenceLogicAppActionBullet(workflow))
+	if persistenceCapabilityStatus(workflow.CapabilitySteps, "add or repurpose downstream actions") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workflow.CurrentState.NearbyThematicNames)
+	}
+	lines = append(lines, persistenceLogicAppActionWalkthrough(workflow)...)
+
+	lines = append(lines, "- "+persistenceLogicAppRepurposeBullet(workflow))
+	lines = append(lines, "  Persistence here is the stored workflow, reachable trigger, and valid identity or connector context remaining in Azure so the path can be reused later.")
 	if nearby := persistenceAutomationNearbyNamesLine(workflow.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
 	return renderPersistenceWalkthrough(lines)
+}
+
+func persistenceLogicAppTriggerWalkthrough(workflow models.PersistenceLogicAppWorkflow) []string {
+	lines := []string{}
+	if len(workflow.CurrentState.TriggerTypes) > 0 {
+		lines = append(lines, "  Visible trigger types here include "+persistenceJoinedOrNone(workflow.CurrentState.TriggerTypes)+".")
+	}
+	if workflow.CurrentState.ExternallyCallableRequestTrigger {
+		lines = append(lines, "  The visible request trigger makes this workflow externally callable if the callback URL or caller path is usable; this command does not print trigger secret material.")
+	}
+	if recurrence := strings.TrimSpace(valueOrEmpty(workflow.CurrentState.RecurrenceSummary)); recurrence != "" {
+		lines = append(lines, "  Visible recurrence posture here is "+recurrence+".")
+	}
+	if len(lines) == 0 {
+		lines = append(lines, "  Trigger posture is the re-entry anchor: HTTP request, schedule, connector, or event triggers decide how this workflow can run again later.")
+	}
+	return lines
+}
+
+func persistenceLogicAppActionWalkthrough(workflow models.PersistenceLogicAppWorkflow) []string {
+	lines := []string{
+		"  Logic Apps do not need a traditional script to be useful; the action graph is the execution logic.",
+	}
+	if len(workflow.CurrentState.DownstreamActionKinds) > 0 {
+		lines = append(lines, "  Visible downstream action kinds here include "+persistenceJoinedOrNone(workflow.CurrentState.DownstreamActionKinds)+".")
+	}
+	lines = append(lines, "  Actions can call Azure APIs, send HTTP requests, read or write storage, invoke other automation, or branch through connector-backed workflows when those mechanics are present.")
+	return lines
+}
+
+func persistenceLogicAppVisibilityLines(workflow models.PersistenceLogicAppWorkflow) []string {
+	return persistenceVisibilityFallbackLines(
+		strings.TrimSpace(persistenceLogicAppInventoryState(workflow)),
+		strings.TrimSpace(persistenceLogicAppInventoryExecutionContext(workflow)),
+		"this workflow already has trigger posture, downstream action shape, or reuse value if stronger control is obtained later.",
+		"this workflow is worth revisiting if stronger control is obtained later.",
+		"  Visibility still confirms this Logic App exists, even though the current identity does not yet have a proven write path here.",
+	)
 }
 
 func persistenceFunctionsExplanation(app models.PersistenceFunctionApp) string {
@@ -786,6 +858,7 @@ func persistenceTruncatedWalkthrough(lines []string, visibilityLines []string, n
 		}
 		lines = append(lines, line)
 	}
+	lines = append(lines, "  Higher permissions are required to complete the remaining persistence steps for this path.")
 	if nearby := persistenceAutomationNearbyNamesLine(nearbyNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
@@ -875,6 +948,7 @@ func persistenceFunctionsCodeWalkthrough(app models.PersistenceFunctionApp) []st
 	lines := []string{
 		"  Because the current identity already controls this Function App, zip deploy, publish, or package replacement are part of the defended Functions persistence path here.",
 		"  Common deploy paths here include ZIP package deployment, pipeline deployment, run-from-package, or local project publish.",
+		"  The Function App can exist without meaningful deployed logic; the package or project is the runnable payload Azure loads when a trigger fires.",
 	}
 	if deployment := strings.TrimSpace(valueOrEmpty(app.CurrentState.Deployment)); deployment != "" {
 		for _, item := range strings.Split(deployment, ";") {
@@ -945,7 +1019,7 @@ func persistenceFunctionsTriggerWalkthrough(app models.PersistenceFunctionApp) [
 		}
 	}
 	lines = append(lines, "  The remaining gap is data-plane and runtime-side validation the current management-plane collector does not perform.")
-	lines = append(lines, "  That includes function keys or caller auth actually in hand, upstream Service Bus or storage access, and any runtime-side restriction beyond the visible trigger metadata.")
+	lines = append(lines, "  That includes function keys or caller auth actually in hand, upstream Service Bus, queue, storage, or binding access, and any runtime-side restriction beyond the visible trigger metadata.")
 	return lines
 }
 
@@ -2854,44 +2928,48 @@ func persistenceFunctionsBoundarySections(apps []models.PersistenceFunctionApp) 
 }
 
 func persistenceAzureMLExplanation(workspace models.PersistenceAzureMLWorkspace) string {
-	lines := []string{}
-	add := func(bullet string, detail []string) bool {
-		if bullet == "" {
-			return false
-		}
-		lines = append(lines, bullet)
-		lines = append(lines, detail...)
-		return true
+	visibilityLines := []string{"  " + persistenceAzureMLVisibilityLine(workspace)}
+	lines := []string{persistenceAzureMLWorkspaceBullet(workspace)}
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify workspace") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
+	lines = append(lines, persistenceAzureMLWorkspaceWalkthrough(workspace)...)
 
-	if !add(persistenceAzureMLWorkspaceBullet(workspace), persistenceAzureMLWorkspaceWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLComputeBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "attach or reuse compute") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLComputeBullet(workspace), persistenceAzureMLComputeWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLComputeWalkthrough(workspace)...)
+
+	lines = append(lines, persistenceAzureMLCodeBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "add or modify jobs or pipelines") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLCodeBullet(workspace), persistenceAzureMLCodeWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLCodeWalkthrough(workspace)...)
+
+	lines = append(lines, persistenceAzureMLExecutionContextBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "attach or reuse exec ctx") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLExecutionContextBullet(workspace), persistenceAzureMLExecutionContextWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLExecutionContextWalkthrough(workspace)...)
+
+	lines = append(lines, persistenceAzureMLScheduleBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify schedule") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLScheduleBullet(workspace), persistenceAzureMLScheduleWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLScheduleWalkthrough(workspace)...)
+
+	lines = append(lines, persistenceAzureMLEndpointBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "expose or reuse endpoint") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLEndpointBullet(workspace), persistenceAzureMLEndpointWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
+	lines = append(lines, persistenceAzureMLEndpointWalkthrough(workspace)...)
+
+	lines = append(lines, persistenceAzureMLRepurposeBullet(workspace))
+	if persistenceCapabilityStatus(workspace.CapabilitySteps, "create or modify workspace") != "yes" {
+		return persistenceTruncatedWalkthrough(lines, visibilityLines, workspace.CurrentState.NearbyThematicNames)
 	}
-	if !add(persistenceAzureMLRepurposeBullet(workspace), persistenceAzureMLRepurposeWalkthrough(workspace)) {
-		lines = append(lines, persistenceAzureMLVisibilityLine(workspace))
-		return renderPersistenceWalkthrough(lines)
-	}
+	lines = append(lines, persistenceAzureMLRepurposeWalkthrough(workspace)...)
 	if nearby := persistenceAutomationNearbyNamesLine(workspace.CurrentState.NearbyThematicNames); nearby != "" {
 		lines = append(lines, "  "+nearby)
 	}
@@ -2948,6 +3026,7 @@ func persistenceAzureMLCodeBullet(workspace models.PersistenceAzureMLWorkspace) 
 func persistenceAzureMLCodeWalkthrough(workspace models.PersistenceAzureMLWorkspace) []string {
 	detail := []string{
 		"  In Azure ML, persistence can live in saved notebooks, jobs, pipelines, scheduled jobs, and environment definitions.",
+		"  Notebooks are interactive code surfaces, while jobs and pipelines are the scheduled or triggered execution surfaces.",
 		"  Those are the stored execution surfaces that can remain in the workspace even when no host is persistently compromised.",
 	}
 	return detail
