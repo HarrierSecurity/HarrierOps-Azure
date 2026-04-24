@@ -25,8 +25,8 @@ type MonitoringSinkAsset struct {
 }
 
 type MonitoringSinksOutput struct {
-	Sinks    []MonitoringSinkAsset   `json:"sinks"`
-	Findings []Finding               `json:"findings"`
-	Issues   []Issue                 `json:"issues"`
-	Metadata RuntimeCommandMetadata  `json:"metadata"`
+	Sinks    []MonitoringSinkAsset  `json:"sinks"`
+	Findings []Finding              `json:"findings"`
+	Issues   []Issue                `json:"issues"`
+	Metadata RuntimeCommandMetadata `json:"metadata"`
 }
