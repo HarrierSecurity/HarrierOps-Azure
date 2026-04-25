@@ -63,10 +63,11 @@ func (provider AzureProvider) DiagnosticSettings(ctx context.Context, tenant str
 	})
 
 	return DiagnosticSettingsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Sources:        sources,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Sources:               sources,
+		Issues:                issues,
 	}, nil
 }
 

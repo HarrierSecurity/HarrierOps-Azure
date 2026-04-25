@@ -16,14 +16,16 @@ type PrincipalSummary struct {
 }
 
 type PrincipalsMetadata struct {
-	AuthMode           *string `json:"auth_mode"`
-	Command            string  `json:"command"`
-	DevOpsOrganization *string `json:"devops_organization"`
-	GeneratedAt        string  `json:"generated_at"`
-	SchemaVersion      string  `json:"schema_version"`
-	SubscriptionID     *string `json:"subscription_id"`
-	TenantID           *string `json:"tenant_id"`
-	TokenSource        *string `json:"token_source"`
+	AuthMode           *string           `json:"auth_mode"`
+	Command            string            `json:"command"`
+	DevOpsOrganization *string           `json:"devops_organization"`
+	GeneratedAt        string            `json:"generated_at"`
+	SchemaVersion      string            `json:"schema_version"`
+	SubscriptionID     *string           `json:"subscription_id"`
+	TenantID           *string           `json:"tenant_id"`
+	TokenSource        *string           `json:"token_source"`
+	ArtifactContext    *ArtifactContext  `json:"artifact_context,omitempty"`
+	SessionArtifacts   []SessionArtifact `json:"session_artifacts,omitempty"`
 }
 
 type PrincipalsOutput struct {

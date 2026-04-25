@@ -21,7 +21,7 @@ func keyVaultHandler(provider providers.Provider, now func() time.Time) Handler 
 			Findings:  keyVaultFindings(vaults),
 			Issues:    facts.Issues,
 			KeyVaults: vaults,
-			Metadata:  commandMetadata("keyvault", now, request, facts.TenantID, facts.SubscriptionID, ""),
+			Metadata:  withArtifactContext(commandMetadata("keyvault", now, request, facts.TenantID, facts.SubscriptionID, facts.TokenSource), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 		}, nil
 	}
 }

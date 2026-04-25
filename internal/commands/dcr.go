@@ -21,7 +21,7 @@ func dcrHandler(provider providers.Provider, now func() time.Time) Handler {
 			DCRs:     dcrs,
 			Findings: []models.Finding{},
 			Issues:   facts.Issues,
-			Metadata: runtimeCommandMetadata("dcr", now, facts.TenantID, facts.SubscriptionID),
+			Metadata: withRuntimeArtifactContext(runtimeCommandMetadata("dcr", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 		}, nil
 	}
 }

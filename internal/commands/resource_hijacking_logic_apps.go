@@ -28,10 +28,11 @@ func buildResourceHijackingLogicAppsOutput(
 	contract contracts.ResourceHijackingSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	logicAppsFuture := runGroupedCommandOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "logic-apps", "permissions", "rbac")
+	logicAppsFuture := runHelperOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	logicApps, err := logicAppsFuture.wait()
+	logicApps, logicAppsSource, err := logicAppsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +70,15 @@ func buildResourceHijackingLogicAppsOutput(
 	issues := familyIssues(logicApps.Issues, evidence)
 
 	return models.ResourceHijackingLogicAppsOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(logicApps.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(logicApps.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"resourcehijacking",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(logicApps.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(logicApps.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"resourcehijacking",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, logicAppsSource),
 		),
 		GroupedCommandName: "resourcehijacking",
 		Surface:            contract.Name,

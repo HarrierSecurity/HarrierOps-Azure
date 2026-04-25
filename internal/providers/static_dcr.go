@@ -21,8 +21,9 @@ func (StaticProvider) DCR(_ context.Context, tenant string, subscription string)
 	transformLength := 84
 
 	facts := DCRFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		DCRs: []models.DCRAsset{
 			{
 				ID:            prodDCRID,

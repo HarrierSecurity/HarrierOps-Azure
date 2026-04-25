@@ -11,9 +11,13 @@ import (
 	"harrierops-azure/internal/providers"
 )
 
+type permissionsSourceProvider interface {
+	PermissionsFromSources(context.Context, string, string, providers.RBACFacts, providers.WhoAmIFacts, providers.ManagedIdentitiesFacts) (providers.PermissionsFacts, error)
+}
+
 func permissionsHandler(provider providers.Provider, now func() time.Time) Handler {
 	return func(ctx context.Context, request Request) (any, error) {
-		facts, err := provider.Permissions(ctx, request.Tenant, request.Subscription)
+		facts, sessionArtifacts, err := permissionsFacts(ctx, request, provider, now)
 		if err != nil {
 			return nil, err
 		}
@@ -24,11 +28,76 @@ func permissionsHandler(provider providers.Provider, now func() time.Time) Handl
 		}
 
 		return models.PermissionsOutput{
-			Metadata:    scopedMetadata(now, request, facts.TenantID, subscriptionID, "permissions"),
+			Metadata: withSessionArtifacts(
+				withScopedArtifactContext(
+					scopedMetadata(now, request, facts.TenantID, subscriptionID, "permissions"),
+					request,
+					facts.CurrentPrincipal,
+					facts.AuthMode,
+					facts.TokenSource,
+				),
+				sessionArtifacts,
+			),
 			Permissions: enrichPermissionRows(facts.Permissions, facts.Principals),
 			Issues:      facts.Issues,
 		}, nil
 	}
+}
+
+func permissionsFacts(ctx context.Context, request Request, provider providers.Provider, now func() time.Time) (providers.PermissionsFacts, []models.SessionArtifact, error) {
+	sourceProvider, ok := provider.(permissionsSourceProvider)
+	if !ok {
+		facts, err := provider.Permissions(ctx, request.Tenant, request.Subscription)
+		return facts, nil, err
+	}
+
+	group := newCommandOutputGroup(3)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "rbac", "whoami", "managed-identities")
+	rbacFuture := runHelperOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac", expected)
+	whoamiFuture := runHelperOutput[models.WhoAmIOutput](group, ctx, request, whoAmIHandler(provider, now), "whoami", expected)
+	managedIdentityFuture := runHelperOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities", expected)
+
+	rbac, rbacSource, err := rbacFuture.waitWithSource()
+	if err != nil {
+		return providers.PermissionsFacts{}, nil, err
+	}
+	whoami, whoamiSource, err := whoamiFuture.waitWithSource()
+	if err != nil {
+		return providers.PermissionsFacts{}, nil, err
+	}
+	managedIdentities, managedIdentitiesSource, err := managedIdentityFuture.waitWithSource()
+	if err != nil {
+		return providers.PermissionsFacts{}, nil, err
+	}
+
+	rbacFacts := rbacFactsFromOutput(rbac)
+	whoamiFacts := whoAmIFactsFromOutput(whoami)
+	managedIdentityFacts := managedIdentitiesFactsFromOutput(managedIdentities)
+	tenantID := firstNonEmpty(rbacFacts.TenantID, whoamiFacts.TenantID, managedIdentityFacts.TenantID)
+	subscriptionID := firstNonEmpty(rbacFacts.SubscriptionID, whoamiFacts.Subscription.ID, managedIdentityFacts.SubscriptionID)
+	facts, err := sourceProvider.PermissionsFromSources(
+		ctx,
+		tenantID,
+		subscriptionID,
+		rbacFacts,
+		whoamiFacts,
+		managedIdentityFacts,
+	)
+	if err != nil {
+		return providers.PermissionsFacts{}, nil, err
+	}
+
+	sessionArtifacts := []models.SessionArtifact{}
+	if rbacSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *rbacSource)
+	}
+	if whoamiSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *whoamiSource)
+	}
+	if managedIdentitiesSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *managedIdentitiesSource)
+	}
+	return facts, sessionArtifacts, nil
 }
 
 type enrichedPermissionRow struct {

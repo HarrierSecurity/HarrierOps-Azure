@@ -8,6 +8,10 @@ import (
 )
 
 func (provider AzureProvider) MonitoringSinks(ctx context.Context, tenant string, subscription string) (MonitoringSinksFacts, error) {
+	return provider.MonitoringSinksFromSources(ctx, tenant, subscription, nil, nil)
+}
+
+func (provider AzureProvider) MonitoringSinksFromSources(ctx context.Context, tenant string, subscription string, dcrFacts *DCRFacts, diagnosticFacts *DiagnosticSettingsFacts) (MonitoringSinksFacts, error) {
 	session, err := provider.session(ctx, tenant, subscription)
 	if err != nil {
 		return MonitoringSinksFacts{}, err
@@ -29,19 +33,29 @@ func (provider AzureProvider) MonitoringSinks(ctx context.Context, tenant string
 	}
 
 	issues := []models.Issue{}
-	dcrFacts, err := provider.DCR(ctx, tenant, subscription)
-	if err != nil {
-		issues = append(issues, issueFromError("monitoring-sinks.dcr", err))
-	} else {
+	if dcrFacts == nil {
+		collected, err := provider.DCR(ctx, tenant, subscription)
+		if err != nil {
+			issues = append(issues, issueFromError("monitoring-sinks.dcr", err))
+		} else {
+			dcrFacts = &collected
+		}
+	}
+	if dcrFacts != nil {
 		issues = append(issues, dcrFacts.Issues...)
 		monitoringSinksEnsureDCRDestinations(&sinks, dcrFacts.DCRs)
 		monitoringSinksAttachDCRReferences(sinks, dcrFacts.DCRs)
 	}
 
-	diagnosticFacts, err := provider.DiagnosticSettings(ctx, tenant, subscription)
-	if err != nil {
-		issues = append(issues, issueFromError("monitoring-sinks.diagnostic-settings", err))
-	} else {
+	if diagnosticFacts == nil {
+		collected, err := provider.DiagnosticSettings(ctx, tenant, subscription)
+		if err != nil {
+			issues = append(issues, issueFromError("monitoring-sinks.diagnostic-settings", err))
+		} else {
+			diagnosticFacts = &collected
+		}
+	}
+	if diagnosticFacts != nil {
 		issues = append(issues, diagnosticFacts.Issues...)
 		monitoringSinksEnsureDiagnosticDestinations(&sinks, diagnosticFacts.Sources)
 		monitoringSinksAttachDiagnosticReferences(sinks, diagnosticFacts.Sources)
@@ -50,10 +64,11 @@ func (provider AzureProvider) MonitoringSinks(ctx context.Context, tenant string
 	sinks = monitoringSinksFinalize(sinks)
 
 	return MonitoringSinksFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Sinks:          sinks,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Sinks:                 sinks,
+		Issues:                issues,
 	}, nil
 }
 

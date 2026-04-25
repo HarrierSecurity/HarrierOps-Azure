@@ -34,16 +34,16 @@ func buildPersistenceWebJobsOutput(
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
 	webJobsFuture := runGroupedCommandOutput[models.WebJobsOutput](group, ctx, request, webJobsHandler(provider, now), "webjobs")
-	appServicesFuture := runGroupedCommandOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services")
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "app-services", "permissions", "rbac")
+	appServicesFuture := runHelperOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services", expected)
 	managedIdentitiesFuture := runGroupedCommandOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	identityControlFutures := startIdentityControlFuturesWithExpected(group, ctx, provider, now, request, expected)
 
 	webJobs, err := webJobsFuture.wait()
 	if err != nil {
 		return nil, err
 	}
-	appServices, err := appServicesFuture.wait()
+	appServices, appServicesSource, err := appServicesFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +51,7 @@ func buildPersistenceWebJobsOutput(
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +60,13 @@ func buildPersistenceWebJobsOutput(
 		request.Subscription,
 		stringPtrValue(webJobs.Metadata.SubscriptionID),
 		stringPtrValue(appServices.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(webJobs.Metadata.TenantID),
 		stringPtrValue(appServices.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
 	appsByID := make(map[string]models.AppServiceAsset, len(appServices.AppServices))
@@ -81,7 +77,7 @@ func buildPersistenceWebJobsOutput(
 		appsByID[app.ID] = app
 	}
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	managedIdentitiesByAttachment := persistenceAppServiceManagedIdentitiesByAttachment(managedIdentities.Identities)
 	items := sortedByLess(webJobs.WebJobs, webJobLess)
@@ -141,11 +137,11 @@ func buildPersistenceWebJobsOutput(
 	issues := append([]models.Issue{}, webJobs.Issues...)
 	issues = append(issues, appServices.Issues...)
 	issues = append(issues, managedIdentities.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceWebJobsOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), appendSessionArtifact(identityControl.sessionArtifacts, appServicesSource)),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

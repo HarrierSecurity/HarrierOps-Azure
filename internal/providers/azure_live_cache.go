@@ -14,23 +14,6 @@ import (
 	"harrierops-azure/internal/models"
 )
 
-type liveAzureCache struct {
-	mu                   sync.Mutex
-	sessions             map[string]*onceValue[azureSession]
-	webAppsStates        map[string]*liveWebAppsState
-	computeStates        map[string]*liveComputeNetworkState
-	devopsOrgDiscoveries map[string]*onceValue[devopsOrganizationDiscovery]
-}
-
-func newLiveAzureCache() *liveAzureCache {
-	return &liveAzureCache{
-		sessions:             map[string]*onceValue[azureSession]{},
-		webAppsStates:        map[string]*liveWebAppsState{},
-		computeStates:        map[string]*liveComputeNetworkState{},
-		devopsOrgDiscoveries: map[string]*onceValue[devopsOrganizationDiscovery]{},
-	}
-}
-
 type onceValue[T any] struct {
 	mu    sync.Mutex
 	ready chan struct{}
@@ -72,34 +55,6 @@ func (value *onceValue[T]) get(load func() (T, error)) (T, error) {
 		}
 		return result, nil
 	}
-}
-
-func sessionRequestKey(tenant string, subscription string) string {
-	return tenant + "::" + subscription
-}
-
-func sessionStateKey(session azureSession) string {
-	return session.tenantID + "::" + session.subscription.ID
-}
-
-func (provider AzureProvider) cachedSession(ctx context.Context, tenant string, subscription string) (azureSession, error) {
-	if provider.cache == nil {
-		return provider.buildSession(ctx, tenant, subscription)
-	}
-
-	cacheKey := sessionRequestKey(tenant, subscription)
-
-	provider.cache.mu.Lock()
-	entry := provider.cache.sessions[cacheKey]
-	if entry == nil {
-		entry = &onceValue[azureSession]{}
-		provider.cache.sessions[cacheKey] = entry
-	}
-	provider.cache.mu.Unlock()
-
-	return entry.get(func() (azureSession, error) {
-		return provider.buildSession(ctx, tenant, subscription)
-	})
 }
 
 func (provider AzureProvider) buildSession(ctx context.Context, tenant string, subscription string) (azureSession, error) {
@@ -156,40 +111,16 @@ type liveWebAppsState struct {
 }
 
 func (provider AzureProvider) webAppsState(session azureSession) (*liveWebAppsState, error) {
-	if provider.cache == nil {
-		client, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
-		if err != nil {
-			return nil, fmt.Errorf("build web apps client: %w", err)
-		}
-		return &liveWebAppsState{
-			client:         client,
-			credential:     session.credential,
-			subscriptionID: session.subscription.ID,
-			apps:           &onceValue[[]*liveWebAppResource]{},
-		}, nil
+	client, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build web apps client: %w", err)
 	}
-
-	cacheKey := sessionStateKey(session)
-
-	provider.cache.mu.Lock()
-	state := provider.cache.webAppsStates[cacheKey]
-	if state == nil {
-		client, err := armappservice.NewWebAppsClient(session.subscription.ID, session.credential, nil)
-		if err != nil {
-			provider.cache.mu.Unlock()
-			return nil, fmt.Errorf("build web apps client: %w", err)
-		}
-		state = &liveWebAppsState{
-			client:         client,
-			credential:     session.credential,
-			subscriptionID: session.subscription.ID,
-			apps:           &onceValue[[]*liveWebAppResource]{},
-		}
-		provider.cache.webAppsStates[cacheKey] = state
-	}
-	provider.cache.mu.Unlock()
-
-	return state, nil
+	return &liveWebAppsState{
+		client:         client,
+		credential:     session.credential,
+		subscriptionID: session.subscription.ID,
+		apps:           &onceValue[[]*liveWebAppResource]{},
+	}, nil
 }
 
 func (state *liveWebAppsState) list(ctx context.Context) ([]*liveWebAppResource, error) {
@@ -352,42 +283,17 @@ type liveComputeNetworkState struct {
 }
 
 func (provider AzureProvider) computeNetworkState(session azureSession) (*liveComputeNetworkState, error) {
-	if provider.cache == nil {
-		collector, err := newComputeNetworkCollector(session)
-		if err != nil {
-			return nil, err
-		}
-		return &liveComputeNetworkState{
-			collector: collector,
-			nics:      &onceValue[liveNICSnapshot]{},
-			vms:       &onceValue[liveVMSnapshot]{},
-			vmss:      &onceValue[liveVMSSSnapshot]{},
-			snapshots: &onceValue[liveSnapshotDiskSnapshot]{},
-		}, nil
+	collector, err := newComputeNetworkCollector(session)
+	if err != nil {
+		return nil, err
 	}
-
-	cacheKey := sessionStateKey(session)
-
-	provider.cache.mu.Lock()
-	state := provider.cache.computeStates[cacheKey]
-	if state == nil {
-		collector, err := newComputeNetworkCollector(session)
-		if err != nil {
-			provider.cache.mu.Unlock()
-			return nil, err
-		}
-		state = &liveComputeNetworkState{
-			collector: collector,
-			nics:      &onceValue[liveNICSnapshot]{},
-			vms:       &onceValue[liveVMSnapshot]{},
-			vmss:      &onceValue[liveVMSSSnapshot]{},
-			snapshots: &onceValue[liveSnapshotDiskSnapshot]{},
-		}
-		provider.cache.computeStates[cacheKey] = state
-	}
-	provider.cache.mu.Unlock()
-
-	return state, nil
+	return &liveComputeNetworkState{
+		collector: collector,
+		nics:      &onceValue[liveNICSnapshot]{},
+		vms:       &onceValue[liveVMSnapshot]{},
+		vmss:      &onceValue[liveVMSSSnapshot]{},
+		snapshots: &onceValue[liveSnapshotDiskSnapshot]{},
+	}, nil
 }
 
 func (state *liveComputeNetworkState) nicSnapshot(ctx context.Context) liveNICSnapshot {

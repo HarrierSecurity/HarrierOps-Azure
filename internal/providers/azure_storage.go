@@ -24,10 +24,11 @@ func (provider AzureProvider) Storage(ctx context.Context, tenant string, subscr
 	)
 	if err != nil {
 		return StorageFacts{
-			TenantID:       session.tenantID,
-			SubscriptionID: session.subscription.ID,
-			StorageAssets:  []models.StorageAsset{},
-			Issues:         []models.Issue{issueFromError("storage", err)},
+			ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+			TenantID:              session.tenantID,
+			SubscriptionID:        session.subscription.ID,
+			StorageAssets:         []models.StorageAsset{},
+			Issues:                []models.Issue{issueFromError("storage", err)},
 		}, nil
 	}
 
@@ -44,10 +45,11 @@ func (provider AzureProvider) Storage(ctx context.Context, tenant string, subscr
 	})
 
 	return StorageFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		StorageAssets:  assets,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		StorageAssets:         assets,
+		Issues:                issues,
 	}, nil
 }
 

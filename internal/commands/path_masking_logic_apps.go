@@ -28,10 +28,11 @@ func buildPathMaskingLogicAppsOutput(
 	contract contracts.PathMaskingSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	logicAppsFuture := runGroupedCommandOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "logic-apps", "permissions", "rbac")
+	logicAppsFuture := runHelperOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	logicApps, err := logicAppsFuture.wait()
+	logicApps, logicAppsSource, err := logicAppsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +70,15 @@ func buildPathMaskingLogicAppsOutput(
 	issues := familyIssues(logicApps.Issues, evidence)
 
 	return models.PathMaskingLogicAppsOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(logicApps.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(logicApps.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"pathmasking",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(logicApps.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(logicApps.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"pathmasking",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, logicAppsSource),
 		),
 		GroupedCommandName: "pathmasking",
 		Surface:            contract.Name,

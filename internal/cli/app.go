@@ -237,14 +237,12 @@ func (app *App) Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	if options.OutDir != "" {
-		if _, err := artifacts.Write(commandName, response.Payload, options.OutDir, models.RenderContext{
-			Tenant:       options.Tenant,
-			Subscription: options.Subscription,
-		}); err != nil {
-			fmt.Fprintf(stderr, "error: %s\n", err)
-			return 1
-		}
+	if _, err := artifacts.Write(commandName, response.Payload, options.OutDir, models.RenderContext{
+		Tenant:       options.Tenant,
+		Subscription: options.Subscription,
+	}); err != nil {
+		fmt.Fprintf(stderr, "error: %s\n", err)
+		return 1
 	}
 
 	rendered, err := output.RenderWithContext(options.Output, commandName, response.Payload, models.RenderContext{
@@ -284,6 +282,7 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 	options := Options{
 		Output:             models.OutputTable,
 		RoleTrustsMode:     models.RoleTrustsModeFast,
+		OutDir:             ".",
 		DevOpsOrganization: strings.TrimSpace(os.Getenv("AZUREFOX_DEVOPS_ORG")),
 	}
 
@@ -299,7 +298,7 @@ func parseOptions(commandName string, args []string, stderr io.Writer) (Options,
 		}
 		return nil
 	})
-	flags.StringVar(&options.OutDir, "outdir", "", "Output directory for emitted artifacts")
+	flags.StringVar(&options.OutDir, "outdir", options.OutDir, "Output directory for emitted artifacts")
 	flags.BoolVar(&options.Debug, "debug", false, "Enable verbose error output")
 
 	for _, commandFlag := range contract.Flags {

@@ -14,8 +14,9 @@ func (StaticProvider) AppInsights(_ context.Context, tenant string, subscription
 	functionID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-apps/providers/Microsoft.Web/sites/func-orders"
 
 	facts := AppInsightsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		Components: []models.AppInsightsComponent{
 			{
 				ID:                  componentID,

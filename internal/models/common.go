@@ -85,22 +85,28 @@ func (mode RoleTrustsMode) Legacy() bool {
 }
 
 type Metadata struct {
-	Command            string  `json:"command"`
-	DevOpsOrganization *string `json:"devops_organization"`
-	GeneratedAt        string  `json:"generated_at"`
-	SchemaVersion      string  `json:"schema_version"`
-	SubscriptionID     *string `json:"subscription_id"`
-	TenantID           *string `json:"tenant_id"`
-	TokenSource        *string `json:"token_source"`
+	AuthMode           *string           `json:"auth_mode,omitempty"`
+	Command            string            `json:"command"`
+	DevOpsOrganization *string           `json:"devops_organization"`
+	GeneratedAt        string            `json:"generated_at"`
+	SchemaVersion      string            `json:"schema_version"`
+	SubscriptionID     *string           `json:"subscription_id"`
+	TenantID           *string           `json:"tenant_id"`
+	TokenSource        *string           `json:"token_source"`
+	ArtifactContext    *ArtifactContext  `json:"artifact_context,omitempty"`
+	SessionArtifacts   []SessionArtifact `json:"session_artifacts,omitempty"`
 }
 
 type RuntimeCommandMetadata struct {
-	Command        string  `json:"command"`
-	GeneratedAt    string  `json:"generated_at"`
-	SchemaVersion  string  `json:"schema_version"`
-	SubscriptionID *string `json:"subscription_id"`
-	TenantID       *string `json:"tenant_id"`
-	TokenSource    *string `json:"token_source"`
+	Command          string            `json:"command"`
+	GeneratedAt      string            `json:"generated_at"`
+	SchemaVersion    string            `json:"schema_version"`
+	SubscriptionID   *string           `json:"subscription_id"`
+	TenantID         *string           `json:"tenant_id"`
+	TokenSource      *string           `json:"token_source"`
+	AuthMode         *string           `json:"auth_mode,omitempty"`
+	ArtifactContext  *ArtifactContext  `json:"artifact_context,omitempty"`
+	SessionArtifacts []SessionArtifact `json:"session_artifacts,omitempty"`
 }
 
 type WhoAmIMetadata struct {
@@ -109,19 +115,41 @@ type WhoAmIMetadata struct {
 }
 
 type ScopedCommandMetadata struct {
-	SchemaVersion      string  `json:"schema_version"`
-	Command            string  `json:"command"`
-	GeneratedAt        string  `json:"generated_at"`
-	TenantID           *string `json:"tenant_id"`
-	SubscriptionID     *string `json:"subscription_id"`
-	DevOpsOrganization *string `json:"devops_organization"`
-	TokenSource        *string `json:"token_source"`
-	AuthMode           *string `json:"auth_mode"`
+	SchemaVersion      string            `json:"schema_version"`
+	Command            string            `json:"command"`
+	GeneratedAt        string            `json:"generated_at"`
+	TenantID           *string           `json:"tenant_id"`
+	SubscriptionID     *string           `json:"subscription_id"`
+	DevOpsOrganization *string           `json:"devops_organization"`
+	TokenSource        *string           `json:"token_source"`
+	AuthMode           *string           `json:"auth_mode"`
+	ArtifactContext    *ArtifactContext  `json:"artifact_context,omitempty"`
+	SessionArtifacts   []SessionArtifact `json:"session_artifacts,omitempty"`
 }
 
 type RenderContext struct {
 	Tenant       string
 	Subscription string
+}
+
+type ArtifactPrincipal struct {
+	ID            string `json:"id"`
+	PrincipalType string `json:"principal_type,omitempty"`
+	TenantID      string `json:"tenant_id,omitempty"`
+}
+
+type ArtifactContext struct {
+	ToolVersion      string            `json:"tool_version"`
+	CurrentPrincipal ArtifactPrincipal `json:"current_principal"`
+	CommandOptions   map[string]string `json:"command_options"`
+}
+
+type SessionArtifact struct {
+	Command     string `json:"command"`
+	Path        string `json:"path"`
+	GeneratedAt string `json:"generated_at"`
+	AgeSeconds  int    `json:"age_seconds"`
+	Context     string `json:"context"`
 }
 
 type PermissionsMetadata = ScopedCommandMetadata

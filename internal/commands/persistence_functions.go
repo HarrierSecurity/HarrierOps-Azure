@@ -35,18 +35,13 @@ func buildPersistenceFunctionsOutput(
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
 	functionsFuture := runGroupedCommandOutput[models.FunctionsOutput](group, ctx, request, functionsHandler(provider, now), "functions")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	identityControlFutures := startIdentityControlFutures(group, ctx, provider, now, request)
 
 	functions, err := functionsFuture.wait()
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +49,15 @@ func buildPersistenceFunctionsOutput(
 	subscriptionID := firstNonEmpty(
 		request.Subscription,
 		stringPtrValue(functions.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(functions.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	functionApps := sortedByLess(functions.FunctionApps, functionAppLess)
 	rows := make([]models.PersistenceFunctionApp, 0, len(functionApps))
@@ -105,11 +100,11 @@ func buildPersistenceFunctionsOutput(
 	}
 
 	issues := append([]models.Issue{}, functions.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceFunctionsOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), identityControl.sessionArtifacts),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

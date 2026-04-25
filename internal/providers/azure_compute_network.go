@@ -237,10 +237,11 @@ func (provider AzureProvider) VMs(ctx context.Context, tenant string, subscripti
 	vms := state.vmSnapshot(ctx)
 
 	return VMsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		VMAssets:       vms.assets,
-		Issues:         append(append([]models.Issue{}, nics.issues...), vms.issues...),
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		VMAssets:              vms.assets,
+		Issues:                append(append([]models.Issue{}, nics.issues...), vms.issues...),
 	}, nil
 }
 

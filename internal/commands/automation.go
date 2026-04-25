@@ -17,14 +17,15 @@ func automationHandler(provider providers.Provider, now func() time.Time) Handle
 		}
 
 		return models.AutomationOutput{
-			Metadata: models.AutomationMetadata{
+			Metadata: withAutomationArtifactContext(models.AutomationMetadata{
 				SchemaVersion:  contracts.AzureFoxSchemaVersion,
 				Command:        "automation",
 				GeneratedAt:    now().UTC().Format(time.RFC3339),
 				TenantID:       models.StringPtr(facts.TenantID),
 				SubscriptionID: models.StringPtr(facts.SubscriptionID),
-				TokenSource:    nil,
-			},
+				TokenSource:    models.StringPtr(facts.TokenSource),
+				AuthMode:       models.StringPtr(facts.AuthMode),
+			}, request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			AutomationAccounts: sortedByLess(facts.AutomationAccounts, automationLess),
 			Findings:           []models.Finding{},
 			Issues:             facts.Issues,

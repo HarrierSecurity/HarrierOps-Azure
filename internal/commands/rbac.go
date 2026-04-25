@@ -15,7 +15,7 @@ func rbacHandler(provider providers.Provider, now func() time.Time) Handler {
 			return nil, err
 		}
 
-		subscriptionID := ""
+		subscriptionID := facts.SubscriptionID
 		if len(facts.Scopes) > 0 {
 			subscriptionID = facts.Scopes[0].ID
 		}
@@ -24,8 +24,14 @@ func rbacHandler(provider providers.Provider, now func() time.Time) Handler {
 		}
 
 		return models.RbacOutput{
-			Issues:          facts.Issues,
-			Metadata:        commandMetadata("rbac", now, request, facts.TenantID, subscriptionIDForMetadata(subscriptionID), ""),
+			Issues: facts.Issues,
+			Metadata: withArtifactContext(
+				commandMetadata("rbac", now, request, facts.TenantID, subscriptionIDForMetadata(subscriptionID), facts.TokenSource),
+				request,
+				facts.CurrentPrincipal,
+				facts.AuthMode,
+				facts.TokenSource,
+			),
 			Principals:      facts.Principals,
 			RoleAssignments: facts.RoleAssignments,
 			Scopes:          facts.Scopes,

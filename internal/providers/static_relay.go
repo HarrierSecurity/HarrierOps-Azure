@@ -24,8 +24,9 @@ func (StaticProvider) Relay(_ context.Context, tenant string, subscription strin
 	authRules := 2
 
 	return RelayFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		Namespaces: []models.RelayNamespaceAsset{
 			{
 				ID:                     namespaceID,

@@ -34,19 +34,15 @@ func buildPersistenceLogicAppsOutput(
 	contract contracts.PersistenceSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	logicAppsFuture := runGroupedCommandOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "logic-apps", "permissions", "rbac")
+	logicAppsFuture := runHelperOutput[models.LogicAppsOutput](group, ctx, request, logicAppsHandler(provider, now), "logic-apps", expected)
+	identityControlFutures := startIdentityControlFuturesWithExpected(group, ctx, provider, now, request, expected)
 
-	logicApps, err := logicAppsFuture.wait()
+	logicApps, logicAppsSource, err := logicAppsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +50,15 @@ func buildPersistenceLogicAppsOutput(
 	subscriptionID := firstNonEmpty(
 		request.Subscription,
 		stringPtrValue(logicApps.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(logicApps.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	workflows := sortedByLess(logicApps.Workflows, logicAppLess)
 	rows := make([]models.PersistenceLogicAppWorkflow, 0, len(workflows))
@@ -102,11 +98,11 @@ func buildPersistenceLogicAppsOutput(
 	}
 
 	issues := append([]models.Issue{}, logicApps.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceLogicAppsOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), appendSessionArtifact(identityControl.sessionArtifacts, logicAppsSource)),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

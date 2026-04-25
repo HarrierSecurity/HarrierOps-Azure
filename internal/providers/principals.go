@@ -22,7 +22,7 @@ type principalRecord struct {
 	isCurrentIdentity   bool
 }
 
-func principalsFactsFromSources(
+func PrincipalsFactsFromSources(
 	tenantID string,
 	subscriptionID string,
 	rbacFacts RBACFacts,
@@ -152,10 +152,13 @@ func principalsFactsFromSources(
 	})
 
 	return PrincipalsFacts{
-		TenantID:       tenantID,
-		SubscriptionID: subscriptionID,
-		Principals:     principals,
-		Issues:         issues,
+		TenantID:         tenantID,
+		SubscriptionID:   subscriptionID,
+		CurrentPrincipal: whoamiFacts.Principal,
+		TokenSource:      whoamiFacts.TokenSource,
+		AuthMode:         whoamiFacts.AuthMode,
+		Principals:       principals,
+		Issues:           issues,
 	}
 }
 

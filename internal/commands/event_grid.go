@@ -24,7 +24,7 @@ func eventGridHandler(provider providers.Provider, now func() time.Time) Handler
 		return models.EventGridOutput{
 			Findings: []models.Finding{},
 			Issues:   facts.Issues,
-			Metadata: runtimeCommandMetadata("event-grid", now, facts.TenantID, facts.SubscriptionID),
+			Metadata: withRuntimeArtifactContext(runtimeCommandMetadata("event-grid", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			Routes:   routes,
 		}, nil
 	}

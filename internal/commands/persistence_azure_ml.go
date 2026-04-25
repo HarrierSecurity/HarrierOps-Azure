@@ -36,8 +36,7 @@ func buildPersistenceAzureMLOutput(
 	group := newCommandOutputGroup(chainsFanoutLimit)
 	azureMLFuture := runGroupedCommandOutput[models.AzureMLOutput](group, ctx, request, azureMLHandler(provider, now), "azure-ml")
 	managedIdentitiesFuture := runGroupedCommandOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	identityControlFutures := startIdentityControlFutures(group, ctx, provider, now, request)
 
 	azureML, err := azureMLFuture.wait()
 	if err != nil {
@@ -47,11 +46,7 @@ func buildPersistenceAzureMLOutput(
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -59,15 +54,15 @@ func buildPersistenceAzureMLOutput(
 	subscriptionID := firstNonEmpty(
 		request.Subscription,
 		stringPtrValue(azureML.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(azureML.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	managedIdentitiesByAttachment := persistenceAzureMLManagedIdentitiesByAttachment(managedIdentities.Identities)
 	workspaces := sortedByLess(azureML.Workspaces, persistenceAzureMLWorkspaceLess)
@@ -117,11 +112,11 @@ func buildPersistenceAzureMLOutput(
 
 	issues := append([]models.Issue{}, azureML.Issues...)
 	issues = append(issues, managedIdentities.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceAzureMLOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), identityControl.sessionArtifacts),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

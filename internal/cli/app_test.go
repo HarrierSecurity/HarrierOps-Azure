@@ -415,8 +415,34 @@ func TestArtifactGenerationWritesAllFormats(t *testing.T) {
 	}
 }
 
+func TestDefaultArtifactWorkspaceIsCurrentDirectory(t *testing.T) {
+	t.Chdir(t.TempDir())
+	app := newTestApp()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := app.Run([]string{"rbac", "--output", "json"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+
+	if !strings.Contains(stdout.String(), `"artifact_context"`) {
+		t.Fatalf("expected stdout JSON to carry artifact context")
+	}
+	for _, path := range []string{
+		filepath.Join("json", "rbac.json"),
+		filepath.Join("loot", "rbac.json"),
+		filepath.Join("csv", "rbac.csv"),
+		filepath.Join("table", "rbac.txt"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected default artifact %s: %v", path, err)
+		}
+	}
+}
+
 func runSuccess(t *testing.T, args ...string) (string, string) {
 	t.Helper()
+	defer cleanupDefaultArtifacts(t)
 
 	app := newTestApp()
 	var stdout bytes.Buffer
@@ -428,6 +454,15 @@ func runSuccess(t *testing.T, args ...string) (string, string) {
 	}
 
 	return stdout.String(), stderr.String()
+}
+
+func cleanupDefaultArtifacts(t *testing.T) {
+	t.Helper()
+	for _, dir := range []string{"csv", "json", "loot", "table"} {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Fatalf("cleanup generated artifact directory %s: %v", dir, err)
+		}
+	}
 }
 
 func assertSchemaVersion(t *testing.T, content string) {

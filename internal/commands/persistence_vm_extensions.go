@@ -37,10 +37,11 @@ func buildPersistenceVMExtensionsOutput(
 	contract contracts.PersistenceSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	extensionsFuture := runGroupedCommandOutput[models.VMExtensionsOutput](group, ctx, request, vmExtensionsHandler(provider, now), "vm-extensions")
-	backingFutures := startPersistenceBackingFutures(group, ctx, provider, now, request)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "vm-extensions", "permissions", "rbac")
+	extensionsFuture := runHelperOutput[models.VMExtensionsOutput](group, ctx, request, vmExtensionsHandler(provider, now), "vm-extensions", expected)
+	backingFutures := startPersistenceBackingFuturesWithExpected(group, ctx, provider, now, request, expected)
 
-	extensions, err := extensionsFuture.wait()
+	extensions, extensionsSource, err := extensionsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func buildPersistenceVMExtensionsOutput(
 	}
 
 	return models.PersistenceVMExtensionsOutput{
-		Metadata:           scopedMetadata(now, request, backing.tenantID, backing.subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, backing.tenantID, backing.subscriptionID, "persistence"), appendSessionArtifact(backing.sessionArtifacts, extensionsSource)),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

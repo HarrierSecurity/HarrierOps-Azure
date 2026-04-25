@@ -95,10 +95,11 @@ func buildEvasionDCROutput(
 	contract contracts.EvasionSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	dcrFuture := runGroupedCommandOutput[models.DCROutput](group, ctx, request, dcrHandler(provider, now), "dcr")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "dcr", "permissions", "rbac")
+	dcrFuture := runHelperOutput[models.DCROutput](group, ctx, request, dcrHandler(provider, now), "dcr", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	dcrOutput, err := dcrFuture.wait()
+	dcrOutput, dcrSource, err := dcrFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -143,12 +144,15 @@ func buildEvasionDCROutput(
 	issues := familyIssues(dcrOutput.Issues, evidence)
 
 	return models.EvasionDCROutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(dcrOutput.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(dcrOutput.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"evasion",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(dcrOutput.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(dcrOutput.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"evasion",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, dcrSource),
 		),
 		GroupedCommandName: "evasion",
 		Surface:            contract.Name,

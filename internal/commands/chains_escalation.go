@@ -33,10 +33,10 @@ func buildEscalationPathOutput(
 	family contracts.FamilyContract,
 ) (models.ChainsOutput, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
+	permissionsFuture := startPermissionsFuture(group, ctx, provider, now, request)
 	roleTrustsFuture := runGroupedCommandOutput[models.RoleTrustsOutput](group, ctx, request, roleTrustsHandler(provider, now), "role-trusts")
 
-	permissions, err := permissionsFuture.wait()
+	permissions, permissionsSource, err := permissionsFuture.waitWithSource()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
@@ -67,9 +67,13 @@ func buildEscalationPathOutput(
 
 	issues := append([]models.Issue{}, permissions.Issues...)
 	issues = append(issues, roleTrusts.Issues...)
+	sessionArtifacts := []models.SessionArtifact{}
+	if permissionsSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *permissionsSource)
+	}
 
 	return models.ChainsOutput{
-		Metadata:                scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"),
+		Metadata:                withSessionArtifacts(scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"), sessionArtifacts),
 		GroupedCommandName:      "chains",
 		Family:                  family.Name,
 		InputMode:               "live",

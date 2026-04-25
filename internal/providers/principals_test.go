@@ -9,7 +9,7 @@ import (
 func TestPrincipalsFactsPromotesManagedIdentityOverServicePrincipal(t *testing.T) {
 	principalID := "mi-principal"
 
-	facts := principalsFactsFromSources(
+	facts := PrincipalsFactsFromSources(
 		"tenant-1",
 		"sub-1",
 		RBACFacts{

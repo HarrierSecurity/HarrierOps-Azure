@@ -28,7 +28,7 @@ func relayHandler(provider providers.Provider, now func() time.Time) Handler {
 		return models.RelayOutput{
 			Findings:   []models.Finding{},
 			Issues:     facts.Issues,
-			Metadata:   runtimeCommandMetadata("relay", now, facts.TenantID, facts.SubscriptionID),
+			Metadata:   withRuntimeArtifactContext(runtimeCommandMetadata("relay", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			Namespaces: namespaces,
 		}, nil
 	}

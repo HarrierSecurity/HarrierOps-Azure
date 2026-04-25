@@ -15,5 +15,9 @@ func (provider AzureProvider) Principals(ctx context.Context, tenant string, sub
 		return PrincipalsFacts{}, err
 	}
 
-	return principalsFactsFromSources(session.tenantID, session.subscription.ID, rbacFacts, whoamiFacts, managedIdentityFacts), nil
+	return PrincipalsFactsFromSources(session.tenantID, session.subscription.ID, rbacFacts, whoamiFacts, managedIdentityFacts), nil
+}
+
+func (provider AzureProvider) PrincipalsFromSources(_ context.Context, tenant string, subscription string, rbacFacts RBACFacts, whoamiFacts WhoAmIFacts, managedIdentityFacts ManagedIdentitiesFacts) (PrincipalsFacts, error) {
+	return PrincipalsFactsFromSources(tenant, subscription, rbacFacts, whoamiFacts, managedIdentityFacts), nil
 }

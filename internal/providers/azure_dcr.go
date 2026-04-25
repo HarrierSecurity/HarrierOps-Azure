@@ -34,10 +34,11 @@ func (provider AzureProvider) DCR(ctx context.Context, tenant string, subscripti
 	}
 
 	return DCRFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		DCRs:           assets,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		DCRs:                  assets,
+		Issues:                issues,
 	}, nil
 }
 

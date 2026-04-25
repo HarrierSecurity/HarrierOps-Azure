@@ -45,12 +45,15 @@ type AutomationAccountAsset struct {
 }
 
 type AutomationMetadata struct {
-	SchemaVersion  string  `json:"schema_version"`
-	Command        string  `json:"command"`
-	GeneratedAt    string  `json:"generated_at"`
-	TenantID       *string `json:"tenant_id"`
-	SubscriptionID *string `json:"subscription_id"`
-	TokenSource    *string `json:"token_source"`
+	SchemaVersion    string            `json:"schema_version"`
+	Command          string            `json:"command"`
+	GeneratedAt      string            `json:"generated_at"`
+	TenantID         *string           `json:"tenant_id"`
+	SubscriptionID   *string           `json:"subscription_id"`
+	TokenSource      *string           `json:"token_source"`
+	AuthMode         *string           `json:"auth_mode,omitempty"`
+	ArtifactContext  *ArtifactContext  `json:"artifact_context,omitempty"`
+	SessionArtifacts []SessionArtifact `json:"session_artifacts,omitempty"`
 }
 
 type AutomationOutput struct {

@@ -11,8 +11,9 @@ func (StaticProvider) Automation(_ context.Context, tenant string, subscription 
 	subscriptionID := session.Subscription.ID
 
 	return AutomationFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		AutomationAccounts: []models.AutomationAccountAsset{
 			{
 				ID:                     "/subscriptions/" + subscriptionID + "/resourceGroups/rg-lab/providers/Microsoft.Automation/automationAccounts/aa-lab-quiet",

@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -25,11 +26,15 @@ import (
 const managementScope = "https://management.azure.com/.default"
 
 type AzureProvider struct {
-	cache *liveAzureCache
+	mu                *sync.Mutex
+	devopsDiscoveries map[string]*onceValue[devopsOrganizationDiscovery]
 }
 
 func NewAzureProvider() AzureProvider {
-	return AzureProvider{cache: newLiveAzureCache()}
+	return AzureProvider{
+		mu:                &sync.Mutex{},
+		devopsDiscoveries: map[string]*onceValue[devopsOrganizationDiscovery]{},
+	}
 }
 
 type azureSession struct {
@@ -70,6 +75,20 @@ func (provider AzureProvider) WhoAmI(ctx context.Context, tenant string, subscri
 		AuthMode:    session.authMode,
 		Issues:      []models.Issue{},
 	}, nil
+}
+
+func azureArtifactIdentityFacts(session azureSession) ArtifactIdentityFacts {
+	principalID, displayName := currentPrincipalFromClaims(session.claims)
+	return ArtifactIdentityFacts{
+		CurrentPrincipal: models.Principal{
+			DisplayName:   displayName,
+			ID:            principalID,
+			PrincipalType: principalTypeFromClaims(session.claims),
+			TenantID:      session.tenantID,
+		},
+		TokenSource: session.tokenSource,
+		AuthMode:    session.authMode,
+	}
 }
 
 func (provider AzureProvider) Inventory(ctx context.Context, tenant string, subscription string) (InventoryFacts, error) {
@@ -244,10 +263,11 @@ func (provider AzureProvider) AppServices(ctx context.Context, tenant string, su
 	}
 
 	return AppServicesFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		AppServices:    rows,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		AppServices:           rows,
+		Issues:                issues,
 	}, nil
 }
 
@@ -427,7 +447,7 @@ func (provider AzureProvider) EnvVars(ctx context.Context, tenant string, subscr
 }
 
 func (provider AzureProvider) session(ctx context.Context, tenant string, subscription string) (azureSession, error) {
-	return provider.cachedSession(ctx, tenant, subscription)
+	return provider.buildSession(ctx, tenant, subscription)
 }
 
 func newAzureCredential(ctx context.Context, tenant string) (azcore.TokenCredential, string, string, map[string]string, string, error) {

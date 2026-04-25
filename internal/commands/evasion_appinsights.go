@@ -29,10 +29,11 @@ func buildEvasionAppInsightsOutput(
 	contract contracts.EvasionSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	appInsightsFuture := runGroupedCommandOutput[models.AppInsightsOutput](group, ctx, request, appInsightsHandler(provider, now), "appinsights")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "appinsights", "permissions", "rbac")
+	appInsightsFuture := runHelperOutput[models.AppInsightsOutput](group, ctx, request, appInsightsHandler(provider, now), "appinsights", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	appInsights, err := appInsightsFuture.wait()
+	appInsights, appInsightsSource, err := appInsightsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +71,15 @@ func buildEvasionAppInsightsOutput(
 	issues := familyIssues(appInsights.Issues, evidence)
 
 	return models.EvasionAppInsightsOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(appInsights.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(appInsights.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"evasion",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(appInsights.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(appInsights.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"evasion",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, appInsightsSource),
 		),
 		GroupedCommandName: "evasion",
 		Surface:            contract.Name,

@@ -39,10 +39,11 @@ func (provider AzureProvider) VMExtensions(ctx context.Context, tenant string, s
 	}
 
 	return VMExtensionsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		VMExtensions:   extensions,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		VMExtensions:          extensions,
+		Issues:                issues,
 	}, nil
 }
 

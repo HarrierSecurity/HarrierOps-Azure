@@ -25,7 +25,7 @@ func vmExtensionsHandler(provider providers.Provider, now func() time.Time) Hand
 		return models.VMExtensionsOutput{
 			Findings:     []models.Finding{},
 			Issues:       facts.Issues,
-			Metadata:     runtimeCommandMetadata("vm-extensions", now, facts.TenantID, facts.SubscriptionID),
+			Metadata:     withRuntimeArtifactContext(runtimeCommandMetadata("vm-extensions", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			VMExtensions: extensions,
 		}, nil
 	}

@@ -64,11 +64,12 @@ func (provider AzureProvider) AppInsights(ctx context.Context, tenant string, su
 	})
 
 	return AppInsightsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Components:     components,
-		Targets:        targets,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Components:            components,
+		Targets:               targets,
+		Issues:                issues,
 	}, nil
 }
 

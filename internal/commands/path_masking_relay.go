@@ -28,10 +28,11 @@ func buildPathMaskingRelayOutput(
 	contract contracts.PathMaskingSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	relayFuture := runGroupedCommandOutput[models.RelayOutput](group, ctx, request, relayHandler(provider, now), "relay")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "relay", "permissions", "rbac")
+	relayFuture := runHelperOutput[models.RelayOutput](group, ctx, request, relayHandler(provider, now), "relay", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	relay, err := relayFuture.wait()
+	relay, relaySource, err := relayFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +70,15 @@ func buildPathMaskingRelayOutput(
 	issues := familyIssues(relay.Issues, evidence)
 
 	return models.PathMaskingRelayOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(relay.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(relay.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"pathmasking",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(relay.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(relay.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"pathmasking",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, relaySource),
 		),
 		GroupedCommandName: "pathmasking",
 		Surface:            contract.Name,

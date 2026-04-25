@@ -29,7 +29,7 @@ func diagnosticSettingsHandler(provider providers.Provider, now func() time.Time
 			Sources:  sources,
 			Findings: []models.Finding{},
 			Issues:   facts.Issues,
-			Metadata: runtimeCommandMetadata("diagnostic-settings", now, facts.TenantID, facts.SubscriptionID),
+			Metadata: withRuntimeArtifactContext(runtimeCommandMetadata("diagnostic-settings", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 		}, nil
 	}
 }

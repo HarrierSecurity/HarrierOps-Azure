@@ -28,10 +28,11 @@ func buildResourceHijackingAutomationOutput(
 	contract contracts.ResourceHijackingSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	automationFuture := runGroupedCommandOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "automation", "permissions", "rbac")
+	automationFuture := runHelperOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	automation, err := automationFuture.wait()
+	automation, automationSource, err := automationFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +70,15 @@ func buildResourceHijackingAutomationOutput(
 	issues := familyIssues(automation.Issues, evidence)
 
 	return models.ResourceHijackingAutomationOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(automation.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(automation.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"resourcehijacking",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(automation.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(automation.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"resourcehijacking",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, automationSource),
 		),
 		GroupedCommandName: "resourcehijacking",
 		Surface:            contract.Name,

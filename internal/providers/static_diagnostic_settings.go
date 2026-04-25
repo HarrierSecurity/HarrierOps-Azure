@@ -56,8 +56,9 @@ func (StaticProvider) DiagnosticSettings(_ context.Context, tenant string, subsc
 	storageSetting.Summary = diagnosticSettingSummary(storageSetting)
 
 	facts := DiagnosticSettingsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		Sources: []models.DiagnosticSettingsSource{
 			{
 				ID:                         keyVaultID,

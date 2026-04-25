@@ -43,7 +43,7 @@ func vmsHandler(provider providers.Provider, now func() time.Time) Handler {
 		return models.VmsOutput{
 			Findings: buildVMFindings(vmAssets),
 			Issues:   facts.Issues,
-			Metadata: commandMetadata("vms", now, request, facts.TenantID, facts.SubscriptionID, ""),
+			Metadata: withArtifactContext(commandMetadata("vms", now, request, facts.TenantID, facts.SubscriptionID, facts.TokenSource), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			VMAssets: vmAssets,
 		}, nil
 	}
