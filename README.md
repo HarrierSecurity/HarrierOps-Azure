@@ -249,17 +249,26 @@ create, update, delete, or execute Azure resources.
 
 ### What makes HarrierOps Azure different from normal inventory tools?
 
-The focus is operator movement, not object counting. Flat commands expose useful Azure evidence,
-while command families such as `persistence`, `evasion`, `resourcehijacking`, `pathmasking`, and
-`chains` turn related helper output into higher-level views of what the current identity can
-control, preserve, redirect, blur, or follow next.
+Most inventory tools tell you what exists. HarrierOps Azure helps you figure out what kind of Azure
+foothold you are actually holding and what that access can lead to.
+
+It starts with identity-level questions: who am I in this tenant, what subscription am I looking at,
+what permissions do I really have, and which resources trust this identity?
+
+From there, it connects related evidence into operator-ready paths instead of leaving you with a
+pile of raw Azure objects. The goal is to get from "I can see some Azure stuff" to "this identity
+can preserve access here, weaken visibility there, repurpose that trusted resource, or follow this
+chain next."
 
 ### What happens when my identity has limited permissions?
 
-Output should stay truth-boundary aware. A clean empty result should not mean the same thing as
-reduced visibility. When Azure, Azure DevOps, Graph, or the current permission set prevents a
-stronger answer, HarrierOps Azure should stop at the evidence it can defend and avoid implying that
-an unseen path does not exist.
+Your visibility in Azure depends heavily on the active login you are running the tool under. When
+Azure blocks part of the picture, the output should say that instead of making the result look
+empty.
+
+A limited identity might still expose useful paths, but some paths may stop early because the next
+hop, target, workflow, or permission check is not visible from the current access. The goal is to
+separate "nothing found" from "Azure would not let this identity see farther."
 
 ### Where do output artifacts go?
 
