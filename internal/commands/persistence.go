@@ -105,19 +105,15 @@ func buildPersistenceAutomationOutput(
 	contract contracts.PersistenceSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	automationFuture := runGroupedCommandOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "automation", "permissions", "rbac")
+	automationFuture := runHelperOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation", expected)
+	identityControlFutures := startIdentityControlFuturesWithExpected(group, ctx, provider, now, request, expected)
 
-	automation, err := automationFuture.wait()
+	automation, automationSource, err := automationFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -125,15 +121,15 @@ func buildPersistenceAutomationOutput(
 	subscriptionID := firstNonEmpty(
 		request.Subscription,
 		stringPtrValue(automation.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(automation.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	accounts := make([]models.PersistenceAutomationAccount, 0, len(automation.AutomationAccounts))
 	for _, account := range automation.AutomationAccounts {
@@ -181,11 +177,11 @@ func buildPersistenceAutomationOutput(
 	}
 
 	issues := append([]models.Issue{}, automation.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceAutomationOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), appendSessionArtifact(identityControl.sessionArtifacts, automationSource)),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

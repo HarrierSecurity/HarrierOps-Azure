@@ -78,10 +78,11 @@ func buildEvasionDiagnosticSettingsOutput(
 	contract contracts.EvasionSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	settingsFuture := runGroupedCommandOutput[models.DiagnosticSettingsOutput](group, ctx, request, diagnosticSettingsHandler(provider, now), "diagnostic-settings")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "diagnostic-settings", "permissions", "rbac")
+	settingsFuture := runHelperOutput[models.DiagnosticSettingsOutput](group, ctx, request, diagnosticSettingsHandler(provider, now), "diagnostic-settings", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	settings, err := settingsFuture.wait()
+	settings, settingsSource, err := settingsFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +122,15 @@ func buildEvasionDiagnosticSettingsOutput(
 	issues := familyIssues(settings.Issues, evidence)
 
 	return models.EvasionDiagnosticSettingsOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(settings.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(settings.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"evasion",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(settings.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(settings.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"evasion",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, settingsSource),
 		),
 		GroupedCommandName: "evasion",
 		Surface:            contract.Name,

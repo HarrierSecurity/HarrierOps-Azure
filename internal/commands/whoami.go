@@ -18,10 +18,19 @@ func whoAmIHandler(provider providers.Provider, now func() time.Time) Handler {
 		return models.WhoAmIOutput{
 			EffectiveScopes: facts.EffectiveScopes,
 			Issues:          facts.Issues,
-			Metadata:        whoAmIMetadata(now, request, facts.TenantID, facts.Subscription.ID, facts.TokenSource, facts.AuthMode),
-			Principal:       facts.Principal,
-			Subscription:    facts.Subscription,
-			TenantID:        facts.TenantID,
+			Metadata: models.WhoAmIMetadata{
+				AuthMode: models.StringPtr(facts.AuthMode),
+				Metadata: withArtifactContext(
+					commandMetadata("whoami", now, request, facts.TenantID, facts.Subscription.ID, facts.TokenSource),
+					request,
+					facts.Principal,
+					facts.AuthMode,
+					facts.TokenSource,
+				),
+			},
+			Principal:    facts.Principal,
+			Subscription: facts.Subscription,
+			TenantID:     facts.TenantID,
 		}, nil
 	}
 }

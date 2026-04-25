@@ -28,10 +28,11 @@ func buildResourceHijackingAPIMOutput(
 	contract contracts.ResourceHijackingSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	apiMgmtFuture := runGroupedCommandOutput[models.ApiMgmtOutput](group, ctx, request, apiMgmtHandler(provider, now), "api-mgmt")
-	evidenceFutures := runFamilyEvidence(group, ctx, request, provider, now)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "api-mgmt", "permissions", "rbac")
+	apiMgmtFuture := runHelperOutput[models.ApiMgmtOutput](group, ctx, request, apiMgmtHandler(provider, now), "api-mgmt", expected)
+	evidenceFutures := runFamilyEvidenceWithExpected(group, ctx, request, provider, now, expected)
 
-	apiMgmt, err := apiMgmtFuture.wait()
+	apiMgmt, apiMgmtSource, err := apiMgmtFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +70,15 @@ func buildResourceHijackingAPIMOutput(
 	issues := familyIssues(apiMgmt.Issues, evidence)
 
 	return models.ResourceHijackingAPIMOutput{
-		Metadata: scopedMetadata(
-			now,
-			request,
-			firstNonEmpty(request.Tenant, stringPtrValue(apiMgmt.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
-			firstNonEmpty(request.Subscription, stringPtrValue(apiMgmt.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
-			"resourcehijacking",
+		Metadata: withSessionArtifacts(
+			scopedMetadata(
+				now,
+				request,
+				firstNonEmpty(request.Tenant, stringPtrValue(apiMgmt.Metadata.TenantID), stringPtrValue(evidence.permissions.Metadata.TenantID)),
+				firstNonEmpty(request.Subscription, stringPtrValue(apiMgmt.Metadata.SubscriptionID), stringPtrValue(evidence.permissions.Metadata.SubscriptionID)),
+				"resourcehijacking",
+			),
+			appendSessionArtifact(evidence.sessionArtifacts, apiMgmtSource),
 		),
 		GroupedCommandName: "resourcehijacking",
 		Surface:            contract.Name,

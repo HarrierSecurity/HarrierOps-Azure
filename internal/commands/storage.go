@@ -20,7 +20,7 @@ func storageHandler(provider providers.Provider, now func() time.Time) Handler {
 		return models.StorageOutput{
 			Findings:      storageFindings(assets),
 			Issues:        facts.Issues,
-			Metadata:      commandMetadata("storage", now, request, facts.TenantID, facts.SubscriptionID, ""),
+			Metadata:      withArtifactContext(commandMetadata("storage", now, request, facts.TenantID, facts.SubscriptionID, facts.TokenSource), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			StorageAssets: assets,
 		}, nil
 	}

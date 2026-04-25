@@ -84,7 +84,14 @@ type ArmDeploymentsFacts struct {
 	Issues         []models.Issue
 }
 
+type ArtifactIdentityFacts struct {
+	CurrentPrincipal models.Principal
+	TokenSource      string
+	AuthMode         string
+}
+
 type AutomationFacts struct {
+	ArtifactIdentityFacts
 	TenantID           string
 	SubscriptionID     string
 	AutomationAccounts []models.AutomationAccountAsset
@@ -123,6 +130,7 @@ type ApplicationGatewayFacts struct {
 }
 
 type ApiMgmtFacts struct {
+	ArtifactIdentityFacts
 	TenantID              string
 	SubscriptionID        string
 	ApiManagementServices []models.ApiMgmtServiceAsset
@@ -137,6 +145,7 @@ type DatabasesFacts struct {
 }
 
 type DCRFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	DCRs           []models.DCRAsset
@@ -144,6 +153,7 @@ type DCRFacts struct {
 }
 
 type AppInsightsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Components     []models.AppInsightsComponent
@@ -152,6 +162,7 @@ type AppInsightsFacts struct {
 }
 
 type DiagnosticSettingsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Sources        []models.DiagnosticSettingsSource
@@ -159,6 +170,7 @@ type DiagnosticSettingsFacts struct {
 }
 
 type MonitoringSinksFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Sinks          []models.MonitoringSinkAsset
@@ -166,6 +178,7 @@ type MonitoringSinksFacts struct {
 }
 
 type KeyVaultFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	KeyVaults      []models.KeyVaultAsset
@@ -173,6 +186,7 @@ type KeyVaultFacts struct {
 }
 
 type StorageFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	StorageAssets  []models.StorageAsset
@@ -180,6 +194,7 @@ type StorageFacts struct {
 }
 
 type ResourceTrustsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	StorageAssets  []models.StorageAsset
@@ -188,6 +203,7 @@ type ResourceTrustsFacts struct {
 }
 
 type RelayFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Namespaces     []models.RelayNamespaceAsset
@@ -223,6 +239,7 @@ type DNSFacts struct {
 }
 
 type AppServicesFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	AppServices    []models.AppServiceAsset
@@ -251,6 +268,7 @@ type AzureMLFacts struct {
 }
 
 type EventGridFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Routes         []models.EventGridRouteAsset
@@ -258,6 +276,7 @@ type EventGridFacts struct {
 }
 
 type LogicAppsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	Workflows      []models.LogicAppWorkflowAsset
@@ -314,6 +333,7 @@ type NICsFacts struct {
 }
 
 type VMsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	VMAssets       []models.VmAsset
@@ -321,6 +341,7 @@ type VMsFacts struct {
 }
 
 type VMExtensionsFacts struct {
+	ArtifactIdentityFacts
 	TenantID       string
 	SubscriptionID string
 	VMExtensions   []models.VMExtensionAsset
@@ -342,26 +363,36 @@ type WorkloadsFacts struct {
 }
 
 type RBACFacts struct {
-	TenantID        string
-	Principals      []models.Principal
-	Scopes          []models.ScopeRef
-	RoleAssignments []models.RoleAssignment
-	Issues          []models.Issue
+	TenantID         string
+	SubscriptionID   string
+	CurrentPrincipal models.Principal
+	TokenSource      string
+	AuthMode         string
+	Principals       []models.Principal
+	Scopes           []models.ScopeRef
+	RoleAssignments  []models.RoleAssignment
+	Issues           []models.Issue
 }
 
 type PermissionsFacts struct {
-	TenantID       string
-	SubscriptionID string
-	Permissions    []PermissionFact
-	Principals     []PermissionPrincipalFact
-	Issues         []models.Issue
+	TenantID         string
+	SubscriptionID   string
+	CurrentPrincipal models.Principal
+	TokenSource      string
+	AuthMode         string
+	Permissions      []PermissionFact
+	Principals       []PermissionPrincipalFact
+	Issues           []models.Issue
 }
 
 type PrincipalsFacts struct {
-	TenantID       string
-	SubscriptionID string
-	Principals     []models.PrincipalSummary
-	Issues         []models.Issue
+	TenantID         string
+	SubscriptionID   string
+	CurrentPrincipal models.Principal
+	TokenSource      string
+	AuthMode         string
+	Principals       []models.PrincipalSummary
+	Issues           []models.Issue
 }
 
 type PrivescFacts struct {
@@ -414,6 +445,7 @@ type RoleTrustsFacts struct {
 }
 
 type ManagedIdentitiesFacts struct {
+	ArtifactIdentityFacts
 	TenantID        string
 	SubscriptionID  string
 	Identities      []models.ManagedIdentity
@@ -453,6 +485,14 @@ func (StaticProvider) WhoAmI(_ context.Context, tenant string, subscription stri
 		AuthMode:        "fixture",
 		Issues:          []models.Issue{},
 	}, nil
+}
+
+func staticArtifactIdentityFacts(session fixtureSession) ArtifactIdentityFacts {
+	return ArtifactIdentityFacts{
+		CurrentPrincipal: session.Principal,
+		TokenSource:      "fixture",
+		AuthMode:         "fixture",
+	}
 }
 
 func (StaticProvider) Inventory(_ context.Context, tenant string, subscription string) (InventoryFacts, error) {
@@ -581,8 +621,9 @@ func (StaticProvider) AppServices(_ context.Context, tenant string, subscription
 	publicAPISensitiveSettingCount := 1
 
 	return AppServicesFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		AppServices: []models.AppServiceAsset{
 			{
 				AppSettingsCount:              &emptyMIAppSettingsCount,
@@ -1227,8 +1268,9 @@ func (StaticProvider) VMs(_ context.Context, tenant string, subscription string)
 	subscriptionID := session.Subscription.ID
 
 	return VMsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		VMAssets: []models.VmAsset{
 			{
 				ID: "/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/" +
@@ -1599,7 +1641,11 @@ func (StaticProvider) Workloads(_ context.Context, tenant string, subscription s
 func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string) (RBACFacts, error) {
 	session := staticFixtureSession(tenant, subscription)
 	return RBACFacts{
-		TenantID: session.TenantID,
+		TenantID:         session.TenantID,
+		SubscriptionID:   session.Subscription.ID,
+		CurrentPrincipal: session.Principal,
+		TokenSource:      session.TokenSource,
+		AuthMode:         session.AuthMode,
 		Principals: append([]models.Principal{
 			session.Principal,
 			{
@@ -1641,8 +1687,11 @@ func (StaticProvider) RBAC(_ context.Context, tenant string, subscription string
 func (StaticProvider) Permissions(_ context.Context, tenant string, subscription string) (PermissionsFacts, error) {
 	session := staticFixtureSession(tenant, subscription)
 	return PermissionsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: session.Subscription.ID,
+		TenantID:         session.TenantID,
+		SubscriptionID:   session.Subscription.ID,
+		CurrentPrincipal: session.Principal,
+		TokenSource:      session.TokenSource,
+		AuthMode:         session.AuthMode,
 		Permissions: append([]PermissionFact{
 			{
 				PrincipalID:         session.Principal.ID,
@@ -2043,8 +2092,9 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 	subscriptionID := session.Subscription.ID
 
 	return ManagedIdentitiesFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		Identities: append([]models.ManagedIdentity{
 			{
 				ID:           "/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app",
@@ -2167,6 +2217,10 @@ func (StaticProvider) ManagedIdentities(_ context.Context, tenant string, subscr
 		}, append(staticLogicAppManagedIdentityFindings(subscriptionID), staticAzureMLManagedIdentityFindings(subscriptionID)...)...),
 		Issues: []models.Issue{},
 	}, nil
+}
+
+func (provider StaticProvider) ManagedIdentitiesFromSources(ctx context.Context, tenant string, subscription string, _ *RBACFacts) (ManagedIdentitiesFacts, error) {
+	return provider.ManagedIdentities(ctx, tenant, subscription)
 }
 
 func (StaticProvider) EnvVars(_ context.Context, tenant string, subscription string) (EnvVarsFacts, error) {
@@ -2554,6 +2608,8 @@ type fixtureSession struct {
 	Subscription    models.SubscriptionRef
 	Principal       models.Principal
 	EffectiveScopes []models.ScopeRef
+	TokenSource     string
+	AuthMode        string
 }
 
 func staticFixtureSession(tenant string, subscription string) fixtureSession {
@@ -2586,5 +2642,7 @@ func staticFixtureSession(tenant string, subscription string) fixtureSession {
 				DisplayName: subscriptionRef.DisplayName,
 			},
 		},
+		TokenSource: "fixture",
+		AuthMode:    "fixture",
 	}
 }

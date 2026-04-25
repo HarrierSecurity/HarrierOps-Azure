@@ -25,7 +25,7 @@ func logicAppsHandler(provider providers.Provider, now func() time.Time) Handler
 		return models.LogicAppsOutput{
 			Findings:  []models.Finding{},
 			Issues:    facts.Issues,
-			Metadata:  runtimeCommandMetadata("logic-apps", now, facts.TenantID, facts.SubscriptionID),
+			Metadata:  withRuntimeArtifactContext(runtimeCommandMetadata("logic-apps", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 			Workflows: workflows,
 		}, nil
 	}

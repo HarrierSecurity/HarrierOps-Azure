@@ -7,14 +7,24 @@ import (
 )
 
 func (provider StaticProvider) MonitoringSinks(ctx context.Context, tenant string, subscription string) (MonitoringSinksFacts, error) {
+	return provider.MonitoringSinksFromSources(ctx, tenant, subscription, nil, nil)
+}
+
+func (provider StaticProvider) MonitoringSinksFromSources(ctx context.Context, tenant string, subscription string, dcrFacts *DCRFacts, diagnosticFacts *DiagnosticSettingsFacts) (MonitoringSinksFacts, error) {
 	session := staticFixtureSession(tenant, subscription)
 	subscriptionID := session.Subscription.ID
 	workspaceID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-monitor/providers/Microsoft.OperationalInsights/workspaces/law-soc-prod"
 	eventHubRuleID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-monitor/providers/Microsoft.EventHub/namespaces/eh-monitor/authorizationRules/send"
 	storageID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stdataprod"
 
-	dcrFacts, _ := provider.DCR(ctx, tenant, subscription)
-	diagnosticFacts, _ := provider.DiagnosticSettings(ctx, tenant, subscription)
+	if dcrFacts == nil {
+		collected, _ := provider.DCR(ctx, tenant, subscription)
+		dcrFacts = &collected
+	}
+	if diagnosticFacts == nil {
+		collected, _ := provider.DiagnosticSettings(ctx, tenant, subscription)
+		diagnosticFacts = &collected
+	}
 
 	sinks := []models.MonitoringSinkAsset{
 		{
@@ -54,9 +64,10 @@ func (provider StaticProvider) MonitoringSinks(ctx context.Context, tenant strin
 	sinks = monitoringSinksFinalize(sinks)
 
 	return MonitoringSinksFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
-		Sinks:          sinks,
-		Issues:         []models.Issue{},
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
+		Sinks:                 sinks,
+		Issues:                []models.Issue{},
 	}, nil
 }

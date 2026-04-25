@@ -87,10 +87,14 @@ func (p AzureProvider) Privesc(ctx context.Context, tenant string, subscription 
 	if err != nil {
 		return PrivescFacts{}, err
 	}
-	return privescFactsFromSources(permissionsFacts, principalsFacts, managedIdentityFacts, vmFacts), nil
+	return PrivescFactsFromSources(permissionsFacts, principalsFacts, managedIdentityFacts, vmFacts), nil
 }
 
-func privescFactsFromSources(
+func (p AzureProvider) PrivescFromSources(_ context.Context, permissionsFacts PermissionsFacts, principalsFacts PrincipalsFacts, managedIdentityFacts ManagedIdentitiesFacts, vmFacts VMsFacts) (PrivescFacts, error) {
+	return PrivescFactsFromSources(permissionsFacts, principalsFacts, managedIdentityFacts, vmFacts), nil
+}
+
+func PrivescFactsFromSources(
 	permissionsFacts PermissionsFacts,
 	principalsFacts PrincipalsFacts,
 	managedIdentityFacts ManagedIdentitiesFacts,

@@ -48,7 +48,7 @@ func buildComputeControlOutput(
 	tokenSurfacesFuture := runGroupedCommandOutput[models.TokensCredentialsOutput](group, ctx, request, tokensCredentialsHandler(provider, now), "tokens-credentials")
 	envVarsFuture := runGroupedCommandOutput[models.EnvVarsOutput](group, ctx, request, envVarsHandler(provider, now), "env-vars")
 	managedIdentitiesFuture := runGroupedCommandOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
+	permissionsFuture := startPermissionsFuture(group, ctx, provider, now, request)
 	workloadsFuture := runGroupedCommandOutput[models.WorkloadsOutput](group, ctx, request, workloadsHandler(provider, now), "workloads")
 
 	tokenSurfaces, err := tokenSurfacesFuture.wait()
@@ -63,7 +63,7 @@ func buildComputeControlOutput(
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
-	permissions, err := permissionsFuture.wait()
+	permissions, permissionsSource, err := permissionsFuture.waitWithSource()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
@@ -177,9 +177,13 @@ func buildComputeControlOutput(
 	issues = append(issues, managedIdentities.Issues...)
 	issues = append(issues, permissions.Issues...)
 	issues = append(issues, workloads.Issues...)
+	sessionArtifacts := []models.SessionArtifact{}
+	if permissionsSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *permissionsSource)
+	}
 
 	return models.ChainsOutput{
-		Metadata:                scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"),
+		Metadata:                withSessionArtifacts(scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"), sessionArtifacts),
 		GroupedCommandName:      "chains",
 		Family:                  family.Name,
 		InputMode:               "live",

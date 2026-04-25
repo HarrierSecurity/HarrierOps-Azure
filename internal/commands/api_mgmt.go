@@ -21,7 +21,7 @@ func apiMgmtHandler(provider providers.Provider, now func() time.Time) Handler {
 			ApiManagementServices: services,
 			Findings:              []models.Finding{},
 			Issues:                facts.Issues,
-			Metadata:              runtimeCommandMetadata("api-mgmt", now, facts.TenantID, facts.SubscriptionID),
+			Metadata:              withRuntimeArtifactContext(runtimeCommandMetadata("api-mgmt", now, facts.TenantID, facts.SubscriptionID), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource),
 		}, nil
 	}
 }

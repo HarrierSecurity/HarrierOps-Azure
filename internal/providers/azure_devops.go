@@ -50,19 +50,15 @@ func (snapshot devopsPermissionSnapshot) allows(permissionName string) bool {
 }
 
 func (provider AzureProvider) devopsOrganizationsFromAzureSideClues(ctx context.Context, session azureSession) devopsOrganizationDiscovery {
-	if provider.cache == nil {
-		return collectDevopsOrganizationsFromAzureSideClues(ctx, session)
-	}
+	cacheKey := session.tenantID + "::" + session.subscription.ID
 
-	cacheKey := sessionStateKey(session)
-
-	provider.cache.mu.Lock()
-	entry := provider.cache.devopsOrgDiscoveries[cacheKey]
+	provider.mu.Lock()
+	entry := provider.devopsDiscoveries[cacheKey]
 	if entry == nil {
 		entry = &onceValue[devopsOrganizationDiscovery]{}
-		provider.cache.devopsOrgDiscoveries[cacheKey] = entry
+		provider.devopsDiscoveries[cacheKey] = entry
 	}
-	provider.cache.mu.Unlock()
+	provider.mu.Unlock()
 
 	discovery, err := entry.get(func() (devopsOrganizationDiscovery, error) {
 		return collectDevopsOrganizationsFromAzureSideClues(ctx, session), nil

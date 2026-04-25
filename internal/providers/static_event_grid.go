@@ -11,8 +11,9 @@ func (StaticProvider) EventGrid(_ context.Context, tenant string, subscription s
 	subscriptionID := session.Subscription.ID
 
 	return EventGridFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		Routes: []models.EventGridRouteAsset{
 			{
 				ID:                  "/subscriptions/" + subscriptionID + "/resourceGroups/rg-storage/providers/Microsoft.Storage/storageAccounts/stlanding/providers/Microsoft.EventGrid/eventSubscriptions/to-function",

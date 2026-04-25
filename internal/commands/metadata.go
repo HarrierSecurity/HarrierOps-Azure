@@ -5,7 +5,10 @@ import (
 
 	"harrierops-azure/internal/contracts"
 	"harrierops-azure/internal/models"
+	"harrierops-azure/internal/providers"
 )
+
+const toolVersion = "dev"
 
 func commandMetadata(
 	command string,
@@ -89,4 +92,124 @@ func networkMetadata(
 		TenantID:       models.StringPtr(tenantID),
 		TokenSource:    nil,
 	}
+}
+
+func withArtifactContext(metadata models.Metadata, request Request, principal models.Principal, authMode string, tokenSource string) models.Metadata {
+	metadata.ArtifactContext = artifactContext(metadata.Command, request, principal)
+	metadata.AuthMode = models.StringPtr(authMode)
+	metadata.TokenSource = models.StringPtr(tokenSource)
+	return metadata
+}
+
+func withScopedArtifactContext(metadata models.ScopedCommandMetadata, request Request, principal models.Principal, authMode string, tokenSource string) models.ScopedCommandMetadata {
+	metadata.ArtifactContext = artifactContext(metadata.Command, request, principal)
+	metadata.AuthMode = models.StringPtr(authMode)
+	metadata.TokenSource = models.StringPtr(tokenSource)
+	return metadata
+}
+
+func withPrincipalsArtifactContext(metadata models.PrincipalsMetadata, request Request, principal models.Principal, authMode string, tokenSource string) models.PrincipalsMetadata {
+	metadata.ArtifactContext = artifactContext(metadata.Command, request, principal)
+	metadata.AuthMode = models.StringPtr(authMode)
+	metadata.TokenSource = models.StringPtr(tokenSource)
+	return metadata
+}
+
+func withRuntimeArtifactContext(metadata models.RuntimeCommandMetadata, request Request, principal models.Principal, authMode string, tokenSource string) models.RuntimeCommandMetadata {
+	metadata.ArtifactContext = artifactContext(metadata.Command, request, principal)
+	metadata.AuthMode = models.StringPtr(authMode)
+	metadata.TokenSource = models.StringPtr(tokenSource)
+	return metadata
+}
+
+func withAutomationArtifactContext(metadata models.AutomationMetadata, request Request, principal models.Principal, authMode string, tokenSource string) models.AutomationMetadata {
+	metadata.ArtifactContext = artifactContext(metadata.Command, request, principal)
+	metadata.AuthMode = models.StringPtr(authMode)
+	metadata.TokenSource = models.StringPtr(tokenSource)
+	return metadata
+}
+
+func withSessionArtifacts(metadata models.ScopedCommandMetadata, artifacts []models.SessionArtifact) models.ScopedCommandMetadata {
+	if len(artifacts) == 0 {
+		return metadata
+	}
+	metadata.SessionArtifacts = append([]models.SessionArtifact{}, artifacts...)
+	return metadata
+}
+
+func withRuntimeSessionArtifacts(metadata models.RuntimeCommandMetadata, artifacts []models.SessionArtifact) models.RuntimeCommandMetadata {
+	if len(artifacts) == 0 {
+		return metadata
+	}
+	metadata.SessionArtifacts = append([]models.SessionArtifact{}, artifacts...)
+	return metadata
+}
+
+func withMetadataSessionArtifacts(metadata models.Metadata, artifacts []models.SessionArtifact) models.Metadata {
+	if len(artifacts) == 0 {
+		return metadata
+	}
+	metadata.SessionArtifacts = append([]models.SessionArtifact{}, artifacts...)
+	return metadata
+}
+
+func artifactContext(command string, request Request, principal models.Principal) *models.ArtifactContext {
+	return &models.ArtifactContext{
+		ToolVersion: toolVersion,
+		CurrentPrincipal: models.ArtifactPrincipal{
+			ID:            principal.ID,
+			PrincipalType: principal.PrincipalType,
+			TenantID:      principal.TenantID,
+		},
+		CommandOptions: artifactCommandOptions(command, request),
+	}
+}
+
+func artifactIdentityFactsFromContext(context *models.ArtifactContext, authMode *string, tokenSource *string) providers.ArtifactIdentityFacts {
+	principal := models.Principal{}
+	if context != nil {
+		principal = models.Principal{
+			ID:            context.CurrentPrincipal.ID,
+			PrincipalType: context.CurrentPrincipal.PrincipalType,
+			TenantID:      context.CurrentPrincipal.TenantID,
+		}
+	}
+	return providers.ArtifactIdentityFacts{
+		CurrentPrincipal: principal,
+		AuthMode:         stringPtrValue(authMode),
+		TokenSource:      stringPtrValue(tokenSource),
+	}
+}
+
+func artifactCommandOptions(command string, request Request) map[string]string {
+	options := map[string]string{}
+	if command == "devops" && request.DevOpsOrganization != "" {
+		options["devops_organization"] = request.DevOpsOrganization
+	}
+	if command == "role-trusts" && request.RoleTrustsMode != "" {
+		options["role_trusts_mode"] = string(request.RoleTrustsMode.Semantic())
+	}
+	if command == "chains" && request.ChainFamily != "" {
+		options["chain_family"] = request.ChainFamily
+	}
+	if command == "persistence" && request.PersistenceSurface != "" {
+		options["persistence_surface"] = request.PersistenceSurface
+	}
+	if command == "evasion" && request.EvasionSurface != "" {
+		options["evasion_surface"] = request.EvasionSurface
+	}
+	if command == "resourcehijacking" && request.ResourceHijackingSurface != "" {
+		options["resourcehijacking_surface"] = request.ResourceHijackingSurface
+	}
+	if command == "pathmasking" && request.PathMaskingSurface != "" {
+		options["pathmasking_surface"] = request.PathMaskingSurface
+	}
+	return options
+}
+
+func artifactWorkspace(outDir string) string {
+	if outDir == "" {
+		return "."
+	}
+	return outDir
 }

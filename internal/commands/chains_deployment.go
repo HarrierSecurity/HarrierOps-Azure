@@ -77,29 +77,25 @@ func buildDeploymentPathOutput(
 ) (models.ChainsOutput, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
 	devopsFuture := runGroupedCommandOutput[models.DevopsOutput](group, ctx, request, devopsHandler(provider, now), "devops")
-	automationFuture := runGroupedCommandOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "automation", "app-services", "permissions", "rbac")
+	automationFuture := runHelperOutput[models.AutomationOutput](group, ctx, request, automationHandler(provider, now), "automation", expected)
+	identityControlFutures := startIdentityControlFuturesWithExpected(group, ctx, provider, now, request, expected)
 	roleTrustsFuture := runGroupedCommandOutput[models.RoleTrustsOutput](group, ctx, request, roleTrustsHandler(provider, now), "role-trusts")
 	keyvaultFuture := runGroupedCommandOutput[models.KeyVaultOutput](group, ctx, request, keyVaultHandler(provider, now), "keyvault")
 	armDeploymentsFuture := runGroupedCommandOutput[models.ArmDeploymentsOutput](group, ctx, request, armDeploymentsHandler(provider, now), "arm-deployments")
 	aksFuture := runGroupedCommandOutput[models.AksOutput](group, ctx, request, aksHandler(provider, now), "aks")
 	functionsFuture := runGroupedCommandOutput[models.FunctionsOutput](group, ctx, request, functionsHandler(provider, now), "functions")
-	appServicesFuture := runGroupedCommandOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services")
+	appServicesFuture := runHelperOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services", expected)
 
 	devops, err := devopsFuture.wait()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
-	automation, err := automationFuture.wait()
+	automation, automationSource, err := automationFuture.waitWithSource()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return models.ChainsOutput{}, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
@@ -123,7 +119,7 @@ func buildDeploymentPathOutput(
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
-	appServices, err := appServicesFuture.wait()
+	appServices, appServicesSource, err := appServicesFuture.waitWithSource()
 	if err != nil {
 		return models.ChainsOutput{}, err
 	}
@@ -149,7 +145,7 @@ func buildDeploymentPathOutput(
 
 	permissionsByPrincipal := map[string]models.PermissionRow{}
 	currentIdentityPrincipals := map[string]struct{}{}
-	for _, permission := range permissions.Permissions {
+	for _, permission := range identityControl.permissions.Permissions {
 		permissionsByPrincipal[permission.PrincipalID] = permission
 		if permission.IsCurrentIdentity {
 			currentIdentityPrincipals[permission.PrincipalID] = struct{}{}
@@ -157,7 +153,7 @@ func buildDeploymentPathOutput(
 	}
 
 	currentIdentityAssignments := make([]models.RoleAssignment, 0)
-	for _, assignment := range rbac.RoleAssignments {
+	for _, assignment := range identityControl.rbac.RoleAssignments {
 		if _, ok := currentIdentityPrincipals[assignment.PrincipalID]; ok {
 			currentIdentityAssignments = append(currentIdentityAssignments, assignment)
 		}
@@ -235,8 +231,8 @@ func buildDeploymentPathOutput(
 
 	issues := append([]models.Issue{}, devops.Issues...)
 	issues = append(issues, automation.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 	issues = append(issues, roleTrusts.Issues...)
 	issues = append(issues, keyvault.Issues...)
 	issues = append(issues, armDeployments.Issues...)
@@ -245,7 +241,7 @@ func buildDeploymentPathOutput(
 	issues = append(issues, appServices.Issues...)
 
 	return models.ChainsOutput{
-		Metadata:                scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"),
+		Metadata:                withSessionArtifacts(scopedMetadata(now, request, request.Tenant, request.Subscription, "chains"), appendSessionArtifact(appendSessionArtifact(identityControl.sessionArtifacts, automationSource), appServicesSource)),
 		GroupedCommandName:      "chains",
 		Family:                  family.Name,
 		InputMode:               "live",

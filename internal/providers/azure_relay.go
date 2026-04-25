@@ -51,10 +51,11 @@ func (provider AzureProvider) Relay(ctx context.Context, tenant string, subscrip
 	}
 
 	return RelayFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Namespaces:     rows,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Namespaces:            rows,
+		Issues:                issues,
 	}, nil
 }
 

@@ -26,10 +26,11 @@ func (provider AzureProvider) LogicApps(ctx context.Context, tenant string, subs
 	)
 	if err != nil {
 		return LogicAppsFacts{
-			TenantID:       session.tenantID,
-			SubscriptionID: session.subscription.ID,
-			Workflows:      []models.LogicAppWorkflowAsset{},
-			Issues:         []models.Issue{issueFromError("logic-apps.workflows", err)},
+			ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+			TenantID:              session.tenantID,
+			SubscriptionID:        session.subscription.ID,
+			Workflows:             []models.LogicAppWorkflowAsset{},
+			Issues:                []models.Issue{issueFromError("logic-apps.workflows", err)},
 		}, nil
 	}
 
@@ -50,10 +51,11 @@ func (provider AzureProvider) LogicApps(ctx context.Context, tenant string, subs
 	}
 
 	return LogicAppsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Workflows:      rows,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Workflows:             rows,
+		Issues:                issues,
 	}, nil
 }
 

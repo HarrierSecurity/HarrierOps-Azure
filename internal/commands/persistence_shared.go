@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"harrierops-azure/internal/artifacts"
 	"harrierops-azure/internal/models"
 	"harrierops-azure/internal/providers"
 )
@@ -26,6 +27,7 @@ type persistenceBackingData struct {
 	permissions       models.PermissionsOutput
 	rbac              models.RbacOutput
 	evidence          persistencePrincipalEvidence
+	sessionArtifacts  []models.SessionArtifact
 	tenantID          string
 	subscriptionID    string
 	issues            []models.Issue
@@ -38,10 +40,22 @@ func startPersistenceBackingFutures(
 	now func() time.Time,
 	request Request,
 ) persistenceBackingFutures {
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "permissions", "rbac")
+	return startPersistenceBackingFuturesWithExpected(group, ctx, provider, now, request, expected)
+}
+
+func startPersistenceBackingFuturesWithExpected(
+	group commandOutputGroup,
+	ctx context.Context,
+	provider providers.Provider,
+	now func() time.Time,
+	request Request,
+	expected map[string]artifacts.ExpectedSession,
+) persistenceBackingFutures {
 	return persistenceBackingFutures{
 		managedIdentities: runGroupedCommandOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities"),
-		permissions:       runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions"),
-		rbac:              runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac"),
+		permissions:       runPermissionsOutput(group, ctx, request, provider, now, expected),
+		rbac:              runRBACOutput(group, ctx, request, provider, now, expected),
 	}
 }
 
@@ -55,13 +69,20 @@ func (futures persistenceBackingFutures) wait(
 	if err != nil {
 		return persistenceBackingData{}, err
 	}
-	permissions, err := futures.permissions.wait()
+	permissions, permissionsSource, err := futures.permissions.waitWithSource()
 	if err != nil {
 		return persistenceBackingData{}, err
 	}
-	rbac, err := futures.rbac.wait()
+	rbac, rbacSource, err := futures.rbac.waitWithSource()
 	if err != nil {
 		return persistenceBackingData{}, err
+	}
+	sessionArtifacts := []models.SessionArtifact{}
+	if permissionsSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *permissionsSource)
+	}
+	if rbacSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *rbacSource)
 	}
 
 	issues := append([]models.Issue{}, primaryIssues...)
@@ -74,6 +95,7 @@ func (futures persistenceBackingFutures) wait(
 		permissions:       permissions,
 		rbac:              rbac,
 		evidence:          buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments),
+		sessionArtifacts:  sessionArtifacts,
 		tenantID: firstNonEmpty(
 			request.Tenant,
 			stringPtrValue(primaryTenantID),

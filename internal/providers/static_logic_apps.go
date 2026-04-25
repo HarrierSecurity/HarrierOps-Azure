@@ -43,9 +43,10 @@ func (StaticProvider) LogicApps(_ context.Context, tenant string, subscription s
 	}
 
 	return LogicAppsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
-		Workflows:      workflows,
-		Issues:         []models.Issue{},
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
+		Workflows:             workflows,
+		Issues:                []models.Issue{},
 	}, nil
 }

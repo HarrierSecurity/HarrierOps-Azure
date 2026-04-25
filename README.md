@@ -4,62 +4,86 @@
   <img src="assets/ho-azure-logo.png" alt="HarrierOps Azure logo" height="280" />
 </p>
 
-Find attack paths, pivot opportunities, and movement across Azure before you drown in inventory.
+HarrierOps Azure is an Azure reconnaissance CLI for offensive security professionals who want to see
+how ordinary Azure control-plane features become persistence, evasion, resource hijacking, path
+masking, and chained movement opportunities.
 
-Most Azure tools tell you what exists.
-HarrierOps Azure tells you how an identity can move between those resources.
-Most Azure tools dump permissions.
-HarrierOps Azure highlights which relationships, pivots, and escalation paths matter first.
+It helps you move past inventory and expose the uncomfortable part of cloud security: the same
+automation, identity, telemetry, and routing features defenders rely on can also become the paths an
+operator needs to understand first.
 
-The shipped CLI binary is `ho-azure`.
+Try it in the release container:
 
-## Why This Matters
+```bash
+docker run --rm ghcr.io/harriersecurity/ho-azure:v1.2.0 help
+```
 
-You have:
+HarrierOps Azure helps you answer:
 
-- a compromised user
-- service principal access
-- a managed identity foothold
-- partial subscription visibility
+- Where could someone leave a durable way back in through Automation, App Services, Logic Apps,
+  WebJobs, or other trusted Azure runtimes?
+- Where could logging be turned down, rerouted, filtered, or quietly made less useful?
+- Which existing Azure resources could be repurposed instead of creating something suspicious and
+  new?
+- Which trusted workflows, gateways, relays, or connectors could make activity look like it came
+  from somewhere else?
+- Which identities, permissions, and resource relationships make those moves possible from the
+  current foothold?
+- Where does the evidence stop because of permissions, Azure visibility, or source boundaries?
 
-You need to answer quickly:
+## Operator Focus
 
-- What identity am I actually holding?
-- What can it control right now?
-- Where can it pivot next?
-- Which path is most likely to become privilege escalation or broader Azure control?
+HarrierOps Azure is operator-forward rather than inventory-first. It pulls the interesting Azure
+control paths to the top so you are not stuck sorting raw resources before you know what matters.
 
-HarrierOps Azure is built for that workflow.
+In cloud environments, the useful path is not always a classic persistence trick or a loud new
+resource. It can be a runbook that already looks like maintenance, an app that already has a trusted
+identity, a workflow that already talks to downstream services, a logging route that can be made
+less useful, or a relay/gateway path that makes activity look like normal platform plumbing.
 
-## Why This Is Different
+Flat commands collect the evidence. Grouped command families turn that evidence into paths:
+privilege escalation, persistence, evasion, resource hijacking, path masking, and chained Azure
+movement.
 
-- Attack-path thinking, not inventory-first reporting
-- Pivot-first workflow, not isolated command output
-- Identity and permission relationships, not just raw role listings
-- Operator guidance that points to the next path worth investigating
-- Broader than a foothold check: useful for movement, consequence, and follow-on access across Azure
+The goal is not to claim more than Azure proves. Output is shaped around truth boundaries: what the
+current identity can defend, what is merely visible, and where reduced visibility should stop the
+story instead of becoming a misleading empty result.
 
-## Core Capabilities
-
-- Show the active Azure identity, token context, and scope you are operating from
-- Surface high-impact RBAC and permission relationships that change what the current identity can do
-- Map identity trust, service principal ownership, federated credentials, and cross-tenant edges
-- Highlight pivot paths through workloads, managed identities, deployment systems, and secret-bearing configuration
-- Expose escalation opportunities and likely next steps instead of leaving you to sort raw Azure data
+If you want both sides of the story, run the companion proof lab: use HarrierOps Azure to see the
+operator path, then review the Azure-side logs the lab generates to understand what defenders can
+and cannot see.
 
 ## Install
 
-Build from source:
+Option 1: run the release container:
 
 ```bash
+docker run --rm ghcr.io/harriersecurity/ho-azure:v1.2.0 help
+```
+
+Replace `v1.2.0` with the latest release tag when a newer release is available.
+
+Option 2: download the latest binary release for your platform:
+
+[HarrierOps Azure releases](https://github.com/HarrierSecurity/HarrierOps-Azure/releases/latest)
+
+Option 3: install with the HarrierOps Homebrew tap:
+
+```bash
+brew install harriersecurity/ho-azure/ho-azure
+```
+
+Option 4: build from source:
+
+```bash
+git clone https://github.com/HarrierSecurity/HarrierOps-Azure.git
+cd HarrierOps-Azure
 go build -o ho-azure ./cmd/azurefox
+./ho-azure help
 ```
 
-If you prefer to run without creating a local binary first:
-
-```bash
-go run ./cmd/azurefox help
-```
+See [Getting Started](https://github.com/HarrierSecurity/HarrierOps-Azure/wiki/Getting-Started#1-install)
+for install profile notes and development commands.
 
 ## Operator Workflow
 
@@ -67,37 +91,33 @@ Start with the identity you have, then work outward toward movement and conseque
 
 Typical flow:
 
-- `whoami`: confirm the current foothold, token context, and subscription scope
-- `permissions`: identify where that identity already has meaningful control
-- `privesc`: surface direct abuse or escalation paths rooted in the current access
-- `role-trusts` and `cross-tenant`: find identity-control transforms and tenant boundary pivots
-- `tokens-credentials` and `chains`: follow token, secret, and deployment clues toward the next usable path
+```bash
+ho-azure whoami
+ho-azure permissions
+ho-azure privesc
+ho-azure persistence automation
+ho-azure evasion dcr
+```
+
+- `whoami`: confirm the current foothold, token context, and subscription scope.
+- `permissions`: identify where that identity already has meaningful control.
+- `privesc`: surface direct abuse or escalation paths rooted in the current access.
+- `persistence automation`: check whether trusted runbooks, schedules, webhooks, identities, or
+  worker context can preserve or re-trigger access.
+- `evasion dcr`: check whether Data Collection Rules can reshape collection, routing,
+  destinations, associations, or transformations from the management plane.
 
 ## Operator Outcome
 
 After one pass, you should know:
 
-- which identity matters
-- what access is real versus merely visible
-- where the best pivot opportunities are
-- which attack path deserves follow-up first
+- which identity you are actually holding
+- what that identity can control right now
+- whether privilege escalation is already visible
+- whether durable automation can preserve or re-trigger access
+- whether telemetry collection can be quietly reshaped from visible management-plane control
 
 HarrierOps Azure reduces noise by ranking consequence, not just returning Azure objects.
-
-## Use Cases
-
-- Triage a compromised user, service principal, or managed identity and determine what Azure control it enables
-- Assess whether a service principal or application relationship creates a pivot or escalation path
-- Work outward from subscription or tenant visibility to identify cross-resource and cross-tenant movement
-
-## Run It
-
-Start with the current Azure identity and the strongest visible control paths:
-
-```bash
-ho-azure whoami
-ho-azure permissions
-```
 
 ## Currently Supported Azure Commands
 
@@ -105,11 +125,11 @@ ho-azure permissions
 
 | Grouped Command | Live Families |
 | --- | --- |
-| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`<br>Turns exposed secret and token clues into the downstream target most likely to widen access.<br><br>`deployment-path`<br>Surfaces the build, pipeline, and automation paths most likely to let an attacker change Azure next.<br><br>`escalation-path`<br>Highlights the clearest visible route from the current foothold to stronger Azure control.<br><br>`compute-control`<br>Finds workloads that can already mint identity-backed access and pivot into broader control. |
-| `persistence`<br>Service-specific persistence walkthroughs that stay focused on what the current identity can do end to end. | `app-service`<br>Walks the current identity through App Service deployment, configuration, code replacement, and reachable reuse posture.<br><br>`automation`<br>Walks the current identity through Azure Automation account control, runbook changes, execution context, triggers, and the current state already in place.<br><br>`azure-ml`<br>Walks the current identity through Azure ML reusable compute, jobs, schedules, endpoints, and identity-backed runtime context.<br><br>`container-apps-jobs`<br>Walks the current identity through Container Apps Jobs stored definitions, trigger mode, image/command clues, execution settings, identity, and rerun posture.<br><br>`functions`<br>Walks the current identity through Function App code, identity, config, and trigger reuse posture.<br><br>`logic-apps`<br>Walks the current identity through Logic Apps workflow control, trigger posture, execution context, and durable workflow reuse paths.<br><br>`vm-extensions`<br>Walks the current identity through Azure-side VM Extension attachment, script or command source, settings posture, VM agent delivery, and rerun paths.<br><br>`webjobs`<br>Walks the current identity through App Service WebJobs background code, mode, inherited app context, and rerun paths. |
-| `evasion`<br>Service-specific evasion walkthroughs that rank visible posture by quiet defender-truth disruption. | `appinsights`<br>Walks the current identity through Application Insights instrumentation, sampling, filtering, and logging-level posture clues without claiming runtime telemetry loss from posture alone.<br><br>`dcr`<br>Walks the current identity through Data Collection Rule collection, stream, destination, association, and transformation levers without claiming log-content loss or detector failure from posture alone.<br><br>`diagnostic-settings`<br>Walks the current identity through source resources, exported categories, metrics, and destination sinks without claiming sink contents or detector failure from posture alone. |
-| `resourcehijacking`<br>Service-specific takeover walkthroughs that rank visible posture by commandeering, redirect, replacement, or repurposing value over existing trusted resources. | `api-mgmt`<br>Walks the current identity through API Management gateway, backend, subscription, named-value, and routing-control posture without claiming live traffic capture or backend ownership from management-plane posture alone.<br><br>`automation`<br>Walks the current identity through Automation runbook, schedule, webhook, identity, hybrid worker, and secure-asset posture without claiming job execution or script output from management-plane posture alone.<br><br>`logic-apps`<br>Walks the current identity through Logic App workflow, trigger, downstream action, connector, and identity posture without claiming run execution or connector data access from management-plane posture alone. |
-| `pathmasking`<br>Service-specific relay/proxy walkthroughs that rank visible posture by path ambiguity and attribution-blur value. | `api-mgmt`<br>Walks the current identity through API Management gateway, backend, hostname, subscription, and route-control posture without claiming live traffic flow or backend ownership from management-plane posture alone.<br><br>`logic-apps`<br>Walks the current identity through Logic App trigger, downstream action, connector, and identity posture that can relay activity through a trusted workflow without claiming run execution or payload access by default.<br><br>`relay`<br>Walks the current identity through Azure Relay namespaces, Hybrid Connections, authorization-rule posture, and listener-count clues without claiming backend process identity or traffic contents from management-plane posture alone. |
+| `chains`<br>Grouped path views that pull the strongest Azure pivot stories to the top. | `credential-path`, `deployment-path`, `escalation-path`, `compute-control` |
+| `persistence`<br>Service-specific persistence walkthroughs focused on what the current identity can preserve, trigger, or reuse. | `app-service`, `automation`, `azure-ml`, `container-apps-jobs`, `functions`, `logic-apps`, `vm-extensions`, `webjobs` |
+| `evasion`<br>Service-specific views of quiet Azure-native defender-truth disruption. | `appinsights`, `dcr`, `diagnostic-settings` |
+| `resourcehijacking`<br>Service-specific takeover views for commandeering, redirecting, replacing, or repurposing trusted resources. | `api-mgmt`, `automation`, `logic-apps` |
+| `pathmasking`<br>Service-specific relay, proxy, and workflow views for path ambiguity and attribution blur. | `api-mgmt`, `logic-apps`, `relay` |
 
 ### Flat Commands
 
@@ -144,42 +164,6 @@ ho-azure --output json --outdir ./ho-azure-demo dns
 
 Use `ho-azure <command> --help` or `ho-azure help <command>` for command-specific help.
 
-## Install Profiles
-
-HarrierOps Azure builds the live Azure runtime path by default, so a normal source build is ready
-for real Azure command execution.
-
-For a local binary:
-
-```bash
-go build -o ho-azure ./cmd/azurefox
-```
-
-For direct execution from a checkout:
-
-```bash
-go run ./cmd/azurefox whoami
-```
-
-For local development:
-
-```bash
-go test ./...
-```
-
-HarrierOps Azure is intended to work on macOS, Linux, and Windows. The command examples below use
-portable relative paths like `./ho-azure-demo`; shell syntax mainly differs for environment-variable
-export and binary invocation.
-
-Live operator guidance is built into `ho-azure help` and `ho-azure help <command>`.
-
-- `go build -o ho-azure ./cmd/azurefox`
-  builds the normal operator binary from a local checkout
-- `go run ./cmd/azurefox ...`
-  runs the same live Azure command profile directly from source
-- `go test ./...`
-  runs the contributor validation baseline for the Go repo
-
 ## Auth Precedence
 
 1. Azure CLI credential
@@ -201,197 +185,9 @@ HarrierOps Azure does not launch its own browser or managed-identity login flow.
 - `AzureCliCredential` for the active Azure CLI sign-in state
 - `EnvironmentCredential` for supported service principal environment variables
 
-### Interactive user via Azure CLI
-
-If you want web-based authentication, run `az login` first outside HarrierOps Azure, then run
-`ho-azure`.
-
-Azure CLI example:
-
-```bash
-az login
-az account set --subscription <subscription-id>
-ho-azure inventory --subscription <subscription-id>
-```
-
-### Service principal via Azure CLI
-
-This is useful for headless automation that still wants Azure CLI to hold the active login state.
-
-With a client secret:
-
-```bash
-az login --service-principal \
-  --username <client-id> \
-  --password <client-secret> \
-  --tenant <tenant-id>
-az account set --subscription <subscription-id>
-ho-azure whoami --subscription <subscription-id>
-```
-
-With a certificate:
-
-```bash
-az login --service-principal \
-  --username <client-id> \
-  --certificate /path/to/certificate.pem \
-  --tenant <tenant-id>
-az account set --subscription <subscription-id>
-ho-azure whoami --subscription <subscription-id>
-```
-
-### Service principal via environment client secret
-
-If you do not want to use Azure CLI login state, set service principal environment variables and
-pass CLI flags for tenant or subscription targeting.
-
-Environment client-secret example:
-
-```bash
-# macOS/Linux
-export AZURE_TENANT_ID=<tenant-id>
-export AZURE_CLIENT_ID=<client-id>
-export AZURE_CLIENT_SECRET=<client-secret>
-export AZUREFOX_DEVOPS_ORG=<org-name> # only needed for the devops command
-ho-azure whoami --tenant <tenant-id> --subscription <subscription-id>
-```
-
-```powershell
-# Windows PowerShell
-$env:AZURE_TENANT_ID="<tenant-id>"
-$env:AZURE_CLIENT_ID="<client-id>"
-$env:AZURE_CLIENT_SECRET="<client-secret>"
-$env:AZUREFOX_DEVOPS_ORG="<org-name>" # only needed for the devops command
-ho-azure whoami --tenant <tenant-id> --subscription <subscription-id>
-```
-
-### Service principal via environment certificate
-
-```bash
-# macOS/Linux
-export AZURE_TENANT_ID=<tenant-id>
-export AZURE_CLIENT_ID=<client-id>
-export AZURE_CLIENT_CERTIFICATE_PATH=/path/to/certificate.pem
-export AZURE_CLIENT_CERTIFICATE_PASSWORD=<optional-password>
-ho-azure whoami --tenant <tenant-id> --subscription <subscription-id>
-```
-
-```powershell
-# Windows PowerShell
-$env:AZURE_TENANT_ID="<tenant-id>"
-$env:AZURE_CLIENT_ID="<client-id>"
-$env:AZURE_CLIENT_CERTIFICATE_PATH="C:\\path\\to\\certificate.pem"
-$env:AZURE_CLIENT_CERTIFICATE_PASSWORD="<optional-password>"
-ho-azure whoami --tenant <tenant-id> --subscription <subscription-id>
-```
-
-### Azure-hosted managed identity via Azure CLI
-
-This works when you are running on an Azure resource that already has a managed identity attached.
-
-```bash
-az login --identity
-az account set --subscription <subscription-id>
-ho-azure whoami --subscription <subscription-id>
-```
-
-For a user-assigned managed identity:
-
-```bash
-az login --identity --client-id <user-assigned-managed-identity-client-id>
-az account set --subscription <subscription-id>
-ho-azure whoami --subscription <subscription-id>
-```
-
-`AZUREFOX_DEVOPS_ORG` is only needed when running the `devops` command. The identity used for
-`devops` still needs access to the Azure DevOps organization, not just ARM access to the tenant or
-subscription.
-
-## Output Modes
-
-- `--output table` (default)
-- `--output json`
-- `--output csv`
-
-All commands write artifacts under `<outdir>/`:
-
-- `loot/<command>.json`
-- `json/<command>.json`
-- `table/<command>.txt`
-- `csv/<command>.csv`
-
-Artifact intent:
-
-- `json/` is the full structured command record
-- `loot/` is the smaller high-value handoff, focused on the top-ranked targets for quick operator
-  follow-up and later chain-oriented workflows
-- `table/` and `csv/` are convenience views rendered from the same underlying command result
-
-## Sections And Grouped Commands
-
-HarrierOps Azure keeps flat standalone commands and also supports grouped execution through `chains`,
-`persistence`, `evasion`, `resourcehijacking`, and `pathmasking`.
-
-For narrower current work:
-
-- run the flat commands directly when you already know the lane you want
-- use `chains` when you want a higher-value grouped answer instead of every source command on its own
-- use `persistence` when you want a service-specific end-to-end persistence walkthrough from the
-  current identity
-- use `evasion` when you want a service-specific view of quiet Azure-native truth degradation from
-  the current identity
-- use `resourcehijacking` when you want to know which existing Azure resource can most directly be
-  commandeered, redirected, replaced, or repurposed from the current identity
-- use `pathmasking` when you want to know which Azure-native proxy, relay, or workflow layer most
-  blurs the path between caller, cloud surface, and backend from the current identity
-
-Current section mappings:
-
-- `identity`: `whoami`, `rbac`, `principals`, `permissions`, `privesc`, `role-trusts`, `lighthouse`, `cross-tenant`, `auth-policies`, `managed-identities`
-- `config`: `arm-deployments`, `env-vars`
-- `secrets`: `keyvault`, `tokens-credentials`
-- `resource`: `automation`, `devops`, `acr`, `api-mgmt`, `appinsights`, `databases`, `dcr`, `diagnostic-settings`, `monitoring-sinks`, `resource-trusts`
-- `storage`: `storage`
-- `network`: `application-gateway`, `nics`, `dns`, `endpoints`, `network-effective`, `network-ports`, `relay`
-- `compute`: `workloads`, `app-services`, `functions`, `container-apps`, `container-apps-jobs`, `container-instances`, `aks`, `vms`, `vm-extensions`, `vmss`, `snapshots-disks`
-- `core`: `inventory`
-- `orchestration`: `chains`, `persistence`, `evasion`, `resourcehijacking`, `pathmasking`
-
-Current `chains` families:
-
-- `credential-path`
-- `deployment-path`
-- `escalation-path`
-- `compute-control`
-
-Current `persistence` surfaces:
-
-- `app-service`
-- `automation`
-- `azure-ml`
-- `container-apps-jobs`
-- `functions`
-- `logic-apps`
-- `vm-extensions`
-- `webjobs`
-
-Current `evasion` surfaces:
-
-- `appinsights`
-- `dcr`
-- `diagnostic-settings`
-
-Current `resourcehijacking` surfaces:
-
-- `api-mgmt`
-- `automation`
-- `logic-apps`
-
-Current `pathmasking` surfaces:
-
-- `api-mgmt`
-- `logic-apps`
-- `relay`
+See the [Getting Started auth section](https://github.com/HarrierSecurity/HarrierOps-Azure/wiki/Getting-Started#2-authenticate)
+for setup examples for Azure CLI users, service principals, environment credentials, managed
+identities, and Azure DevOps organization targeting.
 
 ## Help
 
@@ -443,9 +239,56 @@ bash scripts/setup_local_guardrails.sh
 
 CI should cover the deterministic command surfaces before release-gated changes move forward.
 
-## Attribution
+## FAQ
 
-HarrierOps Azure builds on the AzureFox porting work and is inspired by [CloudFox](https://github.com/BishopFox/cloudfox), created by Bishop Fox.
+### Is HarrierOps Azure read-only?
+
+Yes. HarrierOps Azure is built as a read-only reconnaissance tool. It queries Azure and related
+control-plane surfaces to show identity, permission, resource, and path relationships. It does not
+create, update, delete, or execute Azure resources.
+
+### What makes HarrierOps Azure different from normal inventory tools?
+
+The focus is operator movement, not object counting. Flat commands expose useful Azure evidence,
+while command families such as `persistence`, `evasion`, `resourcehijacking`, `pathmasking`, and
+`chains` turn related helper output into higher-level views of what the current identity can
+control, preserve, redirect, blur, or follow next.
+
+### What happens when my identity has limited permissions?
+
+Output should stay truth-boundary aware. A clean empty result should not mean the same thing as
+reduced visibility. When Azure, Azure DevOps, Graph, or the current permission set prevents a
+stronger answer, HarrierOps Azure should stop at the evidence it can defend and avoid implying that
+an unseen path does not exist.
+
+### Where do output artifacts go?
+
+Use `--outdir` to choose a run directory. If `--outdir` is not provided, artifacts are written in
+the current directory. For ad hoc work, a dedicated path such as `--outdir ./ho-azure-demo` keeps
+JSON, table, CSV, and future output changes out of the repo root.
+
+### What is artifact-backed session reuse?
+
+When helper artifacts from the same active workspace match the current tenant, subscription,
+principal, auth context, tool/schema version, command options, and freshness window, grouped
+commands can reuse that data instead of asking Azure the same question again. Reused artifacts are
+session reuse with provenance, not fresh Azure truth.
+
+### How was AI used to create HarrierOps Azure?
+
+AI assisted with rapid prototyping, code generation, documentation drafts, and review passes during
+development. HarrierOps Azure is not a one-shot vibe-coded project. The shipped tool is shaped by
+planning notes, command contracts, system design decisions, deterministic fixtures, unit tests,
+golden output checks, live-lab follow-up, release smoke tests, and repeated human review.
+
+Development also included sustained review of what makes a recon tool useful in practice:
+operator workflow, OPSEC, performance, output truth boundaries, reduced-visibility handling,
+artifact provenance, packaging, and whether a command is actually worth shipping as a first-class
+surface instead of just being an interesting idea.
+
+The goal is for HarrierOps Azure to stand on its own as a serious operator tool: useful output,
+clear truth boundaries, reproducible tests, and command behavior that can survive review instead of
+just looking impressive in a demo.
 
 ## License
 

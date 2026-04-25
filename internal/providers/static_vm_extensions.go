@@ -14,8 +14,9 @@ func (StaticProvider) VMExtensions(_ context.Context, tenant string, subscriptio
 	identityID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-workload/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ua-app"
 
 	return VMExtensionsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		VMExtensions: []models.VMExtensionAsset{
 			{
 				AutoUpgradeMinorVersion:   boolPtr(true),

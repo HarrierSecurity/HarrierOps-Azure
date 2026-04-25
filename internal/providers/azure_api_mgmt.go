@@ -82,6 +82,7 @@ func (provider AzureProvider) ApiMgmt(ctx context.Context, tenant string, subscr
 	}
 
 	return ApiMgmtFacts{
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
 		TenantID:              session.tenantID,
 		SubscriptionID:        session.subscription.ID,
 		ApiManagementServices: apiMgmtServices,

@@ -83,6 +83,16 @@ func (provider AzureProvider) Permissions(ctx context.Context, tenant string, su
 		return PermissionsFacts{}, err
 	}
 
+	return PermissionsFactsFromSources(session.tenantID, session.subscription.ID, rbacFacts, whoamiFacts, managedIdentityFacts), nil
+}
+
+func PermissionsFactsFromSources(
+	tenantID string,
+	subscriptionID string,
+	rbacFacts RBACFacts,
+	whoamiFacts WhoAmIFacts,
+	managedIdentityFacts ManagedIdentitiesFacts,
+) PermissionsFacts {
 	principalRecords := map[string]livePrincipalRecord{}
 	ensureRecord := func(principalID string) livePrincipalRecord {
 		record, ok := principalRecords[principalID]
@@ -209,12 +219,19 @@ func (provider AzureProvider) Permissions(ctx context.Context, tenant string, su
 	issues = append(issues, whoamiFacts.Issues...)
 
 	return PermissionsFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Permissions:    permissions,
-		Principals:     principals,
-		Issues:         issues,
-	}, nil
+		TenantID:         tenantID,
+		SubscriptionID:   subscriptionID,
+		CurrentPrincipal: whoamiFacts.Principal,
+		TokenSource:      whoamiFacts.TokenSource,
+		AuthMode:         whoamiFacts.AuthMode,
+		Permissions:      permissions,
+		Principals:       principals,
+		Issues:           issues,
+	}
+}
+
+func (provider AzureProvider) PermissionsFromSources(_ context.Context, tenant string, subscription string, rbacFacts RBACFacts, whoamiFacts WhoAmIFacts, managedIdentityFacts ManagedIdentitiesFacts) (PermissionsFacts, error) {
+	return PermissionsFactsFromSources(tenant, subscription, rbacFacts, whoamiFacts, managedIdentityFacts), nil
 }
 
 func (provider AzureProvider) ManagedIdentities(ctx context.Context, tenant string, subscription string) (ManagedIdentitiesFacts, error) {
@@ -227,12 +244,37 @@ func (provider AzureProvider) ManagedIdentities(ctx context.Context, tenant stri
 	return provider.collectManagedIdentityFacts(ctx, tenant, subscription, session, rbacFacts), nil
 }
 
+func (provider AzureProvider) ManagedIdentitiesFromSources(ctx context.Context, tenant string, subscription string, rbacFacts *RBACFacts) (ManagedIdentitiesFacts, error) {
+	session, err := provider.session(ctx, tenant, subscription)
+	if err != nil {
+		return ManagedIdentitiesFacts{}, err
+	}
+
+	if rbacFacts == nil {
+		collected := provider.collectRBACFacts(ctx, session)
+		rbacFacts = &collected
+	}
+	return provider.collectManagedIdentityFacts(ctx, tenant, subscription, session, *rbacFacts), nil
+}
+
 func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azureSession) RBACFacts {
 	subscriptionScope := "/subscriptions/" + session.subscription.ID
+	currentPrincipalID, currentDisplayName := currentPrincipalFromClaims(session.claims)
+	currentPrincipalType := principalTypeFromClaims(session.claims)
+	currentPrincipal := models.Principal{
+		DisplayName:   currentDisplayName,
+		ID:            currentPrincipalID,
+		PrincipalType: currentPrincipalType,
+		TenantID:      session.tenantID,
+	}
 	clientFactory, err := armauthorization.NewClientFactory(session.subscription.ID, session.credential, nil)
 	if err != nil {
 		return RBACFacts{
-			TenantID: session.tenantID,
+			TenantID:         session.tenantID,
+			SubscriptionID:   session.subscription.ID,
+			CurrentPrincipal: currentPrincipal,
+			TokenSource:      session.tokenSource,
+			AuthMode:         session.authMode,
 			Scopes: []models.ScopeRef{
 				{DisplayName: session.subscription.DisplayName, ID: subscriptionScope, ScopeType: "subscription"},
 			},
@@ -246,7 +288,11 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 		page, pagerErr := assignmentsPager.NextPage(ctx)
 		if pagerErr != nil {
 			return RBACFacts{
-				TenantID: session.tenantID,
+				TenantID:         session.tenantID,
+				SubscriptionID:   session.subscription.ID,
+				CurrentPrincipal: currentPrincipal,
+				TokenSource:      session.tokenSource,
+				AuthMode:         session.authMode,
 				Scopes: []models.ScopeRef{
 					{DisplayName: session.subscription.DisplayName, ID: subscriptionScope, ScopeType: "subscription"},
 				},
@@ -264,9 +310,6 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 	}
 
 	roleDefinitionsClient := clientFactory.NewRoleDefinitionsClient()
-
-	currentPrincipalID, currentDisplayName := currentPrincipalFromClaims(session.claims)
-	currentPrincipalType := principalTypeFromClaims(session.claims)
 
 	scopes := map[string]models.ScopeRef{
 		subscriptionScope: {
@@ -364,11 +407,15 @@ func (provider AzureProvider) collectRBACFacts(ctx context.Context, session azur
 	})
 
 	return RBACFacts{
-		TenantID:        session.tenantID,
-		Principals:      principalRows,
-		Scopes:          scopeRows,
-		RoleAssignments: roleAssignments,
-		Issues:          issues,
+		TenantID:         session.tenantID,
+		SubscriptionID:   session.subscription.ID,
+		CurrentPrincipal: currentPrincipal,
+		TokenSource:      session.tokenSource,
+		AuthMode:         session.authMode,
+		Principals:       principalRows,
+		Scopes:           scopeRows,
+		RoleAssignments:  roleAssignments,
+		Issues:           issues,
 	}
 }
 
@@ -739,12 +786,13 @@ func (provider AzureProvider) collectManagedIdentityFacts(ctx context.Context, t
 	})
 
 	return ManagedIdentitiesFacts{
-		TenantID:        session.tenantID,
-		SubscriptionID:  session.subscription.ID,
-		Identities:      identities,
-		RoleAssignments: roleAssignments,
-		Findings:        findings,
-		Issues:          issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Identities:            identities,
+		RoleAssignments:       roleAssignments,
+		Findings:              findings,
+		Issues:                issues,
 	}
 }
 

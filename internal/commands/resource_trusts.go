@@ -11,7 +11,7 @@ import (
 
 func resourceTrustsHandler(provider providers.Provider, now func() time.Time) Handler {
 	return func(ctx context.Context, request Request) (any, error) {
-		facts, err := provider.ResourceTrusts(ctx, request.Tenant, request.Subscription)
+		facts, sessionArtifacts, err := resourceTrustsFacts(ctx, request, provider, now)
 		if err != nil {
 			return nil, err
 		}
@@ -19,10 +19,49 @@ func resourceTrustsHandler(provider providers.Provider, now func() time.Time) Ha
 		return models.ResourceTrustsOutput{
 			Findings:       resourceTrustFindings(facts.StorageAssets, facts.KeyVaults),
 			Issues:         facts.Issues,
-			Metadata:       commandMetadata("resource-trusts", now, request, facts.TenantID, facts.SubscriptionID, ""),
+			Metadata:       withMetadataSessionArtifacts(withArtifactContext(commandMetadata("resource-trusts", now, request, facts.TenantID, facts.SubscriptionID, facts.TokenSource), request, facts.CurrentPrincipal, facts.AuthMode, facts.TokenSource), sessionArtifacts),
 			ResourceTrusts: sortedByLess(composeResourceTrusts(facts.StorageAssets, facts.KeyVaults), resourceTrustLess),
 		}, nil
 	}
+}
+
+func resourceTrustsFacts(ctx context.Context, request Request, provider providers.Provider, now func() time.Time) (providers.ResourceTrustsFacts, []models.SessionArtifact, error) {
+	group := newCommandOutputGroup(2)
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "storage", "keyvault")
+	storageFuture := runHelperOutput[models.StorageOutput](group, ctx, request, storageHandler(provider, now), "storage", expected)
+	keyVaultFuture := runHelperOutput[models.KeyVaultOutput](group, ctx, request, keyVaultHandler(provider, now), "keyvault", expected)
+
+	storage, storageSource, err := storageFuture.waitWithSource()
+	if err != nil {
+		return providers.ResourceTrustsFacts{}, nil, err
+	}
+	keyVault, keyVaultSource, err := keyVaultFuture.waitWithSource()
+	if err != nil {
+		return providers.ResourceTrustsFacts{}, nil, err
+	}
+
+	sessionArtifacts := []models.SessionArtifact{}
+	if storageSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *storageSource)
+	}
+	if keyVaultSource != nil {
+		sessionArtifacts = append(sessionArtifacts, *keyVaultSource)
+	}
+	identity, identityIssues := providers.MergeArtifactIdentityFacts(artifactIdentityFactsFromMetadata(storage.Metadata), artifactIdentityFactsFromMetadata(keyVault.Metadata))
+	issues := append(append([]models.Issue{}, storage.Issues...), keyVault.Issues...)
+	issues = append(issues, identityIssues...)
+	return providers.ResourceTrustsFacts{
+		ArtifactIdentityFacts: identity,
+		TenantID:              firstNonEmpty(stringPtrValue(storage.Metadata.TenantID), stringPtrValue(keyVault.Metadata.TenantID)),
+		SubscriptionID:        firstNonEmpty(stringPtrValue(storage.Metadata.SubscriptionID), stringPtrValue(keyVault.Metadata.SubscriptionID)),
+		StorageAssets:         append([]models.StorageAsset{}, storage.StorageAssets...),
+		KeyVaults:             append([]models.KeyVaultAsset{}, keyVault.KeyVaults...),
+		Issues:                issues,
+	}, sessionArtifacts, nil
+}
+
+func artifactIdentityFactsFromMetadata(metadata models.Metadata) providers.ArtifactIdentityFacts {
+	return artifactIdentityFactsFromContext(metadata.ArtifactContext, metadata.AuthMode, metadata.TokenSource)
 }
 
 func composeResourceTrusts(storageAssets []models.StorageAsset, keyVaults []models.KeyVaultAsset) []models.ResourceTrustSummary {

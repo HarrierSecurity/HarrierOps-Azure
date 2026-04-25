@@ -24,10 +24,11 @@ func (provider AzureProvider) Automation(ctx context.Context, tenant string, sub
 	)
 	if err != nil {
 		return AutomationFacts{
-			TenantID:           session.tenantID,
-			SubscriptionID:     session.subscription.ID,
-			AutomationAccounts: []models.AutomationAccountAsset{},
-			Issues:             []models.Issue{issueFromError("automation.accounts", err)},
+			ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+			TenantID:              session.tenantID,
+			SubscriptionID:        session.subscription.ID,
+			AutomationAccounts:    []models.AutomationAccountAsset{},
+			Issues:                []models.Issue{issueFromError("automation.accounts", err)},
 		}, nil
 	}
 
@@ -38,10 +39,11 @@ func (provider AzureProvider) Automation(ctx context.Context, tenant string, sub
 	}
 
 	return AutomationFacts{
-		TenantID:           session.tenantID,
-		SubscriptionID:     session.subscription.ID,
-		AutomationAccounts: accountsOut,
-		Issues:             issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		AutomationAccounts:    accountsOut,
+		Issues:                issues,
 	}, nil
 }
 

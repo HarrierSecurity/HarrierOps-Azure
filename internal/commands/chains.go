@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"harrierops-azure/internal/artifacts"
 	"harrierops-azure/internal/contracts"
 	"harrierops-azure/internal/models"
 	"harrierops-azure/internal/providers"
@@ -259,9 +260,10 @@ type asyncCommandOutput[T any] struct {
 }
 
 type commandOutputCall struct {
-	done  chan struct{}
-	value any
-	err   error
+	done   chan struct{}
+	value  any
+	source *models.SessionArtifact
+	err    error
 }
 
 type commandOutputGroup struct {
@@ -304,17 +306,91 @@ func runGroupedCommandOutput[T any](group commandOutputGroup, ctx context.Contex
 	return asyncCommandOutput[T]{call: call, name: name}
 }
 
+func runGroupedCommandOutputWithArtifact[T any](group commandOutputGroup, ctx context.Context, request Request, handler Handler, expected artifacts.ExpectedSession) asyncCommandOutput[T] {
+	group.mu.Lock()
+	if call, ok := group.calls[expected.Command]; ok {
+		group.mu.Unlock()
+		return asyncCommandOutput[T]{call: call, name: expected.Command}
+	}
+	call := &commandOutputCall{done: make(chan struct{})}
+	group.calls[expected.Command] = call
+	group.mu.Unlock()
+
+	go func() {
+		group.limiter <- struct{}{}
+		defer func() {
+			<-group.limiter
+		}()
+		if result, ok, err := artifacts.LoadSessionArtifact[T](artifactWorkspace(request.OutDir), expected); err != nil {
+			call.err = err
+			close(call.done)
+			return
+		} else if ok {
+			call.value = result.Payload
+			call.source = &result.Source
+			close(call.done)
+			return
+		}
+
+		value, err := runCommandOutput[T](ctx, request, handler, expected.Command)
+		if err == nil {
+			_, err = artifacts.Write(expected.Command, value, artifactWorkspace(request.OutDir), models.RenderContext{
+				Tenant:       request.Tenant,
+				Subscription: request.Subscription,
+			})
+		}
+		call.value = value
+		call.err = err
+		close(call.done)
+	}()
+	return asyncCommandOutput[T]{call: call, name: expected.Command}
+}
+
+func runGroupedCommandOutputWritingArtifact[T any](group commandOutputGroup, ctx context.Context, request Request, handler Handler, name string) asyncCommandOutput[T] {
+	group.mu.Lock()
+	if call, ok := group.calls[name]; ok {
+		group.mu.Unlock()
+		return asyncCommandOutput[T]{call: call, name: name}
+	}
+	call := &commandOutputCall{done: make(chan struct{})}
+	group.calls[name] = call
+	group.mu.Unlock()
+
+	go func() {
+		group.limiter <- struct{}{}
+		defer func() {
+			<-group.limiter
+		}()
+		value, err := runCommandOutput[T](ctx, request, handler, name)
+		if err == nil {
+			_, err = artifacts.Write(name, value, artifactWorkspace(request.OutDir), models.RenderContext{
+				Tenant:       request.Tenant,
+				Subscription: request.Subscription,
+			})
+		}
+		call.value = value
+		call.err = err
+		close(call.done)
+	}()
+	return asyncCommandOutput[T]{call: call, name: name}
+}
+
 func (future asyncCommandOutput[T]) wait() (T, error) {
+	value, _, err := future.waitWithSource()
+	return value, err
+}
+
+func (future asyncCommandOutput[T]) waitWithSource() (T, *models.SessionArtifact, error) {
 	var zero T
 	<-future.call.done
 	if future.call.err != nil {
-		return zero, future.call.err
+		return zero, nil, future.call.err
 	}
 	value, ok := future.call.value.(T)
 	if !ok {
-		return zero, fmt.Errorf("unexpected payload type for %s: %T", future.name, future.call.value)
+		return zero, nil, fmt.Errorf("unexpected payload type for %s: %T", future.name, future.call.value)
 	}
-	return value, nil
+	return value, future.call.source, nil
 }
 
 func buildDatabaseTargetView(output models.DatabasesOutput) credentialPathTargetView {

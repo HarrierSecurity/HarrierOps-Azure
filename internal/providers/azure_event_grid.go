@@ -44,10 +44,11 @@ func (provider AzureProvider) EventGrid(ctx context.Context, tenant string, subs
 	}
 
 	return EventGridFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		Routes:         routes,
-		Issues:         issues,
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		Routes:                routes,
+		Issues:                issues,
 	}, nil
 }
 

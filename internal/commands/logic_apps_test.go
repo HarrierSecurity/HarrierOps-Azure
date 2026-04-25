@@ -171,7 +171,7 @@ func TestBuildPersistenceAzureMLOutputResolvesVisibleExecutionContextRoleContext
 		context.Background(),
 		providers.NewStaticProvider(),
 		func() time.Time { return time.Unix(0, 0) },
-		Request{},
+		Request{OutDir: t.TempDir()},
 		contract,
 	)
 	if err != nil {
@@ -215,7 +215,7 @@ func TestBuildPersistenceAzureMLOutputResolvesVisibleExecutionContextRoleContext
 func TestManagedIdentitiesOutputIncludesAzureMLAttachments(t *testing.T) {
 	outputAny, err := managedIdentitiesHandler(providers.NewStaticProvider(), func() time.Time { return time.Unix(0, 0) })(
 		context.Background(),
-		Request{},
+		Request{OutDir: t.TempDir()},
 	)
 	if err != nil {
 		t.Fatalf("managedIdentitiesHandler returned error: %v", err)
@@ -252,7 +252,7 @@ func TestBuildPersistenceFunctionsOutputResolvesVisibleExecutionContextRoleConte
 		context.Background(),
 		providers.NewStaticProvider(),
 		func() time.Time { return time.Unix(0, 0) },
-		Request{},
+		Request{OutDir: t.TempDir()},
 		contract,
 	)
 	if err != nil {
@@ -327,7 +327,7 @@ func TestBuildPersistenceLogicAppsOutputResolvesVisibleExecutionContextRoleConte
 		context.Background(),
 		providers.NewStaticProvider(),
 		func() time.Time { return time.Unix(0, 0) },
-		Request{},
+		Request{OutDir: t.TempDir()},
 		contract,
 	)
 	if err != nil {
@@ -386,7 +386,7 @@ func TestBuildPersistenceWebJobsOutputResolvesInheritedExecutionContext(t *testi
 		context.Background(),
 		providers.NewStaticProvider(),
 		func() time.Time { return time.Unix(0, 0) },
-		Request{},
+		Request{OutDir: t.TempDir()},
 		contract,
 	)
 	if err != nil {

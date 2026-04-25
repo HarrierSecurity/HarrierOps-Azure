@@ -370,8 +370,9 @@ func (StaticProvider) KeyVault(_ context.Context, tenant string, subscription st
 	privateVaultID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-secrets/providers/Microsoft.KeyVault/vaults/kvlabpriv01"
 
 	return KeyVaultFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		KeyVaults: []models.KeyVaultAsset{
 			{
 				AccessPolicyCount:       2,
@@ -617,8 +618,9 @@ func (StaticProvider) Storage(_ context.Context, tenant string, subscription str
 	privateID := "/subscriptions/" + subscriptionID + "/resourceGroups/rg-data/providers/Microsoft.Storage/storageAccounts/stlabpriv01"
 
 	return StorageFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		StorageAssets: []models.StorageAsset{
 			{
 				AllowSharedKeyAccess:      &trueValue,
@@ -1072,8 +1074,9 @@ func (StaticProvider) ApiMgmt(_ context.Context, tenant string, subscription str
 	workloadClientID := "99990000-0000-0000-0000-000000000002"
 
 	return ApiMgmtFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
+		ArtifactIdentityFacts: staticArtifactIdentityFacts(session),
+		TenantID:              session.TenantID,
+		SubscriptionID:        subscriptionID,
 		ApiManagementServices: []models.ApiMgmtServiceAsset{
 			{
 				ID:                           serviceID,

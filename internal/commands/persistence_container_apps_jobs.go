@@ -79,7 +79,7 @@ func buildPersistenceContainerAppsJobsOutput(
 	}
 
 	return models.PersistenceContainerAppsJobsOutput{
-		Metadata:           scopedMetadata(now, request, backing.tenantID, backing.subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, backing.tenantID, backing.subscriptionID, "persistence"), backing.sessionArtifacts),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

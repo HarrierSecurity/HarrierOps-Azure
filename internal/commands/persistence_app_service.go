@@ -33,13 +33,13 @@ func buildPersistenceAppServiceOutput(
 	contract contracts.PersistenceSurfaceContract,
 ) (any, error) {
 	group := newCommandOutputGroup(chainsFanoutLimit)
-	appServicesFuture := runGroupedCommandOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services")
+	expected := helperArtifactExpectedSessions(ctx, request, provider, now, "app-services", "permissions", "rbac")
+	appServicesFuture := runHelperOutput[models.AppServicesOutput](group, ctx, request, appServicesHandler(provider, now), "app-services", expected)
 	envVarsFuture := runGroupedCommandOutput[models.EnvVarsOutput](group, ctx, request, envVarsHandler(provider, now), "env-vars")
 	managedIdentitiesFuture := runGroupedCommandOutput[models.ManagedIdentitiesOutput](group, ctx, request, managedIdentitiesHandler(provider, now), "managed-identities")
-	permissionsFuture := runGroupedCommandOutput[models.PermissionsOutput](group, ctx, request, permissionsHandler(provider, now), "permissions")
-	rbacFuture := runGroupedCommandOutput[models.RbacOutput](group, ctx, request, rbacHandler(provider, now), "rbac")
+	identityControlFutures := startIdentityControlFuturesWithExpected(group, ctx, provider, now, request, expected)
 
-	appServices, err := appServicesFuture.wait()
+	appServices, appServicesSource, err := appServicesFuture.waitWithSource()
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +51,7 @@ func buildPersistenceAppServiceOutput(
 	if err != nil {
 		return nil, err
 	}
-	permissions, err := permissionsFuture.wait()
-	if err != nil {
-		return nil, err
-	}
-	rbac, err := rbacFuture.wait()
+	identityControl, err := identityControlFutures.wait()
 	if err != nil {
 		return nil, err
 	}
@@ -63,12 +59,12 @@ func buildPersistenceAppServiceOutput(
 	subscriptionID := firstNonEmpty(
 		request.Subscription,
 		stringPtrValue(appServices.Metadata.SubscriptionID),
-		stringPtrValue(permissions.Metadata.SubscriptionID),
+		stringPtrValue(identityControl.permissions.Metadata.SubscriptionID),
 	)
 	tenantID := firstNonEmpty(
 		request.Tenant,
 		stringPtrValue(appServices.Metadata.TenantID),
-		stringPtrValue(permissions.Metadata.TenantID),
+		stringPtrValue(identityControl.permissions.Metadata.TenantID),
 	)
 
 	envVarsByAsset := make(map[string][]models.EnvVarSummary)
@@ -79,7 +75,7 @@ func buildPersistenceAppServiceOutput(
 		envVarsByAsset[item.AssetID] = append(envVarsByAsset[item.AssetID], item)
 	}
 
-	evidence := buildPersistencePrincipalEvidence(permissions.Permissions, rbac.RoleAssignments)
+	evidence := identityControl.evidence
 
 	managedIdentitiesByAttachment := persistenceAppServiceManagedIdentitiesByAttachment(managedIdentities.Identities)
 	apps := sortedByLess(appServices.AppServices, appServiceLess)
@@ -141,11 +137,11 @@ func buildPersistenceAppServiceOutput(
 	issues := append([]models.Issue{}, appServices.Issues...)
 	issues = append(issues, envVars.Issues...)
 	issues = append(issues, managedIdentities.Issues...)
-	issues = append(issues, permissions.Issues...)
-	issues = append(issues, rbac.Issues...)
+	issues = append(issues, identityControl.permissions.Issues...)
+	issues = append(issues, identityControl.rbac.Issues...)
 
 	return models.PersistenceAppServiceOutput{
-		Metadata:           scopedMetadata(now, request, tenantID, subscriptionID, "persistence"),
+		Metadata:           withSessionArtifacts(scopedMetadata(now, request, tenantID, subscriptionID, "persistence"), appendSessionArtifact(identityControl.sessionArtifacts, appServicesSource)),
 		GroupedCommandName: "persistence",
 		Surface:            contract.Name,
 		InputMode:          "live",

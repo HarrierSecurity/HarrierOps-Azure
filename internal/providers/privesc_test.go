@@ -79,7 +79,7 @@ func TestPrivescMarksPreferredPathAndExplainsWhyItWon(t *testing.T) {
 		},
 	}
 
-	facts := privescFactsFromSources(permissions, principals, managedIdentities, vms)
+	facts := PrivescFactsFromSources(permissions, principals, managedIdentities, vms)
 	if len(facts.Paths) < 2 {
 		t.Fatalf("expected at least two privesc paths, got %d", len(facts.Paths))
 	}
@@ -167,7 +167,7 @@ func TestPrivescPrefersVisiblePrivilegedLeadBeforeIngressPivotWhenPrivilegeSimil
 		},
 	}
 
-	facts := privescFactsFromSources(permissions, principals, managedIdentities, vms)
+	facts := PrivescFactsFromSources(permissions, principals, managedIdentities, vms)
 	if len(facts.Paths) < 3 {
 		t.Fatalf("expected at least three privesc paths, got %d", len(facts.Paths))
 	}
@@ -223,7 +223,7 @@ func TestPrivescPrefersHigherPrivilegeThenNonHumanIdentity(t *testing.T) {
 		},
 	}
 
-	facts := privescFactsFromSources(permissions, principals, ManagedIdentitiesFacts{}, VMsFacts{})
+	facts := PrivescFactsFromSources(permissions, principals, ManagedIdentitiesFacts{}, VMsFacts{})
 	if len(facts.Paths) < 2 {
 		t.Fatalf("expected at least two privesc paths, got %d", len(facts.Paths))
 	}
@@ -282,7 +282,7 @@ func TestPrivescPrefersAutomationThemedIdentityWhenPrivilegeAndTypeAreSimilar(t 
 		},
 	}
 
-	facts := privescFactsFromSources(permissions, principals, ManagedIdentitiesFacts{}, VMsFacts{})
+	facts := PrivescFactsFromSources(permissions, principals, ManagedIdentitiesFacts{}, VMsFacts{})
 	if len(facts.Paths) < 2 {
 		t.Fatalf("expected at least two privesc paths, got %d", len(facts.Paths))
 	}

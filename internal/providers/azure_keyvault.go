@@ -23,10 +23,11 @@ func (provider AzureProvider) KeyVault(ctx context.Context, tenant string, subsc
 	)
 	if err != nil {
 		return KeyVaultFacts{
-			TenantID:       session.tenantID,
-			SubscriptionID: session.subscription.ID,
-			KeyVaults:      []models.KeyVaultAsset{},
-			Issues:         []models.Issue{issueFromError("keyvault", err)},
+			ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+			TenantID:              session.tenantID,
+			SubscriptionID:        session.subscription.ID,
+			KeyVaults:             []models.KeyVaultAsset{},
+			Issues:                []models.Issue{issueFromError("keyvault", err)},
 		}, nil
 	}
 
@@ -42,10 +43,11 @@ func (provider AzureProvider) KeyVault(ctx context.Context, tenant string, subsc
 	})
 
 	return KeyVaultFacts{
-		TenantID:       session.tenantID,
-		SubscriptionID: session.subscription.ID,
-		KeyVaults:      rows,
-		Issues:         []models.Issue{},
+		ArtifactIdentityFacts: azureArtifactIdentityFacts(session),
+		TenantID:              session.tenantID,
+		SubscriptionID:        session.subscription.ID,
+		KeyVaults:             rows,
+		Issues:                []models.Issue{},
 	}, nil
 }
 

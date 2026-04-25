@@ -112,9 +112,12 @@ func (provider StaticProvider) Principals(ctx context.Context, tenant string, su
 	principals = append(principals, staticAzureMLPrincipalSummaries(session.TenantID, subscriptionID)...)
 
 	return PrincipalsFacts{
-		TenantID:       session.TenantID,
-		SubscriptionID: subscriptionID,
-		Principals:     principals,
-		Issues:         []models.Issue{},
+		TenantID:         session.TenantID,
+		SubscriptionID:   subscriptionID,
+		CurrentPrincipal: session.Principal,
+		TokenSource:      "fixture",
+		AuthMode:         "fixture",
+		Principals:       principals,
+		Issues:           []models.Issue{},
 	}, nil
 }
